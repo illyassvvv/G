@@ -9,7 +9,7 @@ class AppTheme {
   static const Color darkCard     = Color(0xFF0F1A0F);
   static const Color darkText     = Color(0xFFF0F0F0);
   static const Color darkTextDim  = Color(0xFF7A8A7A);
-  static const Color darkBorder   = Color(0x25D4AF37);
+  static const Color darkBorder   = Color(0x251DB954);
 
   // ─── Light ───────────────────────────────────────────────────
   static const Color lightBg       = Color(0xFFF4F4EF);
@@ -18,18 +18,18 @@ class AppTheme {
   static const Color lightCard     = Color(0xFFFFFFFF);
   static const Color lightText     = Color(0xFF1A1A1A);
   static const Color lightTextDim  = Color(0xFF888888);
-  static const Color lightBorder   = Color(0x30D4AF37);
+  static const Color lightBorder   = Color(0x301DB954);
 
   // ─── Shared ──────────────────────────────────────────────────
-  static const Color accent    = Color(0xFFD4AF37);
-  static const Color accent2   = Color(0xFFE8C96B);
-  static const Color accentDim = Color(0xFF8B7014);
+  static const Color accent    = Color(0xFF1DB954);
+  static const Color accent2   = Color(0xFF4BDB7A);
+  static const Color accentDim = Color(0xFF0D8F3E);
   static const Color green     = Color(0xFF1DB954);
   static const Color greenDim  = Color(0xFF0D5C2A);
   static const Color live      = Color(0xFFE63946);
 
   static const LinearGradient goldGradient = LinearGradient(
-    colors: [accent, accentDim],
+    colors: [accent2, accent],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
