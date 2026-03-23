@@ -138,66 +138,73 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Safely tears down the current player.
-  /// Pauses first to silence audio immediately, then disposes in a
-  /// microtask-safe way to avoid native exceptions when killing
-  /// a player that is mid-buffer.
+  /// Mutes and pauses to silence audio within a single frame (<16ms),
+  /// then schedules disposal in a microtask to avoid native platform
+  /// exceptions when destroying a player that is mid-buffer.
   void _killMini() {
     final ctrl = _miniCtrl;
     _miniCtrl = null;
     if (ctrl == null) return;
 
     try {
+      // Mute FIRST — guarantees zero audio bleed even if pause() is slow
+      ctrl.videoPlayerController?.setVolume(0);
       ctrl.pause();
     } catch (_) {
       // Player may already be in a bad state — ignore.
     }
 
-    // Schedule disposal after the current frame to avoid native crashes
-    // when the player is mid-buffer or mid-initialization.
+    // Deferred disposal: avoids native crashes when the ExoPlayer /
+    // AVPlayer surface is still being torn down on the platform side.
     Future.microtask(() {
       try {
         ctrl.dispose();
       } catch (_) {
-        // Swallow native dispose exceptions.
+        // Swallow native dispose exceptions gracefully.
       }
     });
   }
 
   void _startMini(Channel ch) {
-    _miniCtrl = BetterPlayerController(
-      BetterPlayerConfiguration(
-        autoPlay: true,
-        aspectRatio: 16 / 9,
-        fit: BoxFit.contain,
-        handleLifecycle: true,
-        autoDispose: false,
-        controlsConfiguration: BetterPlayerControlsConfiguration(
-          showControls: false,
-          loadingWidget: const SizedBox.shrink(),
+    try {
+      _miniCtrl = BetterPlayerController(
+        BetterPlayerConfiguration(
+          autoPlay: true,
+          aspectRatio: 16 / 9,
+          fit: BoxFit.contain,
+          handleLifecycle: true,
+          autoDispose: false,
+          controlsConfiguration: BetterPlayerControlsConfiguration(
+            showControls: false,
+            loadingWidget: const SizedBox.shrink(),
+          ),
+          eventListener: (event) {
+            if (!mounted) return;
+            // Guard: if user already zapped to another channel, ignore events
+            if (_activeChannel?.id != ch.id) return;
+            if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
+              setState(() => _miniLoading = false);
+            } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
+              setState(() { _miniLoading = false; _miniError = true; });
+            }
+          },
         ),
-        eventListener: (event) {
-          if (!mounted) return;
-          // Guard: if user already zapped to another channel, ignore events
-          if (_activeChannel?.id != ch.id) return;
-          if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
-            setState(() => _miniLoading = false);
-          } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
-            setState(() { _miniLoading = false; _miniError = true; });
-          }
-        },
-      ),
-      betterPlayerDataSource: BetterPlayerDataSource(
-        BetterPlayerDataSourceType.network,
-        ch.streamUrl,
-        liveStream: true,
-        videoFormat: BetterPlayerVideoFormat.hls,
-        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000, maxBufferMs: 12000,
-          bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
+        betterPlayerDataSource: BetterPlayerDataSource(
+          BetterPlayerDataSourceType.network,
+          ch.streamUrl,
+          liveStream: true,
+          videoFormat: BetterPlayerVideoFormat.hls,
+          bufferingConfiguration: const BetterPlayerBufferingConfiguration(
+            minBufferMs: 2000, maxBufferMs: 12000,
+            bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
+          ),
         ),
-      ),
-    );
-    if (mounted) setState(() {});
+      );
+      if (mounted) setState(() {});
+    } catch (_) {
+      // Catch malformed URL or controller init failures gracefully
+      if (mounted) setState(() { _miniLoading = false; _miniError = true; });
+    }
   }
 
   // ── Fullscreen: pass controller to resume (no rebuffer) ──────
@@ -632,6 +639,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   GestureDetector(
                     onTap: () {
+                      _zapTimer?.cancel();
                       _killMini();
                       setState(() { _miniLoading = true; _miniError = false; });
                       _startMini(ch);
