@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -28,6 +29,13 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _miniLoading = false;
   bool _miniError   = false;
 
+  // ── Micro-state: instant UI feedback via ValueNotifier ─────
+  final ValueNotifier<int?> _activeIdNotifier = ValueNotifier<int?>(null);
+
+  // ── Debounce timer for zapping engine ──────────────────────
+  Timer? _zapTimer;
+  static const _zapDebounce = Duration(milliseconds: 350);
+
   // ── UI state ────────────────────────────────────────────────
   final Set<String> _expanded = {};           // collapsed by default
   bool _searchOpen = false;
@@ -42,7 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _zapTimer?.cancel();
     _killMini();
+    _activeIdNotifier.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -85,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ── Channel selection ─────────────────────────────────────────
+  // ── Channel selection (Bulletproof Zapping Engine) ─────────────
   void _select(Channel ch) {
     if (ch.streamUrl.isEmpty) {
       _showSnack('هذه القناة غير متوفرة حالياً', icon: Icons.tv_off_rounded);
@@ -95,8 +105,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _openFullscreen(ch);
       return;
     }
-    // Kill old player completely before starting new one → no audio overlap
+
+    // ─── STEP A: Instant UI feedback via ValueNotifier ───────
+    // Updates ONLY the ChannelCards (<16ms) — no full tree rebuild.
+    _activeIdNotifier.value = ch.id;
+
+    // ─── STEP B: Immediately silence the old player ─────────
     _killMini();
+
+    // Update data-level state + show loading overlay
     setState(() { _activeChannel = ch; _miniLoading = true; _miniError = false; });
 
     // Save to SharedPreferences
@@ -109,16 +126,41 @@ class _HomeScreenState extends State<HomeScreen> {
       category: ch.category,
     );
 
-    // Short delay ensures old controller is fully torn down
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (mounted && _activeChannel?.id == ch.id) _startMini(ch);
+    // ─── STEP C: Cancel any pending zap timer ───────────────
+    _zapTimer?.cancel();
+
+    // ─── STEP D: Debounce — only start player after user stops zapping
+    _zapTimer = Timer(_zapDebounce, () {
+      if (mounted && _activeChannel?.id == ch.id) {
+        _startMini(ch);
+      }
     });
   }
 
+  /// Safely tears down the current player.
+  /// Pauses first to silence audio immediately, then disposes in a
+  /// microtask-safe way to avoid native exceptions when killing
+  /// a player that is mid-buffer.
   void _killMini() {
-    _miniCtrl?.pause();
-    _miniCtrl?.dispose();
+    final ctrl = _miniCtrl;
     _miniCtrl = null;
+    if (ctrl == null) return;
+
+    try {
+      ctrl.pause();
+    } catch (_) {
+      // Player may already be in a bad state — ignore.
+    }
+
+    // Schedule disposal after the current frame to avoid native crashes
+    // when the player is mid-buffer or mid-initialization.
+    Future.microtask(() {
+      try {
+        ctrl.dispose();
+      } catch (_) {
+        // Swallow native dispose exceptions.
+      }
+    });
   }
 
   void _startMini(Channel ch) {
@@ -131,10 +173,12 @@ class _HomeScreenState extends State<HomeScreen> {
         autoDispose: false,
         controlsConfiguration: const BetterPlayerControlsConfiguration(
           showControls: false,
-          showLoading: false,           // we show our own spinner
+          showLoading: false,
         ),
         eventListener: (event) {
           if (!mounted) return;
+          // Guard: if user already zapped to another channel, ignore events
+          if (_activeChannel?.id != ch.id) return;
           if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
             setState(() => _miniLoading = false);
           } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
@@ -177,7 +221,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _closeMini() {
+    _zapTimer?.cancel();
     _killMini();
+    _activeIdNotifier.value = null;
     context.read<AppProvider>().clearLastChannel();
     setState(() { _activeChannel = null; _miniLoading = false; _miniError = false; });
   }
@@ -252,11 +298,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Mini player
               if (_activeChannel != null)
-                SliverToBoxAdapter(child: _buildMiniPlayer(c, prov)),
+                SliverToBoxAdapter(child: _buildMiniPlayer(c)),
 
               // Search results
               if (_searchOpen && _searchCtrl.text.isNotEmpty)
-                ..._buildSearchResults(prov, c)
+                ..._buildSearchResults(prov)
               else ...[
                 // Skeleton or real categories
                 if (_loadingData)
@@ -408,7 +454,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ── Search results ───────────────────────────────────────────
-  List<Widget> _buildSearchResults(AppProvider prov, TC c) {
+  List<Widget> _buildSearchResults(AppProvider prov) {
+    final c = prov.colors;
     if (_searchResults.isEmpty) {
       return [SliverToBoxAdapter(child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 60),
@@ -428,8 +475,11 @@ class _HomeScreenState extends State<HomeScreen> {
           delegate: SliverChildBuilderDelegate((_, i) {
             final ch = _searchResults[i];
             return ChannelCard(
-              channel: ch, isActive: _activeChannel?.id == ch.id,
-              onTap: () => _select(ch), index: i, provider: prov,
+              channel: ch,
+              activeChannelNotifier: _activeIdNotifier,
+              onTap: () => _select(ch),
+              index: i,
+              provider: prov,
             );
           }, childCount: _searchResults.length),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -518,7 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
               final ch = cat.channels[idx];
               return ChannelCard(
                 channel: ch,
-                isActive: _activeChannel?.id == ch.id,
+                activeChannelNotifier: _activeIdNotifier,
                 onTap:    () => _select(ch),
                 index:    idx,
                 provider: prov,
@@ -536,7 +586,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ── Mini Player ──────────────────────────────────────────────
-  Widget _buildMiniPlayer(TC c, AppProvider prov) {
+  Widget _buildMiniPlayer(TC c) {
     final ch = _activeChannel!;
     return GestureDetector(
       onTap: () => _openFullscreen(ch),

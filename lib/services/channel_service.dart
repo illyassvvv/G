@@ -4,9 +4,20 @@ import 'package:http/http.dart' as http;
 import '../models/channel.dart';
 
 class ChannelService {
-  // Public raw URL — no token needed for public repo
-  static const String _url =
-      'https://raw.githubusercontent.com/illyassvvv/G/main/channels.json';
+  // ── Obfuscated URL (base64-encoded, split into segments) ───────
+  // Prevents the raw GitHub URL from being trivially visible in
+  // decompiled output or static analysis.
+  static const List<String> _urlParts = [
+    'aHR0cHM6Ly9yYXcuZ2l0aHVi',   // segment 1
+    'dXNlcmNvbnRlbnQuY29tL2ls',     // segment 2
+    'bHlhc3N2dnYvRy9tYWluL2No',     // segment 3
+    'YW5uZWxzLmpzb24=',             // segment 4
+  ];
+
+  static String get _url {
+    final encoded = _urlParts.join();
+    return utf8.decode(base64.decode(encoded));
+  }
 
   static List<ChannelCategory>? _cache;
   static DateTime? _cacheTime;
@@ -15,15 +26,18 @@ class ChannelService {
   // ── Fetch with cache ──────────────────────────────────────────
   static Future<List<ChannelCategory>> fetchCategories() async {
     // Return cache if fresh
-    if (_cache != null && _cacheTime != null &&
+    if (_cache != null &&
+        _cacheTime != null &&
         DateTime.now().difference(_cacheTime!) < _cacheDuration) {
       return _cache!;
     }
 
     try {
       final response = await http
-          .get(Uri.parse('$_url?t=${DateTime.now().millisecondsSinceEpoch}'),
-              headers: {'Cache-Control': 'no-cache'})
+          .get(
+            Uri.parse('${_url}?t=${DateTime.now().millisecondsSinceEpoch}'),
+            headers: {'Cache-Control': 'no-cache'},
+          )
           .timeout(const Duration(seconds: 12));
 
       if (response.statusCode == 200) {
@@ -31,21 +45,26 @@ class ChannelService {
         final list = (data['categories'] as List<dynamic>)
             .map((c) => ChannelCategory.fromJson(c as Map<String, dynamic>))
             .toList();
-        _cache     = list;
+        _cache = list;
         _cacheTime = DateTime.now();
         return list;
+      } else {
+        debugPrint(
+          'ChannelService: HTTP ${response.statusCode} — falling back',
+        );
       }
     } catch (e) {
       debugPrint('ChannelService: fetch error: $e');
     }
 
-    // Fallback to hardcoded
+    // Fallback to stale cache before hardcoded data
+    if (_cache != null) return _cache!;
     return _fallback();
   }
 
   // ── Force refresh ─────────────────────────────────────────────
   static Future<List<ChannelCategory>> refreshCategories() async {
-    _cache     = null;
+    _cache = null;
     _cacheTime = null;
     return fetchCategories();
   }
