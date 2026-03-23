@@ -43,7 +43,7 @@
           "id": 6,
           "name": "beIN Sports 6",
           "number": "06",
-          "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/8/8d/BeIN_Sports_5.svg/200px-BeIN_Sports_5.svg.png",
+          "logo": "http://138.199.27.237:8080/BEIN/bein-sport/BEINSPORT6HD.png",
           "stream": "https://man1ted.com/be6/index.m3u8"
         }
       ]
