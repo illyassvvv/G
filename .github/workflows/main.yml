@@ -23,8 +23,7 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
-      - name: Recreate iOS
-        run: flutter create .
+      
 
       - name: Install Pods
         run: |
