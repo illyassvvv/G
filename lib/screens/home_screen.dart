@@ -172,40 +172,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startMini(Channel ch) {
     try {
-    _miniCtrl = BetterPlayerController(
-      BetterPlayerConfiguration(
-        autoPlay: true,
-        aspectRatio: 16 / 9,
-        fit: BoxFit.contain,
-        handleLifecycle: true,
-        autoDispose: false,
-        controlsConfiguration: BetterPlayerControlsConfiguration(
-          showControls: false,
-          loadingWidget: const SizedBox.shrink(),
+      _miniCtrl = BetterPlayerController(
+        BetterPlayerConfiguration(
+          autoPlay: true,
+          aspectRatio: 16 / 9,
+          fit: BoxFit.contain,
+          handleLifecycle: true,
+          autoDispose: false,
+          controlsConfiguration: BetterPlayerControlsConfiguration(
+            showControls: false,
+            loadingWidget: const SizedBox.shrink(),
+          ),
+          eventListener: (event) {
+            if (!mounted) return;
+            // Guard: if user already zapped to another channel, ignore events
+            if (_activeChannel?.id != ch.id) return;
+            if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
+              setState(() => _miniLoading = false);
+            } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
+              setState(() { _miniLoading = false; _miniError = true; });
+            }
+          },
         ),
-        eventListener: (event) {
-          if (!mounted) return;
-          // Guard: if user already zapped to another channel, ignore events
-          if (_activeChannel?.id != ch.id) return;
-          if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
-            setState(() => _miniLoading = false);
-          } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
-            setState(() { _miniLoading = false; _miniError = true; });
-          }
-        },
-      ),
-      betterPlayerDataSource: BetterPlayerDataSource(
-        BetterPlayerDataSourceType.network,
-        ch.streamUrl,
-        liveStream: true,
-        videoFormat: BetterPlayerVideoFormat.hls,
-        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000, maxBufferMs: 12000,
-          bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
+        betterPlayerDataSource: BetterPlayerDataSource(
+          BetterPlayerDataSourceType.network,
+          ch.streamUrl,
+          liveStream: true,
+          videoFormat: BetterPlayerVideoFormat.hls,
+          bufferingConfiguration: const BetterPlayerBufferingConfiguration(
+            minBufferMs: 2000, maxBufferMs: 12000,
+            bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
+          ),
         ),
-      ),
-    );
-    if (mounted) setState(() {});
+      );
+      if (mounted) setState(() {});
     } catch (_) {
       // Catch malformed URL or controller init failures gracefully
       if (mounted) setState(() { _miniLoading = false; _miniError = true; });
