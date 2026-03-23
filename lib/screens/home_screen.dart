@@ -131,7 +131,6 @@ class _HomeScreenState extends State<HomeScreen> {
         autoDispose: false,
         controlsConfiguration: const BetterPlayerControlsConfiguration(
           showControls: false,
-          showLoading: false,           // we show our own spinner
         ),
         eventListener: (event) {
           if (!mounted) return;

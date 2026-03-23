@@ -79,8 +79,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
           pauseIcon: Icons.pause_rounded,
           liveTextColor: AppTheme.live,
           showControlsOnInitialize: false,
-          // Hide BetterPlayer's own loading widget — we show ours
-          showLoading: false,
         ),
         eventListener: (event) {
           if (!mounted) return;
@@ -188,7 +186,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
-                    color: Colors.black60,
+                    color: Colors.black.withOpacity(0.6),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -265,7 +263,7 @@ class _TopBtn extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.black60, borderRadius: BorderRadius.circular(10)),
+        color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(10)),
       child: Icon(icon, color: Colors.white, size: size),
     ),
   );
