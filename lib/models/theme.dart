@@ -3,32 +3,32 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ─── Dark ────────────────────────────────────────────────────
-  static const Color darkBg       = Color(0xFF050A05);
-  static const Color darkSurface  = Color(0xFF0D150D);
-  static const Color darkSurface2 = Color(0xFF142014);
-  static const Color darkCard     = Color(0xFF0F1A0F);
-  static const Color darkText     = Color(0xFFF0F0F0);
-  static const Color darkTextDim  = Color(0xFF7A8A7A);
-  static const Color darkBorder   = Color(0x25D4AF37);
+  static const Color darkBg       = Color(0xFF0A0E0A);
+  static const Color darkSurface  = Color(0xFF121812);
+  static const Color darkSurface2 = Color(0xFF1A221A);
+  static const Color darkCard     = Color(0xFF141C14);
+  static const Color darkText     = Color(0xFFF2F4F2);
+  static const Color darkTextDim  = Color(0xFF6B7E6B);
+  static const Color darkBorder   = Color(0x2000E676);
 
   // ─── Light ───────────────────────────────────────────────────
-  static const Color lightBg       = Color(0xFFF4F4EF);
+  static const Color lightBg       = Color(0xFFF5F7F5);
   static const Color lightSurface  = Color(0xFFFFFFFF);
-  static const Color lightSurface2 = Color(0xFFECECE6);
+  static const Color lightSurface2 = Color(0xFFEDF1ED);
   static const Color lightCard     = Color(0xFFFFFFFF);
-  static const Color lightText     = Color(0xFF1A1A1A);
-  static const Color lightTextDim  = Color(0xFF888888);
-  static const Color lightBorder   = Color(0x30D4AF37);
+  static const Color lightText     = Color(0xFF1A1D1A);
+  static const Color lightTextDim  = Color(0xFF7A8A7A);
+  static const Color lightBorder   = Color(0x1800E676);
 
-  // ─── Shared ──────────────────────────────────────────────────
-  static const Color accent    = Color(0xFFD4AF37);
-  static const Color accent2   = Color(0xFFE8C96B);
-  static const Color accentDim = Color(0xFF8B7014);
-  static const Color green     = Color(0xFF1DB954);
-  static const Color greenDim  = Color(0xFF0D5C2A);
-  static const Color live      = Color(0xFFE63946);
+  // ─── Shared accent = green ─────────────────────────────────
+  static const Color accent    = Color(0xFF00E676);
+  static const Color accent2   = Color(0xFF69F0AE);
+  static const Color accentDim = Color(0xFF00C853);
+  static const Color green     = Color(0xFF00E676);
+  static const Color greenDim  = Color(0xFF00894A);
+  static const Color live      = Color(0xFFFF1744);
 
-  static const LinearGradient goldGradient = LinearGradient(
+  static const LinearGradient accentGradient = LinearGradient(
     colors: [accent, accentDim],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -45,7 +45,7 @@ class AppTheme {
     brightness: Brightness.dark,
     scaffoldBackgroundColor: darkBg,
     colorScheme: const ColorScheme.dark(
-      primary: accent, secondary: green, surface: darkSurface,
+      primary: accent, secondary: accent2, surface: darkSurface,
     ),
     textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
     appBarTheme: AppBarTheme(
@@ -66,7 +66,7 @@ class AppTheme {
     brightness: Brightness.light,
     scaffoldBackgroundColor: lightBg,
     colorScheme: const ColorScheme.light(
-      primary: accent, secondary: green, surface: lightSurface,
+      primary: accent, secondary: accent2, surface: lightSurface,
     ),
     textTheme: GoogleFonts.cairoTextTheme(ThemeData.light().textTheme),
     appBarTheme: AppBarTheme(
@@ -96,9 +96,9 @@ class TC {
   Color get textDim  => isDark ? AppTheme.darkTextDim  : AppTheme.lightTextDim;
   Color get border   => isDark ? AppTheme.darkBorder   : AppTheme.lightBorder;
   Color get shadow   => isDark
-      ? AppTheme.accent.withOpacity(0.07)
-      : AppTheme.accent.withOpacity(0.10);
+      ? Colors.black.withOpacity(0.25)
+      : Colors.black.withOpacity(0.06);
   Color get appBarBg => isDark
-      ? AppTheme.darkBg.withOpacity(0.94)
-      : AppTheme.lightBg.withOpacity(0.94);
+      ? AppTheme.darkBg.withOpacity(0.96)
+      : AppTheme.lightBg.withOpacity(0.96);
 }

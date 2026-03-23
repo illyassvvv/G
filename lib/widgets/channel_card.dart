@@ -93,7 +93,7 @@ class ChannelCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
-                      gradient: isActive ? AppTheme.goldGradient : null,
+                      gradient: isActive ? AppTheme.accentGradient : null,
                       color: isActive ? null : c.surface2,
                       borderRadius: BorderRadius.circular(6),
                     ),
@@ -128,7 +128,7 @@ class ChannelCard extends StatelessWidget {
                   width: 30, height: 30,
                   decoration: BoxDecoration(
                     gradient: isActive
-                        ? AppTheme.goldGradient
+                        ? AppTheme.accentGradient
                         : LinearGradient(colors: [c.surface2, c.surface2]),
                     shape: BoxShape.circle,
                   ),

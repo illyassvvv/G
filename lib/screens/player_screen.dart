@@ -165,7 +165,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   decoration: BoxDecoration(
-                    gradient: AppTheme.goldGradient,
+                    gradient: AppTheme.accentGradient,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Text('إعادة المحاولة',
