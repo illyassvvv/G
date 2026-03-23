@@ -6,10 +6,10 @@ import '../models/channel.dart';
 import '../models/theme.dart';
 import '../providers/app_provider.dart';
 
-/// Poster-style channel card inspired by premium streaming apps.
-/// Tall card with centered logo, channel name below, and subtle
-/// active glow. Listens to [ValueNotifier<int?>] for instant UI
-/// feedback without rebuilding the widget tree.
+/// A channel card that listens to a [ValueNotifier<int?>] for the active
+/// channel ID. Only the cards whose active state actually changes will
+/// rebuild — the rest of the widget tree (including the heavy video player)
+/// is untouched. This eliminates the "Sticky Green Color" lag.
 class ChannelCard extends StatelessWidget {
   final Channel channel;
   final ValueNotifier<int?> activeChannelNotifier;
@@ -31,174 +31,177 @@ class ChannelCard extends StatelessWidget {
     final c = provider.colors;
     return GestureDetector(
       onTap: onTap,
+      // Only rebuild when the active ID changes — O(1) check per card
       child: ValueListenableBuilder<int?>(
         valueListenable: activeChannelNotifier,
         builder: (_, activeId, __) {
           final isActive = activeId == channel.id;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Poster card ────────────────────────────────────
-              Expanded(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  curve: Curves.easeOutCubic,
-                  decoration: BoxDecoration(
-                    color: c.card,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isActive
-                          ? AppTheme.accent.withOpacity(0.7)
-                          : Colors.transparent,
-                      width: isActive ? 2 : 0,
-                    ),
-                    boxShadow: isActive
-                        ? [
-                            BoxShadow(
-                              color: AppTheme.accent.withOpacity(0.2),
-                              blurRadius: 16,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: Stack(
-                    children: [
-                      // Logo — centered and prominent
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: CachedNetworkImage(
-                            imageUrl: channel.logoUrl,
-                            cacheKey: 'logo_${channel.id}',
-                            fit: BoxFit.contain,
-                            memCacheWidth: 200,
-                            memCacheHeight: 200,
-                            fadeInDuration: const Duration(milliseconds: 150),
-                            fadeOutDuration: const Duration(milliseconds: 100),
-                            useOldImageOnUrlChange: true,
-                            placeholder: (_, __) => Shimmer.fromColors(
-                              baseColor: c.surface2,
-                              highlightColor: c.surface2.withOpacity(0.4),
-                              child: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: c.surface2,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                            errorWidget: (_, __, ___) => Icon(
-                              Icons.live_tv_rounded,
-                              color: c.textDim.withOpacity(0.5),
-                              size: 36,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Channel number badge — top left
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? AppTheme.accent.withOpacity(0.9)
-                                : Colors.black.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            channel.number,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: isActive ? Colors.black : Colors.white70,
-                              fontFamily: 'Cairo',
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Live dot — top right (active only)
-                      if (isActive)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.green,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.green,
-                                  blurRadius: 6,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                      // Play overlay — bottom right (active only)
-                      if (isActive)
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: const BoxDecoration(
-                              gradient: AppTheme.goldGradient,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.play_arrow_rounded,
-                              size: 16,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: isActive ? null : c.card,
+              gradient: isActive
+                  ? LinearGradient(colors: [
+                      c.card,
+                      AppTheme.greenDim.withOpacity(0.25),
+                    ], begin: Alignment.topLeft, end: Alignment.bottomRight)
+                  : null,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isActive ? AppTheme.accent : c.border,
+                width: isActive ? 1.5 : 1,
               ),
-
-              // ── Channel name below card ────────────────────────
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(color: AppTheme.accent.withOpacity(0.15), blurRadius: 20),
+                      BoxShadow(color: AppTheme.green.withOpacity(0.08), blurRadius: 30, offset: const Offset(0, 8)),
+                    ]
+                  : [BoxShadow(color: c.shadow, blurRadius: 8, offset: const Offset(0, 2))],
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // ── Logo + name ──────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.only(top: 8, left: 2, right: 2),
-                child: Text(
-                  channel.name,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isActive ? c.text : c.textDim,
-                    fontFamily: 'Cairo',
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                child: Row(children: [
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: c.surface2,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isActive ? AppTheme.accent.withOpacity(0.3) : Colors.transparent,
+                        width: 1,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: CachedNetworkImage(
+                      imageUrl: channel.logoUrl,
+                      cacheKey: 'logo_${channel.id}',
+                      fit: BoxFit.contain,
+                      memCacheWidth: 88,
+                      memCacheHeight: 88,
+                      fadeInDuration: const Duration(milliseconds: 150),
+                      fadeOutDuration: const Duration(milliseconds: 100),
+                      useOldImageOnUrlChange: true,
+                      placeholder: (_, __) => Shimmer.fromColors(
+                        baseColor: c.surface2,
+                        highlightColor: c.surface2.withOpacity(0.5),
+                        child: Container(color: c.surface2),
+                      ),
+                      errorWidget: (_, __, ___) => Icon(
+                        Icons.tv_rounded, color: c.textDim, size: 22,
+                      ),
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(channel.name,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: c.text),
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 100),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          gradient: isActive ? AppTheme.goldGradient : null,
+                          color: isActive ? null : c.surface2,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('CH ${channel.number}',
+                          style: TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.w700,
+                            color: isActive ? Colors.black : c.textDim,
+                          )),
+                      ),
+                    ],
+                  )),
+                ]),
+              ),
+
+              // ── Live + play button ───────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(children: [
+                      _PulseDot(color: isActive ? AppTheme.green : c.textDim),
+                      const SizedBox(width: 5),
+                      Text('مباشر',
+                        style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w700,
+                          color: isActive ? AppTheme.green : c.textDim,
+                        )),
+                    ]),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 100),
+                      width: 30, height: 30,
+                      decoration: BoxDecoration(
+                        gradient: isActive
+                            ? AppTheme.goldGradient
+                            : LinearGradient(colors: [c.surface2, c.surface2]),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        size: 17,
+                        color: isActive ? Colors.black : c.textDim,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ]),
           );
         },
       ),
     )
-        .animate(delay: Duration(milliseconds: 40 * index))
-        .fadeIn(duration: 250.ms)
-        .scale(
-            begin: const Offset(0.95, 0.95),
-            end: const Offset(1, 1),
-            duration: 250.ms);
+        .animate(delay: Duration(milliseconds: 55 * index))
+        .fadeIn(duration: 280.ms)
+        .slideY(begin: 0.18, end: 0, duration: 280.ms, curve: Curves.easeOut);
   }
 }
 
-// ── Shimmer skeleton card (poster style) ──────────────────────
+// ── Pulse dot ─────────────────────────────────────────────────
+class _PulseDot extends StatefulWidget {
+  final Color color;
+  const _PulseDot({required this.color});
+  @override
+  State<_PulseDot> createState() => _PulseDotState();
+}
+
+class _PulseDotState extends State<_PulseDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat(reverse: true);
+    _anim = Tween(begin: 0.3, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: _anim,
+    child: Container(
+      width: 6, height: 6,
+      decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
+    ),
+  );
+}
+
+// ── Shimmer skeleton card ─────────────────────────────────────
 class ChannelCardSkeleton extends StatelessWidget {
   final AppProvider provider;
   const ChannelCardSkeleton({super.key, required this.provider});
@@ -206,35 +209,34 @@ class ChannelCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = provider.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Shimmer.fromColors(
-            baseColor: c.surface2,
-            highlightColor: c.surface,
-            child: Container(
-              decoration: BoxDecoration(
-                color: c.card,
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
+    return Shimmer.fromColors(
+      baseColor: c.surface2,
+      highlightColor: c.surface,
+      child: Container(
+        decoration: BoxDecoration(
+          color: c.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: c.border),
         ),
-        const SizedBox(height: 8),
-        Shimmer.fromColors(
-          baseColor: c.surface2,
-          highlightColor: c.surface,
-          child: Container(
-            height: 10,
-            width: 60,
-            decoration: BoxDecoration(
-              color: c.surface2,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-        ),
-      ],
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(width: 44, height: 44,
+              decoration: BoxDecoration(color: c.surface2, borderRadius: BorderRadius.circular(12))),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(height: 12, width: double.infinity, color: c.surface2),
+              const SizedBox(height: 6),
+              Container(height: 10, width: 50, color: c.surface2),
+            ])),
+          ]),
+          const SizedBox(height: 14),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Container(height: 10, width: 50, color: c.surface2),
+            Container(width: 30, height: 30, decoration: BoxDecoration(color: c.surface2, shape: BoxShape.circle)),
+          ]),
+        ]),
+      ),
     );
   }
 }

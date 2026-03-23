@@ -274,8 +274,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: c.bg,
       body: Stack(children: [
-        // Subtle ambient glow — minimal
-        Positioned(top: -120, right: -120, child: _glow(AppTheme.accent, 280, 0.03)),
+        // Ambient glows
+        Positioned(top: -100, right: -100, child: _glow(AppTheme.green, 300, 0.06)),
+        Positioned(top: -50,  left: -80,  child: _glow(AppTheme.accent, 250, 0.04)),
 
         // ── No internet banner ──────────────────────────────────
         if (!prov.hasInternet)
@@ -337,19 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return SliverAppBar(
       pinned: true,
       backgroundColor: c.appBarBg,
-      title: _searchOpen
-          ? TextField(
-              controller: _searchCtrl,
-              autofocus: true,
-              onChanged: _onSearch,
-              style: TextStyle(color: c.text, fontFamily: 'Cairo'),
-              decoration: InputDecoration(
-                hintText: 'ابحث عن قناة...',
-                hintStyle: TextStyle(color: c.textDim, fontFamily: 'Cairo'),
-                border: InputBorder.none,
-              ),
-            )
-          : Row(children: [
+      title: Row(children: [
               Container(width: 38, height: 38,
                 decoration: BoxDecoration(
                   gradient: AppTheme.goldGradient,
@@ -367,17 +356,6 @@ class _HomeScreenState extends State<HomeScreen> {
               )),
             ]),
       actions: [
-        // Search toggle
-        _AppBarBtn(
-          icon: _searchOpen ? Icons.close_rounded : Icons.search_rounded,
-          color: _searchOpen ? AppTheme.live : c.textDim,
-          bg: c.surface2, border: c.border,
-          onTap: () {
-            if (_searchOpen) _closeSearch();
-            else setState(() => _searchOpen = true);
-          },
-        ),
-        const SizedBox(width: 6),
         // Dark/light toggle
         _AppBarBtn(
           icon: prov.isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
@@ -387,13 +365,6 @@ class _HomeScreenState extends State<HomeScreen> {
           animated: true,
         ),
         const SizedBox(width: 6),
-        // Refresh
-        _AppBarBtn(
-          icon: Icons.refresh_rounded,
-          color: c.textDim,
-          bg: c.surface2, border: c.border,
-          onTap: _refresh,
-        ),
         // Live badge
         Container(
           margin: const EdgeInsets.only(left: 6, right: 16),
@@ -411,7 +382,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
       bottom: PreferredSize(preferredSize: const Size.fromHeight(1),
-        child: Container(height: 0.5, color: c.border.withOpacity(0.3))),
+        child: Container(height: 1, decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [
+            Colors.transparent,
+            AppTheme.accent.withOpacity(0.2),
+            AppTheme.green.withOpacity(0.2),
+            Colors.transparent,
+          ])))),
     );
   }
 
@@ -423,11 +400,11 @@ class _HomeScreenState extends State<HomeScreen> {
         sliver: SliverGrid(
           delegate: SliverChildBuilderDelegate(
             (_, i) => ChannelCardSkeleton(provider: prov),
-            childCount: 9,
+            childCount: 6,
           ),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3, crossAxisSpacing: 10,
-            mainAxisSpacing: 16, childAspectRatio: 0.65,
+            crossAxisCount: 2, crossAxisSpacing: 12,
+            mainAxisSpacing: 12, childAspectRatio: 1.1,
           ),
         ),
       ),
@@ -488,8 +465,8 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }, childCount: _searchResults.length),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3, crossAxisSpacing: 10,
-            mainAxisSpacing: 16, childAspectRatio: 0.65,
+            crossAxisCount: 2, crossAxisSpacing: 12,
+            mainAxisSpacing: 12, childAspectRatio: 1.1,
           ),
         ),
       ),
@@ -503,54 +480,65 @@ class _HomeScreenState extends State<HomeScreen> {
       final cat        = _categories[i];
       final isExpanded = _expanded.contains(cat.name);
 
-      // ── Category header — clean, bold, streaming-app style ──
       widgets.add(SliverToBoxAdapter(
         child: GestureDetector(
           onTap: () => _toggleCat(cat.name),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(16, i == 0 ? 8 : 24, 16, 12),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [
+                c.surface.withOpacity(0.9),
+                c.surface2.withOpacity(0.6),
+              ], begin: Alignment.centerLeft, end: Alignment.centerRight),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isExpanded ? AppTheme.accent.withOpacity(0.3) : c.border, width: 1),
+              boxShadow: [BoxShadow(color: c.shadow, blurRadius: 10)],
+            ),
             child: Row(children: [
-              // Category icon
               AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 36, height: 36,
+                duration: const Duration(milliseconds: 250),
+                width: 44, height: 44,
                 decoration: BoxDecoration(
-                  gradient: isExpanded ? AppTheme.goldGradient : null,
-                  color: isExpanded ? null : c.surface2,
-                  borderRadius: BorderRadius.circular(10),
+                  gradient: isExpanded ? AppTheme.goldGradient
+                      : LinearGradient(colors: [c.surface2, c.surface2]),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: isExpanded
+                      ? [BoxShadow(color: AppTheme.accent.withOpacity(0.25), blurRadius: 10)]
+                      : [],
                 ),
                 child: Icon(_catIcon(cat.icon),
-                  color: isExpanded ? Colors.black : c.textDim, size: 18),
+                  color: isExpanded ? Colors.black : c.textDim, size: 22),
               ),
-              const SizedBox(width: 12),
-              // Category name — large bold
-              Expanded(
-                child: Text(cat.name,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: c.text,
-                    fontFamily: 'Cairo',
-                    letterSpacing: -0.3,
-                  )),
-              ),
-              // Channel count
-              Text('${cat.channels.length}',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: c.textDim,
-                )),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(cat.name,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                    color: isExpanded ? AppTheme.accent : c.text)),
+                const SizedBox(height: 2),
+                Text('${cat.channels.length} قنوات',
+                  style: TextStyle(fontSize: 12, color: c.textDim)),
+              ])),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isExpanded ? AppTheme.accent.withOpacity(0.15) : c.surface2,
+                  borderRadius: BorderRadius.circular(10)),
+                child: Text('${cat.channels.length}',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                    color: isExpanded ? AppTheme.accent : c.textDim))),
               const SizedBox(width: 8),
-              // Expand arrow
               AnimatedRotation(
                 turns: isExpanded ? 0.5 : 0,
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 250),
                 curve: Curves.easeOutCubic,
                 child: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: c.textDim, size: 22)),
+                  color: isExpanded ? AppTheme.accent : c.textDim, size: 24)),
             ]),
-          ),
+          ).animate(delay: Duration(milliseconds: 70 * i))
+              .fadeIn(duration: 300.ms)
+              .slideX(begin: -0.04, end: 0, duration: 280.ms),
         ),
       ));
 
@@ -569,8 +557,8 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             }, childCount: cat.channels.length),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3, crossAxisSpacing: 10,
-              mainAxisSpacing: 16, childAspectRatio: 0.65,
+              crossAxisCount: 2, crossAxisSpacing: 12,
+              mainAxisSpacing: 12, childAspectRatio: 1.1,
             ),
           ),
         ));
