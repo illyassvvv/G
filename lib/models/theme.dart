@@ -2,17 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color bg        = Color(0xFF09090E);
-  static const Color surface   = Color(0xFF111118);
-  static const Color surface2  = Color(0xFF18181F);
-  static const Color card      = Color(0xFF141420);
-  static const Color accent    = Color(0xFFC8A84B);
+  // Dark base
+  static const Color bg        = Color(0xFF050A05);
+  static const Color surface   = Color(0xFF0D150D);
+  static const Color surface2  = Color(0xFF142014);
+  static const Color card      = Color(0xFF0F1A0F);
+
+  // Gold accent
+  static const Color accent    = Color(0xFFD4AF37);
   static const Color accent2   = Color(0xFFE8C96B);
-  static const Color accentDim = Color(0xFF8B6914);
+  static const Color accentDim = Color(0xFF8B7014);
+
+  // Green accent
+  static const Color green     = Color(0xFF1DB954);
+  static const Color greenDim  = Color(0xFF0D5C2A);
+  static const Color greenGlow = Color(0xFF15803D);
+
+  // Status
   static const Color live      = Color(0xFFE63946);
+
+  // Text
   static const Color text      = Color(0xFFF0F0F0);
-  static const Color textDim   = Color(0xFF8A8A9A);
-  static const Color border    = Color(0x20C8A84B);
+  static const Color textDim   = Color(0xFF7A8A7A);
+
+  // Border
+  static const Color border    = Color(0x25D4AF37);
+
+  // Gradient
+  static const LinearGradient goldGradient = LinearGradient(
+    colors: [accent, accentDim],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient greenGradient = LinearGradient(
+    colors: [green, greenDim],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
@@ -20,8 +47,8 @@ class AppTheme {
     scaffoldBackgroundColor: bg,
     colorScheme: const ColorScheme.dark(
       primary: accent,
+      secondary: green,
       surface: surface,
-      background: bg,
     ),
     textTheme: GoogleFonts.cairoTextTheme(
       ThemeData.dark().textTheme,
