@@ -88,10 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ── Category toggle ──────────────────────────────────────────
+  // ── Category toggle (accordion: only one open at a time) ─────
   void _toggleCat(String name) {
     setState(() {
-      _expanded.contains(name) ? _expanded.remove(name) : _expanded.add(name);
+      if (_expanded.contains(name)) {
+        _expanded.remove(name);
+      } else {
+        _expanded.clear();
+        _expanded.add(name);
+      }
     });
   }
 
@@ -676,8 +681,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(color: c.surface2, borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppTheme.accent.withOpacity(0.2), width: 1)),
                 clipBehavior: Clip.antiAlias,
-                child: CachedNetworkImage(imageUrl: ch.logoUrl, fit: BoxFit.contain,
-                  errorWidget: (_, __, ___) => Icon(Icons.tv_rounded, color: c.textDim, size: 18))),
+                child: CachedNetworkImage(
+                  imageUrl: ch.logoUrl,
+                  cacheKey: 'logo_${ch.id}',
+                  fit: BoxFit.contain,
+                  memCacheWidth: 80,
+                  memCacheHeight: 80,
+                  fadeInDuration: const Duration(milliseconds: 150),
+                  useOldImageOnUrlChange: true,
+                  errorWidget: (_, __, ___) => Icon(Icons.tv_rounded, color: c.textDim, size: 18),
+                )),
               const SizedBox(width: 12),
               // Name + live
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

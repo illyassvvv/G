@@ -77,7 +77,13 @@ class ChannelCard extends StatelessWidget {
                     clipBehavior: Clip.antiAlias,
                     child: CachedNetworkImage(
                       imageUrl: channel.logoUrl,
+                      cacheKey: 'logo_${channel.id}',
                       fit: BoxFit.contain,
+                      memCacheWidth: 88,
+                      memCacheHeight: 88,
+                      fadeInDuration: const Duration(milliseconds: 150),
+                      fadeOutDuration: const Duration(milliseconds: 100),
+                      useOldImageOnUrlChange: true,
                       placeholder: (_, __) => Shimmer.fromColors(
                         baseColor: c.surface2,
                         highlightColor: c.surface2.withOpacity(0.5),
