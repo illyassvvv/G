@@ -88,10 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ── Category toggle ──────────────────────────────────────────
+  // ── Category toggle (accordion: only one open at a time) ─────
   void _toggleCat(String name) {
     setState(() {
-      _expanded.contains(name) ? _expanded.remove(name) : _expanded.add(name);
+      if (_expanded.contains(name)) {
+        _expanded.remove(name);
+      } else {
+        _expanded.clear();
+        _expanded.add(name);
+      }
     });
   }
 
@@ -138,32 +143,35 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Safely tears down the current player.
-  /// Pauses first to silence audio immediately, then disposes in a
-  /// microtask-safe way to avoid native exceptions when killing
-  /// a player that is mid-buffer.
+  /// Mutes and pauses to silence audio within a single frame (<16ms),
+  /// then schedules disposal in a microtask to avoid native platform
+  /// exceptions when destroying a player that is mid-buffer.
   void _killMini() {
     final ctrl = _miniCtrl;
     _miniCtrl = null;
     if (ctrl == null) return;
 
     try {
+      // Mute FIRST — guarantees zero audio bleed even if pause() is slow
+      ctrl.videoPlayerController?.setVolume(0);
       ctrl.pause();
     } catch (_) {
       // Player may already be in a bad state — ignore.
     }
 
-    // Schedule disposal after the current frame to avoid native crashes
-    // when the player is mid-buffer or mid-initialization.
+    // Deferred disposal: avoids native crashes when the ExoPlayer /
+    // AVPlayer surface is still being torn down on the platform side.
     Future.microtask(() {
       try {
         ctrl.dispose();
       } catch (_) {
-        // Swallow native dispose exceptions.
+        // Swallow native dispose exceptions gracefully.
       }
     });
   }
 
   void _startMini(Channel ch) {
+    try {
     _miniCtrl = BetterPlayerController(
       BetterPlayerConfiguration(
         autoPlay: true,
@@ -198,6 +206,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (mounted) setState(() {});
+    } catch (_) {
+      // Catch malformed URL or controller init failures gracefully
+      if (mounted) setState(() { _miniLoading = false; _miniError = true; });
+    }
   }
 
   // ── Fullscreen: pass controller to resume (no rebuffer) ──────
@@ -632,6 +644,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   GestureDetector(
                     onTap: () {
+                      _zapTimer?.cancel();
                       _killMini();
                       setState(() { _miniLoading = true; _miniError = false; });
                       _startMini(ch);
@@ -668,8 +681,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(color: c.surface2, borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppTheme.accent.withOpacity(0.2), width: 1)),
                 clipBehavior: Clip.antiAlias,
-                child: CachedNetworkImage(imageUrl: ch.logoUrl, fit: BoxFit.contain,
-                  errorWidget: (_, __, ___) => Icon(Icons.tv_rounded, color: c.textDim, size: 18))),
+                child: CachedNetworkImage(
+                  imageUrl: ch.logoUrl,
+                  cacheKey: 'logo_${ch.id}',
+                  fit: BoxFit.contain,
+                  memCacheWidth: 80,
+                  memCacheHeight: 80,
+                  fadeInDuration: const Duration(milliseconds: 150),
+                  useOldImageOnUrlChange: true,
+                  errorWidget: (_, __, ___) => Icon(Icons.tv_rounded, color: c.textDim, size: 18),
+                )),
               const SizedBox(width: 12),
               // Name + live
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
