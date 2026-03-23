@@ -64,7 +64,7 @@
           "name": "Al Kass 2",
           "number": "02",
           "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Alkass_logo.png/200px-Alkass_logo.png",
-          "stream": ""
+          "stream": "https://liveeu-gcp.alkassdigital.net/alkass2-p/main.m3u8"
         }
       ]
     }
