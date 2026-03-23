@@ -59,10 +59,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() => _categories = cats);
   }
 
-  // ── Category toggle ──────────────────────────────────────────
+  // ── Category toggle (exclusive – only one open at a time) ────
   void _toggleCat(String name) {
     setState(() {
-      _expanded.contains(name) ? _expanded.remove(name) : _expanded.add(name);
+      if (_expanded.contains(name)) {
+        _expanded.remove(name);
+      } else {
+        _expanded.clear();
+        _expanded.add(name);
+      }
     });
   }
 
@@ -265,20 +270,11 @@ class _HomeScreenState extends State<HomeScreen> {
         )),
       ]),
       actions: [
-        // Dark/light toggle
-        _AppBarBtn(
-          icon: prov.isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
-          color: AppTheme.accent,
+        // Dark/light toggle with sun↔moon animation
+        _ThemeToggleBtn(
+          isDark: prov.isDark,
           bg: c.surface2, border: c.border,
           onTap: prov.toggleTheme,
-        ),
-        const SizedBox(width: 8),
-        // Refresh
-        _AppBarBtn(
-          icon: Icons.refresh_rounded,
-          color: c.textDim,
-          bg: c.surface2, border: c.border,
-          onTap: _refresh,
         ),
         // Live badge
         Container(
@@ -539,17 +535,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ── AppBar icon button ────────────────────────────────────────
-class _AppBarBtn extends StatelessWidget {
-  final IconData icon;
-  final Color color;
+// ── Theme toggle with sun/moon crossfade + rotation ──────────
+class _ThemeToggleBtn extends StatelessWidget {
+  final bool isDark;
   final Color bg;
   final Color border;
   final VoidCallback onTap;
 
-  const _AppBarBtn({
-    required this.icon,
-    required this.color,
+  const _ThemeToggleBtn({
+    required this.isDark,
     required this.bg,
     required this.border,
     required this.onTap,
@@ -564,7 +558,22 @@ class _AppBarBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg, borderRadius: BorderRadius.circular(10),
           border: Border.all(color: border, width: 1)),
-        child: Icon(icon, color: color, size: 20),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          transitionBuilder: (child, anim) {
+            return RotationTransition(
+              turns: Tween(begin: 0.75, end: 1.0).animate(
+                CurvedAnimation(parent: anim, curve: Curves.easeOutBack)),
+              child: FadeTransition(opacity: anim, child: child),
+            );
+          },
+          child: Icon(
+            isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+            key: ValueKey(isDark),
+            color: isDark ? const Color(0xFFFFD54F) : const Color(0xFF5C6BC0),
+            size: 20,
+          ),
+        ),
       ),
     );
   }

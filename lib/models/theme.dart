@@ -3,22 +3,22 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ─── Dark ────────────────────────────────────────────────────
-  static const Color darkBg       = Color(0xFF0A0E0A);
-  static const Color darkSurface  = Color(0xFF121812);
-  static const Color darkSurface2 = Color(0xFF1A221A);
-  static const Color darkCard     = Color(0xFF141C14);
-  static const Color darkText     = Color(0xFFF2F4F2);
-  static const Color darkTextDim  = Color(0xFF6B7E6B);
-  static const Color darkBorder   = Color(0x2000E676);
+  static const Color darkBg       = Color(0xFF0D1117);
+  static const Color darkSurface  = Color(0xFF161B22);
+  static const Color darkSurface2 = Color(0xFF21262D);
+  static const Color darkCard     = Color(0xFF161B22);
+  static const Color darkText     = Color(0xFFF0F6FC);
+  static const Color darkTextDim  = Color(0xFF8B949E);
+  static const Color darkBorder   = Color(0xFF30363D);
 
   // ─── Light ───────────────────────────────────────────────────
-  static const Color lightBg       = Color(0xFFF5F7F5);
+  static const Color lightBg       = Color(0xFFF6F8FA);
   static const Color lightSurface  = Color(0xFFFFFFFF);
-  static const Color lightSurface2 = Color(0xFFEDF1ED);
+  static const Color lightSurface2 = Color(0xFFEFF2F5);
   static const Color lightCard     = Color(0xFFFFFFFF);
-  static const Color lightText     = Color(0xFF1A1D1A);
-  static const Color lightTextDim  = Color(0xFF7A8A7A);
-  static const Color lightBorder   = Color(0x1800E676);
+  static const Color lightText     = Color(0xFF1F2328);
+  static const Color lightTextDim  = Color(0xFF656D76);
+  static const Color lightBorder   = Color(0xFFD0D7DE);
 
   // ─── Shared accent = green ─────────────────────────────────
   static const Color accent    = Color(0xFF00E676);
@@ -96,8 +96,8 @@ class TC {
   Color get textDim  => isDark ? AppTheme.darkTextDim  : AppTheme.lightTextDim;
   Color get border   => isDark ? AppTheme.darkBorder   : AppTheme.lightBorder;
   Color get shadow   => isDark
-      ? Colors.black.withOpacity(0.25)
-      : Colors.black.withOpacity(0.06);
+      ? Colors.black.withOpacity(0.35)
+      : Colors.black.withOpacity(0.08);
   Color get appBarBg => isDark
       ? AppTheme.darkBg.withOpacity(0.96)
       : AppTheme.lightBg.withOpacity(0.96);
