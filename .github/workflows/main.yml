@@ -1,0 +1,49 @@
+name: Build Unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Clean project
+        run: flutter clean
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build iOS (No Codesign)
+        run: |
+          flutter build ios --release --no-codesign --verbose
+
+      - name: Create IPA Payload
+        run: |
+          mkdir -p build/ios/iphoneos/Payload
+          mv build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          zip -r -9 VargasStore.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VargasStore-Release
+          path: build/ios/iphoneos/VargasStore.ipa
