@@ -171,9 +171,9 @@ class _HomeScreenState extends State<HomeScreen> {
         fit: BoxFit.contain,
         handleLifecycle: true,
         autoDispose: false,
-        controlsConfiguration: const BetterPlayerControlsConfiguration(
+        controlsConfiguration: BetterPlayerControlsConfiguration(
           showControls: false,
-          showLoading: false,
+          loadingWidget: const SizedBox.shrink(),
         ),
         eventListener: (event) {
           if (!mounted) return;
