@@ -23,12 +23,10 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
-      
-
       - name: Install Pods
         run: |
           cd ios
-          pod install
+          pod install --repo-update
 
       - name: Build iOS
         run: flutter build ios --release --no-codesign
@@ -36,7 +34,7 @@ jobs:
       - name: Make IPA
         run: |
           mkdir -p build/ios/iphoneos/Payload
-          mv build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
           cd build/ios/iphoneos
           zip -r app.ipa Payload
 
