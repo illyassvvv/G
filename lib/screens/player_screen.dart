@@ -6,7 +6,7 @@ import '../models/theme.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
-  // Pass existing controller to RESUME instead of reload
+  /// Pass the existing mini-player controller to resume stream seamlessly
   final BetterPlayerController? existingController;
 
   const PlayerScreen({
@@ -20,10 +20,10 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  BetterPlayerController? _controller;
-  bool _isLoading = true;
+  BetterPlayerController? _ctrl;
+  bool _loading  = true;
   bool _hasError = false;
-  bool _usingExisting = false;
+  bool _resumed  = false; // true = using existingController (don't dispose it)
   final GlobalKey _pipKey = GlobalKey();
 
   @override
@@ -36,43 +36,38 @@ class _PlayerScreenState extends State<PlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     if (widget.existingController != null) {
-      // RESUME existing stream — no reload, no double buffer spinner
-      _controller = widget.existingController;
-      _usingExisting = true;
-      _controller!.play();
-      setState(() => _isLoading = false);
+      // Resume: reuse the same controller — no rebuffering, no double spinner
+      _ctrl    = widget.existingController;
+      _resumed = true;
+      _ctrl!.play();
+      setState(() => _loading = false);
     } else {
-      _initPlayer();
+      _startPlayer();
     }
   }
 
-  void _initPlayer() {
-    _controller?.dispose();
-    _controller = null;
-    setState(() { _isLoading = true; _hasError = false; });
+  void _startPlayer() {
+    _ctrl?.dispose();
+    _ctrl = null;
+    if (mounted) setState(() { _loading = true; _hasError = false; });
 
-    final dataSource = BetterPlayerDataSource(
-      BetterPlayerDataSourceType.network,
-      widget.channel.streamUrl,
-      liveStream: true,
-      videoFormat: BetterPlayerVideoFormat.hls,
-      bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-        minBufferMs: 2000, maxBufferMs: 10000,
-        bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
-      ),
-    );
-
-    _controller = BetterPlayerController(
+    _ctrl = BetterPlayerController(
       BetterPlayerConfiguration(
-        autoPlay: true, looping: false,
-        fullScreenByDefault: false, allowedScreenSleep: false,
+        autoPlay: true,
+        looping: false,
+        fullScreenByDefault: false,
+        allowedScreenSleep: false,
         autoDetectFullscreenAspectRatio: true,
-        aspectRatio: 16 / 9, fit: BoxFit.contain,
+        aspectRatio: 16 / 9,
+        fit: BoxFit.contain,
         controlsConfiguration: BetterPlayerControlsConfiguration(
-          enableFullscreen: false, // We handle fullscreen ourselves
-          enablePlayPause: true, enableSkips: false,
-          enableMute: true, enableAudioTracks: false,
-          enableQualities: false, enableSubtitles: false,
+          enableFullscreen: false,
+          enablePlayPause: true,
+          enableSkips: false,
+          enableMute: true,
+          enableAudioTracks: false,
+          enableQualities: false,
+          enableSubtitles: false,
           enableOverflowMenu: false,
           controlBarColor: Colors.black54,
           loadingColor: AppTheme.accent,
@@ -84,27 +79,41 @@ class _PlayerScreenState extends State<PlayerScreen> {
           pauseIcon: Icons.pause_rounded,
           liveTextColor: AppTheme.live,
           showControlsOnInitialize: false,
+          // Hide BetterPlayer's own loading widget — we show ours
+          showLoading: false,
         ),
         eventListener: (event) {
           if (!mounted) return;
-          if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
-            if (mounted) setState(() => _isLoading = false);
-          } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
-            if (mounted) setState(() { _isLoading = false; _hasError = true; });
+          switch (event.betterPlayerEventType) {
+            case BetterPlayerEventType.initialized:
+              setState(() => _loading = false);
+              break;
+            case BetterPlayerEventType.exception:
+              setState(() { _loading = false; _hasError = true; });
+              break;
+            default:
+              break;
           }
         },
       ),
-      betterPlayerDataSource: dataSource,
+      betterPlayerDataSource: BetterPlayerDataSource(
+        BetterPlayerDataSourceType.network,
+        widget.channel.streamUrl,
+        liveStream: true,
+        videoFormat: BetterPlayerVideoFormat.hls,
+        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
+          minBufferMs: 2000, maxBufferMs: 10000,
+          bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
+        ),
+      ),
     );
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    // If using existing controller → don't dispose it (caller owns it)
-    if (!_usingExisting) {
-      _controller?.dispose();
-    }
+    // Only dispose if WE created the controller
+    if (!_resumed) _ctrl?.dispose();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -115,134 +124,103 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(children: [
-        // ── Player ──────────────────────────────────────
-        if (_controller != null)
-          Center(
-            child: AspectRatio(
-              key: _pipKey,
-              aspectRatio: 16 / 9,
-              child: BetterPlayer(controller: _controller!),
-            ),
-          ),
 
-        // ── Single Loading Indicator ─────────────────────
-        // Only show when not using existing controller
-        if (_isLoading && !_usingExisting)
-          Container(
-            color: Colors.black,
-            child: Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(
-                  width: 40, height: 40,
-                  child: CircularProgressIndicator(
-                    color: AppTheme.accent, strokeWidth: 2.5,
-                    backgroundColor: AppTheme.accent.withOpacity(0.15),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'جاري تحميل ${widget.channel.name}...',
-                  style: const TextStyle(
-                    color: AppTheme.live, fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ]),
-            ),
-          ),
+        // ── Video ──────────────────────────────────────────────
+        if (_ctrl != null)
+          Center(child: AspectRatio(
+            key: _pipKey,
+            aspectRatio: 16 / 9,
+            child: BetterPlayer(controller: _ctrl!),
+          )),
 
-        // ── Error ────────────────────────────────────────
+        // ── Loading (only when we start fresh) ─────────────────
+        if (_loading && !_resumed)
+          Container(color: Colors.black, child: Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              SizedBox(width: 42, height: 42,
+                child: CircularProgressIndicator(
+                  color: AppTheme.accent,
+                  strokeWidth: 2.5,
+                  backgroundColor: AppTheme.accent.withOpacity(0.15),
+                )),
+              const SizedBox(height: 16),
+              Text('جاري تحميل ${widget.channel.name}...',
+                style: const TextStyle(
+                  color: AppTheme.live, fontSize: 13, fontWeight: FontWeight.w600)),
+            ]),
+          )),
+
+        // ── Error ──────────────────────────────────────────────
         if (_hasError)
-          Container(
-            color: Colors.black,
-            child: Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.wifi_off_rounded, color: AppTheme.live, size: 48),
-                const SizedBox(height: 12),
-                const Text('تعذر تحميل القناة',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 20),
-                GestureDetector(
-                  onTap: _initPlayer,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.goldGradient,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('إعادة المحاولة',
-                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700)),
+          Container(color: Colors.black, child: Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.wifi_off_rounded, color: AppTheme.live, size: 52),
+              const SizedBox(height: 14),
+              const Text('تعذر تحميل القناة',
+                style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              const Text('تحقق من اتصالك بالإنترنت',
+                style: TextStyle(color: Colors.white54, fontSize: 13)),
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: _startPlayer,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.goldGradient,
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                  child: const Text('إعادة المحاولة',
+                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 14)),
                 ),
-              ]),
-            ),
-          ),
+              ),
+            ]),
+          )),
 
-        // ── Top Controls ─────────────────────────────────
-        Positioned(
-          top: 16, left: 0, right: 0,
+        // ── Top bar ────────────────────────────────────────────
+        Positioned(top: 16, left: 0, right: 0,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Channel name + LIVE
+                // Channel + LIVE badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
                     color: Colors.black60,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Container(
-                      width: 7, height: 7,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.live, shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
+                    _LiveDotSmall(),
+                    const SizedBox(width: 7),
                     Text(widget.channel.name,
                       style: const TextStyle(
-                        color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700,
-                      )),
+                        color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppTheme.live,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                        color: AppTheme.live, borderRadius: BorderRadius.circular(4)),
                       child: const Text('LIVE',
-                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                        style: TextStyle(
+                          color: Colors.white, fontSize: 9,
+                          fontWeight: FontWeight.w800, letterSpacing: 1)),
                     ),
                   ]),
                 ),
-                // Buttons
+
+                // Action buttons
                 Row(children: [
-                  // PiP
-                  GestureDetector(
-                    onTap: () => _controller?.enablePictureInPicture(_pipKey),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black60, borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.picture_in_picture_alt_rounded,
-                        color: Colors.white, size: 18),
-                    ),
+                  _TopBtn(
+                    icon: Icons.picture_in_picture_alt_rounded,
+                    onTap: () => _ctrl?.enablePictureInPicture(_pipKey),
                   ),
                   const SizedBox(width: 8),
-                  // Back
-                  GestureDetector(
+                  _TopBtn(
+                    icon: Icons.keyboard_arrow_down_rounded,
+                    size: 24,
                     onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black60, borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white, size: 22),
-                    ),
                   ),
                 ]),
               ],
@@ -252,4 +230,43 @@ class _PlayerScreenState extends State<PlayerScreen> {
       ]),
     );
   }
+}
+
+class _LiveDotSmall extends StatefulWidget {
+  @override
+  State<_LiveDotSmall> createState() => _LiveDotSmallState();
+}
+class _LiveDotSmallState extends State<_LiveDotSmall>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  late final Animation<double> _a;
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))
+      ..repeat(reverse: true);
+    _a = Tween(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+  }
+  @override void dispose() { _c.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => FadeTransition(opacity: _a,
+    child: Container(width: 7, height: 7,
+      decoration: const BoxDecoration(color: AppTheme.live, shape: BoxShape.circle)));
+}
+
+class _TopBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final double size;
+  const _TopBtn({required this.icon, required this.onTap, this.size = 19});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black60, borderRadius: BorderRadius.circular(10)),
+      child: Icon(icon, color: Colors.white, size: size),
+    ),
+  );
 }

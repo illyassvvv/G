@@ -17,12 +17,12 @@ class Channel {
 
   factory Channel.fromJson(Map<String, dynamic> json, String categoryName) {
     return Channel(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      number: json['number'] as String,
-      logoUrl: json['logo'] as String,
+      id:        json['id']     as int,
+      name:      json['name']   as String,
+      number:    json['number'] as String,
+      logoUrl:   json['logo']   as String,
       streamUrl: json['stream'] as String,
-      category: categoryName,
+      category:  categoryName,
     );
   }
 }
@@ -44,9 +44,7 @@ class ChannelCategory {
         .map((ch) => Channel.fromJson(ch as Map<String, dynamic>, name))
         .toList();
     return ChannelCategory(
-      name: name,
-      icon: json['icon'] as String,
-      channels: channels,
+      name: name, icon: json['icon'] as String, channels: channels,
     );
   }
 }

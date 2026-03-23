@@ -1,55 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'models/theme.dart';
+import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: AppTheme.darkBg,
-  ));
-  runApp(const IlyassTvApp());
+
+  // Portrait only (player handles landscape itself)
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Init provider (loads saved theme + last channel from prefs)
+  final appProvider = AppProvider();
+  await appProvider.init();
+
+  runApp(
+    ChangeNotifierProvider.value(
+      value: appProvider,
+      child: const IlyassTvApp(),
+    ),
+  );
 }
 
-class ThemeNotifier extends ChangeNotifier {
-  bool _isDark = true;
-  bool get isDark => _isDark;
-
-  void toggle() {
-    _isDark = !_isDark;
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: _isDark ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: _isDark ? AppTheme.darkBg : AppTheme.lightBg,
-    ));
-    notifyListeners();
-  }
-}
-
-final themeNotifier = ThemeNotifier();
-
-class IlyassTvApp extends StatefulWidget {
+class IlyassTvApp extends StatelessWidget {
   const IlyassTvApp({super.key});
-  @override
-  State<IlyassTvApp> createState() => _IlyassTvAppState();
-}
-
-class _IlyassTvAppState extends State<IlyassTvApp> {
-  @override
-  void initState() {
-    super.initState();
-    themeNotifier.addListener(() => setState(() {}));
-  }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<AppProvider>().isDark;
     return MaterialApp(
       title: 'ilyass tv',
       debugShowCheckedModeBanner: false,
-      theme: themeNotifier.isDark ? AppTheme.dark : AppTheme.light,
+      theme:      AppTheme.light,
+      darkTheme:  AppTheme.dark,
+      themeMode:  isDark ? ThemeMode.dark : ThemeMode.light,
       home: const HomeScreen(),
     );
   }
