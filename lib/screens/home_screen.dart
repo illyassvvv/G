@@ -500,6 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(10)),
                 clipBehavior: Clip.antiAlias,
                 child: CachedNetworkImage(imageUrl: ch.logoUrl, fit: BoxFit.contain,
+                  fadeInDuration: Duration.zero, fadeOutDuration: Duration.zero, memCacheWidth: 200,
                   errorWidget: (_, __, ___) => Icon(Icons.tv_rounded, color: c.textDim, size: 18))),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

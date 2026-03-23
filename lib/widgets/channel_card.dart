@@ -70,10 +70,11 @@ class ChannelCard extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: channel.logoUrl,
                   fit: BoxFit.contain,
-                  placeholder: (_, __) => Shimmer.fromColors(
-                    baseColor: c.surface2,
-                    highlightColor: c.surface2.withOpacity(0.5),
-                    child: Container(color: c.surface2),
+                  fadeInDuration: Duration.zero,
+                  fadeOutDuration: Duration.zero,
+                  memCacheWidth: 200,
+                  placeholder: (_, __) => Icon(
+                    Icons.tv_rounded, color: c.textDim.withOpacity(0.3), size: 22,
                   ),
                   errorWidget: (_, __, ___) => Icon(
                     Icons.tv_rounded, color: c.textDim, size: 22,

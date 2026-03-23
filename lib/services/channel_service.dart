@@ -68,6 +68,9 @@ class ChannelService {
   }
 
   // ── Hardcoded fallback ────────────────────────────────────────
+  static const String _logoBase =
+      'https://raw.githubusercontent.com/illyassvvv/G/main/logos';
+
   static List<ChannelCategory> _fallback() {
     return [
       ChannelCategory(
@@ -76,32 +79,32 @@ class ChannelService {
         channels: const [
           Channel(
             id: 1, name: 'beIN Sports 1', number: '01', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/96/BeIN_Sports_1.svg/200px-BeIN_Sports_1.svg.png',
+            logoUrl: '$_logoBase/bein1.png',
             streamUrl: 'http://xmrcars.org:8080/bn1hd/mono.m3u8',
           ),
           Channel(
             id: 2, name: 'beIN Sports 2', number: '02', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/d/db/BeIN_Sports_2.svg/200px-BeIN_Sports_2.svg.png',
+            logoUrl: '$_logoBase/bein2.png',
             streamUrl: 'http://xmrcars.org:8080/bn2hd/mono.m3u8',
           ),
           Channel(
             id: 3, name: 'beIN Sports 3', number: '03', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/3/32/BeIN_Sports_3.svg/200px-BeIN_Sports_3.svg.png',
+            logoUrl: '$_logoBase/bein3.png',
             streamUrl: 'http://xmrcars.org:8080/bn3hd/mono.m3u8',
           ),
           Channel(
             id: 4, name: 'beIN Sports 4', number: '04', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/07/BeIN_Sports_4.svg/200px-BeIN_Sports_4.svg.png',
+            logoUrl: '$_logoBase/bein4.png',
             streamUrl: 'https://man1ted.com/be4/index.m3u8',
           ),
           Channel(
             id: 5, name: 'beIN Sports 5', number: '05', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/8/8d/BeIN_Sports_5.svg/200px-BeIN_Sports_5.svg.png',
+            logoUrl: '$_logoBase/bein5.png',
             streamUrl: 'https://man1ted.com/be5/index.m3u8',
           ),
           Channel(
             id: 6, name: 'beIN Sports 6', number: '06', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/8/8d/BeIN_Sports_5.svg/200px-BeIN_Sports_5.svg.png',
+            logoUrl: '$_logoBase/bein6.png',
             streamUrl: 'https://man1ted.com/be6/index.m3u8',
           ),
         ],
