@@ -120,6 +120,13 @@
           "number": "2",
           "logo": "https://www.lyngsat.com/logo/tv/aa/al-aoula-ma.png",
           "stream": "https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_aloula_w1dqfwm%2Fplaylist_dvr.m3u8"
+        },
+        {
+          "id": 110,
+          "name": "Al Maghribia",
+          "number": "3",
+          "logo": "https://www.lyngsat.com/logo/tv/aa/al-maghribia-ma.png",
+          "stream": "https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_almaghribia_83tz85q%2Fplaylist_dvr.m3u8"
         }
       ]
     }
