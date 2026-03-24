@@ -206,14 +206,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: Align(
                   alignment: Alignment.topRight,
-                  child: AnimatedOpacity(
-                    opacity: _showControls ? 0.0 : 0.5,
-                    duration: const Duration(milliseconds: 200),
-                    child: _TopBtn(
-                      icon: Icons.close_rounded,
-                      size: 22,
-                      onTap: () => Navigator.pop(context),
-                    ),
+                  child: _TopBtn(
+                    icon: Icons.close_rounded,
+                    size: 22,
+                    onTap: () => Navigator.pop(context),
                   ),
                 ),
               ),

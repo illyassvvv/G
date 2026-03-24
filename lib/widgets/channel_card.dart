@@ -53,22 +53,18 @@ class _ChannelCardState extends State<ChannelCard> {
           builder: (_, activeId, __) {
             final isActive = activeId == widget.channel.id;
             return AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: const Duration(milliseconds: 150),
               curve: Curves.easeOut,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
                   color: isActive ? AppTheme.accent.withOpacity(0.7)
                       : isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
-                  width: isActive ? 1.5 : 1),
-                boxShadow: [
-                  BoxShadow(color: c.shadow, blurRadius: 8, offset: const Offset(0, 2)),
-                ],
-              ),
+                  width: isActive ? 1.5 : 1)),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(21),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: const Duration(milliseconds: 150),
                   curve: Curves.easeOut,
                     decoration: BoxDecoration(
                       gradient: isActive
