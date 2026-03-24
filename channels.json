@@ -155,6 +155,13 @@
           "number": "7",
           "logo": "https://www.lyngsat.com/logo/tv/tt/tamazight-ma.png",
           "stream": "https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_tamazight_tccybxt%2Fplaylist_dvr.m3u8"
+        },
+        {
+          "id": 115,
+          "name": "Medi1TV Maghreb",
+          "number": "8",
+          "logo": "https://www.lyngsat.com/logo/tv/mm/medi-1-tv-ma.png",
+          "stream": "https://cdn.live.easybroadcast.io/abr_corp/83_medi1tv-maghreb_jnbspmg/corp/83_medi1tv-maghreb_jnbspmg_720p/chunks_dvr.m3u8"
         }
       ]
     }
