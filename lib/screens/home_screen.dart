@@ -370,6 +370,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: SizedBox(height: bottomPadding + 120)),
             ])),
 
+        // Tap-outside overlay to collapse expanded player
+        if (_miniPlayerVisible && _activeChannel != null && _isExpanded && !_isInFullscreen)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                _expandAnimCtrl.reverse().then((_) {
+                  if (mounted) setState(() => _isExpanded = false);
+                });
+              },
+              child: Container(color: Colors.black.withOpacity(0.3)))),
+
         // EXPANDED PLAYER - half screen with channel list
         if (_miniPlayerVisible && _activeChannel != null && _isExpanded && !_isInFullscreen)
           Positioned(left: 0, right: 0, bottom: 0,
@@ -669,7 +681,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       : prov.isDark
                           ? Colors.white.withOpacity(0.06)
                           : Colors.black.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(13)),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(
+                    color: isExpanded
+                        ? AppTheme.accent.withOpacity(0.6)
+                        : AppTheme.accent.withOpacity(prov.isDark ? 0.15 : 0.08),
+                    width: isExpanded ? 1.5 : 1)),
                 child: Icon(_catIcon(cat.icon),
                   color: isExpanded ? Colors.white : c.textDim,
                   size: 21)),
@@ -898,7 +915,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           decoration: BoxDecoration(
             color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.15),
             borderRadius: BorderRadius.circular(2))),
-        // Player video area
+        // Player video area with overlay buttons
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: AspectRatio(
@@ -916,6 +933,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   if (_miniError)
                     Center(child: Icon(Icons.error_outline,
                       color: AppTheme.live, size: 32)),
+                  // Overlay buttons on video
+                  Positioned(
+                    top: 8, right: 8,
+                    child: Row(children: [
+                      GestureDetector(
+                        onTap: () => _openFullscreen(ch),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8)),
+                          child: const Icon(Icons.fullscreen_rounded,
+                            color: Colors.white, size: 18))),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () {
+                          _expandAnimCtrl.reverse().then((_) {
+                            if (mounted) setState(() => _isExpanded = false);
+                          });
+                          _closeMini();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8)),
+                          child: const Icon(Icons.close_rounded,
+                            color: Colors.white, size: 18))),
+                    ])),
                 ]))))),
         // Channel info + controls
         Padding(
