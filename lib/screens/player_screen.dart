@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:better_player_plus/better_player_plus.dart';
 import '../models/channel.dart';
 import '../models/theme.dart';
+import '../widgets/channel_card.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
-  /// Pass the existing mini-player controller to resume stream seamlessly
   final BetterPlayerController? existingController;
 
   const PlayerScreen({
@@ -21,9 +21,10 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> {
   BetterPlayerController? _ctrl;
-  bool _loading  = true;
+  bool _loading = true;
   bool _hasError = false;
-  bool _resumed  = false; // true = using existingController (don't dispose it)
+  bool _resumed = false;
+  bool _showControls = true;
   final GlobalKey _pipKey = GlobalKey();
 
   @override
@@ -36,18 +37,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     if (widget.existingController != null) {
-      // Resume: reuse the same controller — no rebuffering, no double spinner
-      _ctrl    = widget.existingController;
+      _ctrl = widget.existingController;
       _resumed = true;
       _ctrl!.play();
       setState(() => _loading = false);
     } else {
       _startPlayer();
     }
+
+    // Auto-hide controls after 4s
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _showControls = false);
+    });
   }
 
   void _startPlayer() {
-    _ctrl?.dispose();
+    if (!_resumed) _ctrl?.dispose();
     _ctrl = null;
     if (mounted) setState(() { _loading = true; _hasError = false; });
 
@@ -111,161 +116,155 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
-    // Only dispose if WE created the controller
     if (!_resumed) _ctrl?.dispose();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
+  void _toggleControls() {
+    setState(() => _showControls = !_showControls);
+    if (_showControls) {
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _showControls = false);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(children: [
+      body: GestureDetector(
+        onTap: _toggleControls,
+        onVerticalDragEnd: (details) {
+          if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+            Navigator.pop(context);
+          }
+        },
+        child: Stack(children: [
+          // Video
+          if (_ctrl != null)
+            Center(child: AspectRatio(
+              key: _pipKey,
+              aspectRatio: 16 / 9,
+              child: BetterPlayer(controller: _ctrl!),
+            )),
 
-        // ── Video ──────────────────────────────────────────────
-        if (_ctrl != null)
-          Center(child: AspectRatio(
-            key: _pipKey,
-            aspectRatio: 16 / 9,
-            child: BetterPlayer(controller: _ctrl!),
-          )),
+          // Loading
+          if (_loading && !_resumed)
+            Container(color: Colors.black, child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(width: 42, height: 42,
+                  child: CircularProgressIndicator(
+                    color: AppTheme.accent, strokeWidth: 2.5,
+                    backgroundColor: AppTheme.accent.withOpacity(0.15))),
+                const SizedBox(height: 16),
+                Text('Loading ${widget.channel.name}...',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              ]))),
 
-        // ── Loading (only when we start fresh) ─────────────────
-        if (_loading && !_resumed)
-          Container(color: Colors.black, child: Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              SizedBox(width: 42, height: 42,
-                child: CircularProgressIndicator(
-                  color: AppTheme.accent,
-                  strokeWidth: 2.5,
-                  backgroundColor: AppTheme.accent.withOpacity(0.15),
-                )),
-              const SizedBox(height: 16),
-              Text('جاري تحميل ${widget.channel.name}...',
-                style: const TextStyle(
-                  color: AppTheme.live, fontSize: 13, fontWeight: FontWeight.w600)),
-            ]),
-          )),
+          // Error
+          if (_hasError)
+            Container(color: Colors.black, child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 64, height: 64,
+                  decoration: BoxDecoration(color: AppTheme.live.withOpacity(0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.wifi_off_rounded, color: AppTheme.live, size: 32)),
+                const SizedBox(height: 16),
+                const Text('Failed to load channel',
+                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text('Check your internet connection',
+                  style: TextStyle(color: Colors.white54, fontSize: 13)),
+                const SizedBox(height: 24),
+                GestureDetector(
+                  onTap: _startPlayer,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.buttonGradient,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [BoxShadow(color: AppTheme.accent.withOpacity(0.3), blurRadius: 12)]),
+                    child: const Text('Retry',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)))),
+              ]))),
 
-        // ── Error ──────────────────────────────────────────────
-        if (_hasError)
-          Container(color: Colors.black, child: Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.wifi_off_rounded, color: AppTheme.live, size: 52),
-              const SizedBox(height: 14),
-              const Text('تعذر تحميل القناة',
-                style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              const Text('تحقق من اتصالك بالإنترنت',
-                style: TextStyle(color: Colors.white54, fontSize: 13)),
-              const SizedBox(height: 24),
-              GestureDetector(
-                onTap: _startPlayer,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.goldGradient,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Text('إعادة المحاولة',
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800, fontSize: 14)),
-                ),
-              ),
-            ]),
-          )),
+          // Top bar with controls
+          AnimatedOpacity(
+            opacity: _showControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 250),
+            child: IgnorePointer(
+              ignoring: !_showControls,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+                    begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Channel info + LIVE badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.white.withOpacity(0.1))),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            PulseDot(color: AppTheme.live, size: 8),
+                            const SizedBox(width: 8),
+                            Text(widget.channel.name,
+                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppTheme.live.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(6)),
+                              child: const Text('LIVE',
+                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1))),
+                          ])),
+                        // Action buttons
+                        Row(children: [
+                          _TopBtn(icon: Icons.picture_in_picture_alt_rounded,
+                            onTap: () => _ctrl?.enablePictureInPicture(_pipKey)),
+                          const SizedBox(width: 10),
+                          _TopBtn(icon: Icons.keyboard_arrow_down_rounded, size: 26,
+                            onTap: () => Navigator.pop(context)),
+                        ]),
+                      ])))))),
 
-        // ── Top bar ────────────────────────────────────────────
-        Positioned(top: 16, left: 0, right: 0,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Channel + LIVE badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    _LiveDotSmall(),
-                    const SizedBox(width: 7),
-                    Text(widget.channel.name,
-                      style: const TextStyle(
-                        color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.live, borderRadius: BorderRadius.circular(4)),
-                      child: const Text('LIVE',
-                        style: TextStyle(
-                          color: Colors.white, fontSize: 9,
-                          fontWeight: FontWeight.w800, letterSpacing: 1)),
-                    ),
-                  ]),
-                ),
-
-                // Action buttons
-                Row(children: [
-                  _TopBtn(
-                    icon: Icons.picture_in_picture_alt_rounded,
-                    onTap: () => _ctrl?.enablePictureInPicture(_pipKey),
-                  ),
-                  const SizedBox(width: 8),
-                  _TopBtn(
-                    icon: Icons.keyboard_arrow_down_rounded,
-                    size: 24,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                ]),
-              ],
-            ),
-          ),
-        ),
-      ]),
+          // Bottom gradient
+          if (_showControls)
+            Positioned(bottom: 0, left: 0, right: 0,
+              child: Container(height: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+                    begin: Alignment.topCenter, end: Alignment.bottomCenter)))),
+        ]),
+      ),
     );
   }
-}
-
-class _LiveDotSmall extends StatefulWidget {
-  @override
-  State<_LiveDotSmall> createState() => _LiveDotSmallState();
-}
-class _LiveDotSmallState extends State<_LiveDotSmall>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-  late final Animation<double> _a;
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))
-      ..repeat(reverse: true);
-    _a = Tween(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
-  }
-  @override void dispose() { _c.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) => FadeTransition(opacity: _a,
-    child: Container(width: 7, height: 7,
-      decoration: const BoxDecoration(color: AppTheme.live, shape: BoxShape.circle)));
 }
 
 class _TopBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final double size;
-  const _TopBtn({required this.icon, required this.onTap, this.size = 19});
+  const _TopBtn({required this.icon, required this.onTap, this.size = 20});
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(10)),
-      child: Icon(icon, color: Colors.white, size: size),
-    ),
-  );
+        color: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1))),
+      child: Icon(icon, color: Colors.white, size: size)));
 }

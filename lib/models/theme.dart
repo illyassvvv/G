@@ -2,76 +2,90 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // ─── Dark (Cinematic OLED) ──────────────────────────────────
-  static const Color darkBg       = Color(0xFF000000);
-  static const Color darkSurface  = Color(0xFF0D0D12);
-  static const Color darkSurface2 = Color(0xFF16161F);
-  static const Color darkCard     = Color(0xFF111118);
+  // ─── Signature Gradient Colors ────────────────────────────────
+  static const Color primary     = Color(0xFF22c55e);
+  static const Color primaryDark = Color(0xFF16a34a);
+  static const Color primaryDeep = Color(0xFF052e16);
+
+  // ─── Dark Theme (True OLED Dark) ──────────────────────────────
+  static const Color darkBg       = Color(0xFF0a0a0a);
+  static const Color darkSurface  = Color(0xFF111111);
+  static const Color darkSurface2 = Color(0xFF1a1a1a);
+  static const Color darkCard     = Color(0xFF141414);
   static const Color darkText     = Color(0xFFF2F2F7);
-  static const Color darkTextDim  = Color(0xFF6E6E80);
+  static const Color darkTextDim  = Color(0xFF737380);
   static const Color darkBorder   = Color(0x1AFFFFFF);
 
-  // ─── Light (Soft & Elegant) ─────────────────────────────────
-  static const Color lightBg       = Color(0xFFF6F5F1);
+  // ─── Light Theme ──────────────────────────────────────────────
+  static const Color lightBg       = Color(0xFFF7F7F7);
   static const Color lightSurface  = Color(0xFFFFFFFF);
-  static const Color lightSurface2 = Color(0xFFEEEDE8);
+  static const Color lightSurface2 = Color(0xFFF0F0F0);
   static const Color lightCard     = Color(0xFFFFFFFF);
   static const Color lightText     = Color(0xFF18181B);
   static const Color lightTextDim  = Color(0xFF8C8C99);
   static const Color lightBorder   = Color(0x14000000);
 
-  // ─── Accent Palette ─────────────────────────────────────────
-  static const Color accent    = Color(0xFF00E59B);
-  static const Color accent2   = Color(0xFF00FFC6);
-  static const Color accentDim = Color(0xFF00B377);
-  static const Color green     = Color(0xFF00E59B);
-  static const Color greenDim  = Color(0xFF007A52);
+  // ─── Accent & Status Colors ───────────────────────────────────
+  static const Color accent    = Color(0xFF22c55e);
+  static const Color accent2   = Color(0xFF4ade80);
+  static const Color accentDim = Color(0xFF16a34a);
   static const Color live      = Color(0xFFFF3B5C);
+  static const Color neonGlow  = Color(0xFF22c55e);
 
-  // ─── Premium Gradients ──────────────────────────────────────
-  static const LinearGradient goldGradient = LinearGradient(
-    colors: [Color(0xFF00FFC6), Color(0xFF00E59B)],
+  // ─── Premium Gradients ────────────────────────────────────────
+  static const LinearGradient signatureGradient = LinearGradient(
+    colors: [Color(0xFF22c55e), Color(0xFF16a34a), Color(0xFF052e16)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  static const LinearGradient greenGradient = LinearGradient(
-    colors: [Color(0xFF00E59B), Color(0xFF007A52)],
+
+  static const LinearGradient accentGradient = LinearGradient(
+    colors: [Color(0xFF4ade80), Color(0xFF22c55e)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  static const LinearGradient accentGlow = LinearGradient(
-    colors: [Color(0xFF00FFC6), Color(0xFF00E59B), Color(0xFF00B377)],
+
+  static const LinearGradient buttonGradient = LinearGradient(
+    colors: [Color(0xFF22c55e), Color(0xFF16a34a)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
   static const LinearGradient surfaceGradientDark = LinearGradient(
-    colors: [Color(0xFF111118), Color(0xFF0D0D12)],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-  static const LinearGradient surfaceGradientLight = LinearGradient(
-    colors: [Color(0xFFFFFFFF), Color(0xFFF8F8F5)],
+    colors: [Color(0xFF141414), Color(0xFF0a0a0a)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
-  // ─── Material ThemeData ────────────────────────────────────
+  static const LinearGradient surfaceGradientLight = LinearGradient(
+    colors: [Color(0xFFFFFFFF), Color(0xFFF7F7F7)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
+  // ─── Material ThemeData ──────────────────────────────────────
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     scaffoldBackgroundColor: darkBg,
     colorScheme: const ColorScheme.dark(
-      primary: accent, secondary: green, surface: darkSurface,
+      primary: accent,
+      secondary: primaryDark,
+      surface: darkSurface,
     ),
-    textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
+    textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
     appBarTheme: AppBarTheme(
-      backgroundColor: Colors.transparent, elevation: 0,
-      titleTextStyle: GoogleFonts.cairo(
-          fontSize: 20, fontWeight: FontWeight.w900, color: darkText),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      titleTextStyle: GoogleFonts.inter(
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: darkText,
+      ),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: darkSurface2,
-      contentTextStyle: GoogleFonts.cairo(color: darkText),
+      contentTextStyle: GoogleFonts.inter(color: darkText),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
@@ -82,24 +96,30 @@ class AppTheme {
     brightness: Brightness.light,
     scaffoldBackgroundColor: lightBg,
     colorScheme: const ColorScheme.light(
-      primary: accent, secondary: green, surface: lightSurface,
+      primary: accent,
+      secondary: primaryDark,
+      surface: lightSurface,
     ),
-    textTheme: GoogleFonts.cairoTextTheme(ThemeData.light().textTheme),
+    textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
     appBarTheme: AppBarTheme(
-      backgroundColor: Colors.transparent, elevation: 0,
-      titleTextStyle: GoogleFonts.cairo(
-          fontSize: 20, fontWeight: FontWeight.w900, color: lightText),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      titleTextStyle: GoogleFonts.inter(
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: lightText,
+      ),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: lightSurface2,
-      contentTextStyle: GoogleFonts.cairo(color: lightText),
+      contentTextStyle: GoogleFonts.inter(color: lightText),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
   );
 }
 
-/// Theme-aware color resolver — pass isDark from AppProvider
+/// Theme-aware color resolver
 class TC {
   final bool isDark;
   const TC(this.isDark);
@@ -112,11 +132,11 @@ class TC {
   Color get textDim  => isDark ? AppTheme.darkTextDim  : AppTheme.lightTextDim;
   Color get border   => isDark ? AppTheme.darkBorder   : AppTheme.lightBorder;
   Color get shadow   => isDark
-      ? Colors.black.withOpacity(0.4)
-      : Colors.black.withOpacity(0.06);
+      ? Colors.black.withOpacity(0.5)
+      : Colors.black.withOpacity(0.08);
   Color get appBarBg => isDark
-      ? AppTheme.darkBg.withOpacity(0.85)
-      : AppTheme.lightBg.withOpacity(0.88);
+      ? AppTheme.darkBg.withOpacity(0.92)
+      : AppTheme.lightBg.withOpacity(0.92);
 
   LinearGradient get surfaceGradient => isDark
       ? AppTheme.surfaceGradientDark
