@@ -9,11 +9,13 @@ import '../widgets/channel_card.dart';
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
   final BetterPlayerController? existingController;
+  final VoidCallback? onPipRequested;
 
   const PlayerScreen({
     super.key,
     required this.channel,
     this.existingController,
+    this.onPipRequested,
   });
 
   @override
@@ -143,8 +145,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
-        child: Stack(children: [
+      body: Stack(children: [
           // Video
           if (_ctrl != null)
             Center(child: AspectRatio(
@@ -260,10 +261,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         Row(children: [
                           _TopBtn(icon: Icons.picture_in_picture_alt_rounded,
                             onTap: () {
-                              _ctrl?.enablePictureInPicture(_pipKey);
-                              Future.delayed(const Duration(milliseconds: 300), () {
-                                if (mounted) Navigator.pop(context);
-                              });
+                              widget.onPipRequested?.call();
+                              Navigator.pop(context);
                             }),
                           const SizedBox(width: 10),
                           _TopBtn(icon: Icons.close_rounded, size: 22,
@@ -288,7 +287,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
           ),
         ]),
-      ),
     );
   }
 }
