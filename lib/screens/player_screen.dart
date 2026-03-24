@@ -144,20 +144,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
-        onTap: _toggleControls,
-        onVerticalDragEnd: (details) {
-          if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
-            Navigator.pop(context);
-          }
-        },
-        behavior: HitTestBehavior.opaque,
         child: Stack(children: [
           // Video
           if (_ctrl != null)
             Center(child: AspectRatio(
-              key: _pipKey,
               aspectRatio: 16 / 9,
-              child: BetterPlayer(controller: _ctrl!),
+              child: BetterPlayer(key: _pipKey, controller: _ctrl!),
             )),
 
           // Loading
@@ -198,6 +190,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: const Text('Retry',
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)))),
               ]))),
+
+          // Transparent touch overlay for toggling controls
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _toggleControls,
+              onVerticalDragEnd: (details) {
+                if (details.primaryVelocity != null &&
+                    details.primaryVelocity! > 300) {
+                  Navigator.pop(context);
+                }
+              },
+              child: const SizedBox.expand(),
+            ),
+          ),
 
           // Top bar with controls (shown/hidden on tap)
           AnimatedOpacity(

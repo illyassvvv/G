@@ -176,9 +176,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  // Select channel without collapsing expanded sheet
+  void _selectWithoutCollapse(Channel ch) {
+    if (ch.streamUrl.isEmpty) return;
+    if (_activeChannel?.id == ch.id) return;
+
+    _activeIdNotifier.value = ch.id;
+    setState(() {
+      _activeChannel = ch;
+      _miniLoading = true;
+      _miniError = false;
+    });
+
+    final prov = context.read<AppProvider>();
+    prov.setActiveChannel(ch);
+    prov.saveLastChannel(
+      id: ch.id, name: ch.name, url: ch.streamUrl,
+      logo: ch.logoUrl, number: ch.number, category: ch.category);
+    prov.addRecentChannel(ch);
+
+    _zapTimer?.cancel();
+    _zapTimer = Timer(_zapDebounce, () {
+      if (mounted && _activeChannel?.id == ch.id) _switchChannel(ch);
+    });
+  }
+
   // Switch channel: reuse existing controller via setupDataSource,
   // or create one on first use. NEVER duplicates controllers.
-  void _switchChannel(Channel ch) {
+  void _switchChannel(Channel ch) async {
     try {
       final dataSource = BetterPlayerDataSource(
         BetterPlayerDataSourceType.network, ch.streamUrl,
@@ -190,8 +215,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           bufferForPlaybackAfterRebufferMs: 3000));
 
       if (_miniCtrl != null) {
-        // Reuse existing controller — just swap the data source
+        // Reuse existing controller — pause and detach renderer first
         setState(() { _miniLoading = true; _miniError = false; });
+        try { await _miniCtrl!.pause(); } catch (_) {}
+        await Future.delayed(const Duration(milliseconds: 80));
+        if (!mounted || _activeChannel?.id != ch.id) return;
         _miniCtrl!.setupDataSource(dataSource);
       } else {
         // First time — create a single controller
@@ -209,7 +237,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               if (!mounted) return;
               if (event.betterPlayerEventType ==
                   BetterPlayerEventType.initialized) {
-                setState(() => _miniLoading = false);
+                if (mounted) {
+                  setState(() => _miniLoading = false);
+                  try { _miniCtrl?.play(); } catch (_) {}
+                }
               } else if (event.betterPlayerEventType ==
                   BetterPlayerEventType.exception) {
                 setState(() { _miniLoading = false; _miniError = true; });
@@ -648,19 +679,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: GestureDetector(
           onTap: () => _toggleCat(cat.name),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+            duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             margin: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             padding: const EdgeInsets.symmetric(
               horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
-              color: isExpanded
-                  ? (prov.isDark
-                      ? AppTheme.accent.withOpacity(0.06)
-                      : AppTheme.accent.withOpacity(0.04))
-                  : (prov.isDark
-                      ? Colors.white.withOpacity(0.03)
-                      : Colors.white.withOpacity(0.7)),
+              gradient: isExpanded
+                  ? LinearGradient(colors: [
+                      prov.isDark
+                          ? AppTheme.accent.withOpacity(0.06)
+                          : AppTheme.accent.withOpacity(0.04),
+                      prov.isDark
+                          ? AppTheme.accent.withOpacity(0.03)
+                          : AppTheme.accent.withOpacity(0.02),
+                    ], begin: Alignment.topLeft, end: Alignment.bottomRight)
+                  : LinearGradient(colors: [
+                      prov.isDark
+                          ? Colors.white.withOpacity(0.03)
+                          : Colors.white.withOpacity(0.7),
+                      prov.isDark
+                          ? Colors.white.withOpacity(0.03)
+                          : Colors.white.withOpacity(0.7),
+                    ]),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isExpanded
@@ -671,22 +712,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 width: 1)),
             child: Row(children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
+                duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
                 width: 44, height: 44,
                 decoration: BoxDecoration(
                   gradient: isExpanded
-                      ? AppTheme.buttonGradient : null,
-                  color: isExpanded ? null
-                      : prov.isDark
-                          ? Colors.white.withOpacity(0.06)
-                          : Colors.black.withOpacity(0.04),
+                      ? AppTheme.buttonGradient
+                      : LinearGradient(colors: [
+                          prov.isDark
+                              ? Colors.white.withOpacity(0.06)
+                              : Colors.black.withOpacity(0.04),
+                          prov.isDark
+                              ? Colors.white.withOpacity(0.03)
+                              : Colors.black.withOpacity(0.02),
+                        ], begin: Alignment.topLeft, end: Alignment.bottomRight),
                   borderRadius: BorderRadius.circular(13),
                   border: Border.all(
                     color: isExpanded
                         ? AppTheme.accent.withOpacity(0.6)
                         : AppTheme.accent.withOpacity(prov.isDark ? 0.15 : 0.08),
-                    width: isExpanded ? 1.5 : 1)),
+                    width: isExpanded ? 1.5 : 1),
+                  boxShadow: isExpanded
+                      ? [BoxShadow(
+                          color: AppTheme.accent.withOpacity(0.45),
+                          blurRadius: 16,
+                          spreadRadius: -2,
+                        )]
+                      : []),
                 child: Icon(_catIcon(cat.icon),
                   color: isExpanded ? Colors.white : c.textDim,
                   size: 21)),
@@ -1049,8 +1101,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     : Text('CH ${listCh.number}',
                         style: TextStyle(fontSize: 10, color: c.textDim)),
                 onTap: () {
-                  setState(() => _isExpanded = false);
-                  _select(listCh);
+                  _selectWithoutCollapse(listCh);
                 });
             })),
       ]));
