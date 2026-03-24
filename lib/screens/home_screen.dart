@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:better_player_plus/better_player_plus.dart';
@@ -37,6 +38,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Active channel notifier for efficient card updates
   final ValueNotifier<int?> _activeIdNotifier = ValueNotifier<int?>(null);
 
+  // Search
+  bool _showSearch = false;
+  final TextEditingController _searchCtrl = TextEditingController();
+  List<Channel> _searchResults = [];
+
+  // Auto-retry
+  int _retryCount = 0;
+  static const _maxRetries = 3;
+
+  // Buffering state for quality indicator
+  bool _isBuffering = false;
+
   // Zapping debounce
   Timer? _zapTimer;
   int _switchGen = 0;
@@ -71,6 +84,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       parent: _expandAnimCtrl, curve: Curves.easeInOut);
 
     _loadChannels();
+
+    _searchCtrl.addListener(_onSearchChanged);
   }
 
   @override
@@ -82,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _expandedListCtrl.dispose();
     _miniPlayerAnimCtrl.dispose();
     _expandAnimCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -90,11 +106,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() { _loadingData = true; _dataError = null; });
     try {
       final cats = await ChannelService.fetchCategories();
-      if (mounted) setState(() { _categories = cats; _loadingData = false; });
+      if (mounted) {
+        setState(() { _categories = cats; _loadingData = false; });
+        // Auto-resume last channel
+        _autoResumeLast();
+      }
     } catch (e) {
       if (mounted) {
         setState(() { _loadingData = false; _dataError = e.toString(); });
       }
+    }
+  }
+
+  void _autoResumeLast() {
+    final prov = context.read<AppProvider>();
+    if (prov.lastChannelId != null &&
+        prov.lastChannelUrl != null &&
+        _activeChannel == null) {
+      // Find the channel in categories
+      for (final cat in _categories) {
+        for (final ch in cat.channels) {
+          if (ch.id == prov.lastChannelId) {
+            _select(ch);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  // -- Search
+  void _onSearchChanged() {
+    final query = _searchCtrl.text;
+    if (query.isEmpty) {
+      setState(() => _searchResults = []);
+    } else {
+      setState(() => _searchResults = ChannelService.search(_categories, query));
     }
   }
 
@@ -117,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // -- Channel selection
   void _select(Channel ch) {
+    HapticFeedback.lightImpact();
     if (ch.streamUrl.isEmpty) {
       _showSnack('Channel unavailable', icon: Icons.tv_off_rounded);
       return;
@@ -178,6 +226,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // Select channel without collapsing expanded sheet
   void _selectWithoutCollapse(Channel ch) {
+    HapticFeedback.lightImpact();
     if (ch.streamUrl.isEmpty) return;
     if (_activeChannel?.id == ch.id) return;
 
@@ -205,15 +254,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // or create one on first use. NEVER duplicates controllers.
   void _switchChannel(Channel ch) async {
     final gen = ++_switchGen;
+    _retryCount = 0;
+    final prov = context.read<AppProvider>();
+    final dataSaver = prov.dataSaverEnabled;
     try {
       final dataSource = BetterPlayerDataSource(
         BetterPlayerDataSourceType.network, ch.streamUrl,
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
-        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000, maxBufferMs: 12000,
-          bufferForPlaybackMs: 1500,
-          bufferForPlaybackAfterRebufferMs: 3000));
+        bufferingConfiguration: BetterPlayerBufferingConfiguration(
+          minBufferMs: dataSaver ? 1000 : 2000,
+          maxBufferMs: dataSaver ? 6000 : 12000,
+          bufferForPlaybackMs: dataSaver ? 1000 : 1500,
+          bufferForPlaybackAfterRebufferMs: dataSaver ? 2000 : 3000));
 
       if (_miniCtrl != null) {
         // Reuse existing controller — mute, pause, then switch source
@@ -247,15 +300,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               if (event.betterPlayerEventType ==
                   BetterPlayerEventType.initialized) {
                 if (mounted) {
-                  setState(() => _miniLoading = false);
+                  setState(() { _miniLoading = false; _isBuffering = false; _retryCount = 0; });
+                  final vol = context.read<AppProvider>().volumeLevel;
                   try {
-                    _miniCtrl?.videoPlayerController?.setVolume(1.0);
+                    _miniCtrl?.videoPlayerController?.setVolume(vol);
                     _miniCtrl?.play();
                   } catch (_) {}
                 }
               } else if (event.betterPlayerEventType ==
                   BetterPlayerEventType.exception) {
                 setState(() { _miniLoading = false; _miniError = true; });
+                _autoRetryStream();
+              } else if (event.betterPlayerEventType ==
+                  BetterPlayerEventType.bufferingStart) {
+                if (mounted) setState(() => _isBuffering = true);
+              } else if (event.betterPlayerEventType ==
+                  BetterPlayerEventType.bufferingEnd) {
+                if (mounted) setState(() => _isBuffering = false);
               }
             }),
           betterPlayerDataSource: dataSource);
@@ -264,11 +325,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {
       if (mounted) {
         setState(() { _miniLoading = false; _miniError = true; });
+        _autoRetryStream();
       }
     }
   }
 
+  void _autoRetryStream() {
+    if (_retryCount < _maxRetries && _activeChannel != null) {
+      _retryCount++;
+      Future.delayed(Duration(seconds: _retryCount), () {
+        if (mounted && _miniError && _activeChannel != null) {
+          _switchChannel(_activeChannel!);
+        }
+      });
+    }
+  }
+
+  List<Channel> _getChannelListForCategory(String category) {
+    return _categories
+        .where((cat) => cat.name == category)
+        .expand((cat) => cat.channels)
+        .toList();
+  }
+
   void _openFullscreen(Channel ch) {
+    HapticFeedback.mediumImpact();
     // Collapse expanded mode before going fullscreen
     if (_isExpanded) {
       setState(() => _isExpanded = false);
@@ -277,11 +358,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Detach BetterPlayer widget from home to prevent controller duplication
     setState(() => _isInFullscreen = true);
 
+    final channelList = _getChannelListForCategory(ch.category);
     Navigator.push(context, PageRouteBuilder(
       pageBuilder: (_, __, ___) => PlayerScreen(
         channel: ch,
         existingController: _miniCtrl,
         onPipRequested: () => setState(() => _pipRequested = true),
+        channelList: channelList,
+        onChannelChanged: (newCh) {
+          // Sync home screen state when channel changed in fullscreen
+          _activeIdNotifier.value = newCh.id;
+          setState(() {
+            _activeChannel = newCh;
+            _miniLoading = true;
+            _miniError = false;
+          });
+          final prov = context.read<AppProvider>();
+          prov.setActiveChannel(newCh);
+          prov.saveLastChannel(
+            id: newCh.id, name: newCh.name, url: newCh.streamUrl,
+            logo: newCh.logoUrl, number: newCh.number, category: newCh.category);
+          prov.addRecentChannel(newCh);
+        },
       ),
       transitionsBuilder: (_, anim, __, child) =>
           FadeTransition(opacity: anim, child: child),
@@ -406,17 +504,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             slivers: [
               _buildAppBar(prov, c),
 
+              // Search bar
+              if (_showSearch)
+                SliverToBoxAdapter(child: _buildSearchBar(c, prov)),
+
+              // Search results
+              if (_showSearch && _searchResults.isNotEmpty)
+                ..._buildSearchResults(prov, c),
+
+              // Favorites section
+              if (!_showSearch && prov.favoriteIds.isNotEmpty && !_loadingData)
+                ..._buildFavoritesSection(prov, c),
+
               // Recently watched section
-              if (prov.recentChannels.isNotEmpty && !_loadingData)
+              if (!_showSearch && prov.recentChannels.isNotEmpty && !_loadingData)
                 ..._buildRecentSection(prov, c),
 
               // Categories
-              if (_loadingData)
-                ..._buildSkeletons(prov)
-              else if (_dataError != null)
-                SliverFillRemaining(child: _buildError(c))
-              else
-                ..._buildCategories(prov, c),
+              if (!_showSearch)
+                if (_loadingData)
+                  ..._buildSkeletons(prov)
+                else if (_dataError != null)
+                  SliverFillRemaining(child: _buildError(c))
+                else
+                  ..._buildCategories(prov, c),
 
               SliverToBoxAdapter(
                 child: SizedBox(height: bottomPadding + 120)),
@@ -512,6 +623,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ])),
       ]),
       actions: [
+        // Search button
+        _AppBarBtn(
+          icon: _showSearch ? Icons.close_rounded : Icons.search_rounded,
+          color: _showSearch ? AppTheme.live : AppTheme.accent,
+          bg: prov.isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.04),
+          border: prov.isDark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.black.withOpacity(0.06),
+          onTap: () {
+            setState(() {
+              _showSearch = !_showSearch;
+              if (!_showSearch) {
+                _searchCtrl.clear();
+                _searchResults = [];
+              }
+            });
+          }),
+        const SizedBox(width: 8),
+        // Data saver toggle
+        _AppBarBtn(
+          icon: prov.dataSaverEnabled
+              ? Icons.data_saver_on_rounded
+              : Icons.data_saver_off_rounded,
+          color: prov.dataSaverEnabled ? AppTheme.accent : AppTheme.accent,
+          bg: prov.dataSaverEnabled
+              ? AppTheme.accent.withOpacity(0.15)
+              : prov.isDark
+                  ? Colors.white.withOpacity(0.06)
+                  : Colors.black.withOpacity(0.04),
+          border: prov.dataSaverEnabled
+              ? AppTheme.accent.withOpacity(0.3)
+              : prov.isDark
+                  ? Colors.white.withOpacity(0.08)
+                  : Colors.black.withOpacity(0.06),
+          onTap: () {
+            final willEnable = !prov.dataSaverEnabled;
+            prov.toggleDataSaver();
+            _showSnack(
+              willEnable ? 'Data Saver ON' : 'Data Saver OFF',
+              icon: Icons.data_saver_on_rounded);
+          }),
+        const SizedBox(width: 8),
+        // Theme toggle
         _AppBarBtn(
           icon: prov.themeMode == ThemeMode.dark
               ? Icons.wb_sunny_rounded
@@ -555,6 +711,139 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Colors.transparent,
             ])))),
     );
+  }
+
+  // -- Search Bar
+  Widget _buildSearchBar(TC c, AppProvider prov) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: prov.isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: prov.isDark
+                ? Colors.white.withOpacity(0.1)
+                : Colors.black.withOpacity(0.08))),
+        child: TextField(
+          controller: _searchCtrl,
+          autofocus: true,
+          style: TextStyle(color: c.text, fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'Search channels...',
+            hintStyle: TextStyle(color: c.textDim, fontSize: 14),
+            prefixIcon: Icon(Icons.search_rounded, color: c.textDim, size: 20),
+            suffixIcon: _searchCtrl.text.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      _searchCtrl.clear();
+                      setState(() => _searchResults = []);
+                    },
+                    child: Icon(Icons.clear_rounded, color: c.textDim, size: 18))
+                : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 12)))));
+  }
+
+  // -- Search Results
+  List<Widget> _buildSearchResults(AppProvider prov, TC c) {
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+          child: Text('${_searchResults.length} results',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+              color: c.textDim)))),
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+        sliver: SliverGrid(
+          delegate: SliverChildBuilderDelegate((_, idx) {
+            final ch = _searchResults[idx];
+            return ChannelCard(
+              channel: ch,
+              activeChannelNotifier: _activeIdNotifier,
+              onTap: () => _select(ch),
+              onFavoriteToggle: () => prov.toggleFavorite(ch.id),
+              isFavorite: prov.isFavorite(ch.id),
+              index: idx,
+              provider: prov);
+          }, childCount: _searchResults.length),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, crossAxisSpacing: 14,
+            mainAxisSpacing: 14, childAspectRatio: 1.05))),
+    ];
+  }
+
+  // -- Favorites Section
+  List<Widget> _buildFavoritesSection(AppProvider prov, TC c) {
+    final favChannels = prov.getFavoriteChannels(_categories);
+    if (favChannels.isEmpty) return [];
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+          child: Row(children: [
+            Icon(Icons.star_rounded, color: const Color(0xFFFBBF24), size: 18),
+            const SizedBox(width: 8),
+            Text('Favorites',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                color: c.textDim, letterSpacing: -0.2)),
+          ]))),
+      SliverToBoxAdapter(
+        child: SizedBox(height: 50,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: favChannels.length,
+            itemBuilder: (_, i) {
+              final ch = favChannels[i];
+              final isActive = _activeChannel?.id == ch.id;
+              return GestureDetector(
+                onTap: () => _select(ch),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  margin: const EdgeInsets.only(right: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppTheme.accent.withOpacity(0.15)
+                        : prov.isDark
+                            ? Colors.white.withOpacity(0.05)
+                            : Colors.black.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isActive
+                          ? AppTheme.accent.withOpacity(0.4)
+                          : prov.isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.black.withOpacity(0.06))),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: ch.logoUrl, width: 28, height: 28,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, __, ___) =>
+                            Icon(Icons.tv, size: 16, color: c.textDim))),
+                    const SizedBox(width: 8),
+                    Text(ch.name,
+                      style: TextStyle(fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isActive ? AppTheme.accent : c.text)),
+                    if (isActive) ...[
+                      const SizedBox(width: 6),
+                      MiniEqualizer(color: AppTheme.accent,
+                        width: 12, height: 10, barCount: 3),
+                    ],
+                    const SizedBox(width: 4),
+                  ])));
+            }))),
+    ];
   }
 
   // -- Recently Watched
@@ -904,6 +1193,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       style: TextStyle(fontSize: 9,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.live, letterSpacing: 0.5)),
+                    const SizedBox(width: 6),
+                    // Connection quality indicator
+                    Icon(
+                      _isBuffering ? Icons.wifi_rounded : Icons.wifi_rounded,
+                      size: 12,
+                      color: _miniError
+                          ? AppTheme.live
+                          : _isBuffering
+                              ? const Color(0xFFFBBF24)
+                              : const Color(0xFF22C55E)),
                   ]),
                 ])),
             // Play/Pause
