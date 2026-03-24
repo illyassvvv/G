@@ -46,15 +46,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final AnimationController _miniPlayerAnimCtrl;
   late final Animation<Offset> _miniPlayerSlide;
 
+  // Expanded player animation
+  late final AnimationController _expandAnimCtrl;
+  late final Animation<double> _expandAnim;
+
   @override
   void initState() {
     super.initState();
     _miniPlayerAnimCtrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 350));
+      vsync: this, duration: const Duration(milliseconds: 300));
     _miniPlayerSlide = Tween<Offset>(
       begin: const Offset(0, 1), end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _miniPlayerAnimCtrl, curve: Curves.easeOutCubic));
+
+    _expandAnimCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 300));
+    _expandAnim = CurvedAnimation(
+      parent: _expandAnimCtrl, curve: Curves.easeInOut);
+
     _loadChannels();
   }
 
@@ -65,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _activeIdNotifier.dispose();
     _scrollCtrl.dispose();
     _miniPlayerAnimCtrl.dispose();
+    _expandAnimCtrl.dispose();
     super.dispose();
   }
 
@@ -196,22 +207,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _openFullscreen(Channel ch) {
+    // Collapse expanded mode before going fullscreen
+    if (_isExpanded) {
+      setState(() => _isExpanded = false);
+      _expandAnimCtrl.reverse();
+    }
     Navigator.push(context, PageRouteBuilder(
       pageBuilder: (_, __, ___) => PlayerScreen(
         channel: ch, existingController: _miniCtrl),
       transitionsBuilder: (_, anim, __, child) =>
           FadeTransition(opacity: anim, child: child),
-      transitionDuration: const Duration(milliseconds: 200),
+      transitionDuration: const Duration(milliseconds: 250),
     )).then((_) {
       // Resume mini player after returning from fullscreen
+      // Controller is reused - NOT recreated
       if (_activeChannel != null && mounted && _miniCtrl != null) {
-        _miniCtrl!.play();
+        try {
+          _miniCtrl!.play();
+        } catch (_) {}
         setState(() {});
       }
     });
   }
 
   void _closeMini() {
+    // Collapse expanded first
+    if (_isExpanded) {
+      _expandAnimCtrl.reverse();
+    }
     _miniPlayerAnimCtrl.reverse().then((_) {
       _zapTimer?.cancel();
       _killMini();
@@ -225,6 +248,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _miniLoading = false;
           _miniError = false;
           _miniPlayerVisible = false;
+          _isExpanded = false;
         });
       }
     });
@@ -328,17 +352,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (_miniPlayerVisible && _activeChannel != null && _isExpanded)
           Positioned(left: 0, right: 0, bottom: 0,
             top: MediaQuery.of(context).size.height * 0.35,
-            child: GestureDetector(
-              onVerticalDragEnd: (details) {
-                if (details.primaryVelocity != null) {
-                  if (details.primaryVelocity! < -300) {
-                    _openFullscreen(_activeChannel!);
-                  } else if (details.primaryVelocity! > 300) {
-                    setState(() => _isExpanded = false);
+            child: AnimatedBuilder(
+              animation: _expandAnim,
+              builder: (_, child) => SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 1), end: Offset.zero,
+                ).animate(_expandAnim),
+                child: child,
+              ),
+              child: GestureDetector(
+                onVerticalDragEnd: (details) {
+                  if (details.primaryVelocity != null) {
+                    if (details.primaryVelocity! < -300) {
+                      _openFullscreen(_activeChannel!);
+                    } else if (details.primaryVelocity! > 300) {
+                      _expandAnimCtrl.reverse().then((_) {
+                        if (mounted) setState(() => _isExpanded = false);
+                      });
+                    }
                   }
-                }
-              },
-              child: _buildExpandedPlayer(c, prov))),
+                },
+                child: _buildExpandedPlayer(c, prov)),
+            )),
 
         // MINI PLAYER - fixed at bottom (NEVER duplicated, NEVER in scroll)
         if (_miniPlayerVisible && _activeChannel != null && !_isExpanded)
@@ -350,6 +385,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   if (details.primaryVelocity != null) {
                     if (details.primaryVelocity! < -300) {
                       setState(() => _isExpanded = true);
+                      _expandAnimCtrl.forward();
                     } else if (details.primaryVelocity! > 300) {
                       _closeMini();
                     }
@@ -912,7 +948,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(width: 8),
             // Collapse
             GestureDetector(
-              onTap: () => setState(() => _isExpanded = false),
+              onTap: () {
+                _expandAnimCtrl.reverse().then((_) {
+                  if (mounted) setState(() => _isExpanded = false);
+                });
+              },
               child: Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
@@ -943,7 +983,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     color: isPlaying ? AppTheme.accent : c.text),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: isPlaying
-                    ? MiniEqualizer(color: AppTheme.accent, width: 14, height: 12, barCount: 3)
+                    ? SmoothEqualizer(color: AppTheme.accent, width: 14, height: 12, barCount: 3)
                     : Text('CH ${listCh.number}',
                         style: TextStyle(fontSize: 10, color: c.textDim)),
                 onTap: () {

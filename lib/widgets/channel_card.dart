@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -54,28 +53,23 @@ class _ChannelCardState extends State<ChannelCard> {
           builder: (_, activeId, __) {
             final isActive = activeId == widget.channel.id;
             return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              transform: Matrix4.identity()..scale(isActive ? 1.02 : 1.0),
-              transformAlignment: Alignment.center,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
                   color: isActive ? AppTheme.accent.withOpacity(0.7)
                       : isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
                   width: isActive ? 1.5 : 1),
-                boxShadow: isActive
-                    ? [BoxShadow(color: AppTheme.neonGlow.withOpacity(0.3), blurRadius: 28, spreadRadius: -4),
-                       BoxShadow(color: AppTheme.accent.withOpacity(0.1), blurRadius: 44, offset: const Offset(0, 12))]
-                    : [BoxShadow(color: c.shadow, blurRadius: 14, offset: const Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(color: c.shadow, blurRadius: 8, offset: const Offset(0, 2)),
+                ],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(21),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: isDark ? 16 : 8, sigmaY: isDark ? 16 : 8),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
                     decoration: BoxDecoration(
                       gradient: isActive
                           ? LinearGradient(
@@ -104,7 +98,7 @@ class _ChannelCardState extends State<ChannelCard> {
                                     : Colors.grey.withOpacity(isActive ? 0.1 : 0.05),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(color: isActive ? AppTheme.accent.withOpacity(0.4) : Colors.transparent, width: 1.5),
-                                boxShadow: isActive ? [BoxShadow(color: AppTheme.accent.withOpacity(0.2), blurRadius: 12)] : []),
+                              ),
                               clipBehavior: Clip.antiAlias,
                               child: CachedNetworkImage(
                                 imageUrl: widget.channel.logoUrl,
@@ -150,7 +144,7 @@ class _ChannelCardState extends State<ChannelCard> {
                             children: [
                               isActive
                                   ? Row(mainAxisSize: MainAxisSize.min, children: [
-                                      MiniEqualizer(color: AppTheme.accent, barCount: 3, width: 14, height: 12),
+                                      SmoothEqualizer(color: AppTheme.accent, barCount: 3, width: 14, height: 12),
                                       const SizedBox(width: 6),
                                       const Text('NOW PLAYING',
                                         style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppTheme.accent, letterSpacing: 0.8))])
@@ -161,12 +155,15 @@ class _ChannelCardState extends State<ChannelCard> {
                                 decoration: BoxDecoration(
                                   gradient: isActive ? AppTheme.buttonGradient : null,
                                   color: isActive ? null : isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.08),
-                                  shape: BoxShape.circle,
-                                  boxShadow: isActive ? [BoxShadow(color: AppTheme.accent.withOpacity(0.35), blurRadius: 10)] : []),
+                                  shape: BoxShape.circle),
                                 child: Icon(isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                   size: 18, color: isActive ? Colors.white : isDark ? Colors.white.withOpacity(0.8) : Colors.black.withOpacity(0.7))),
                             ])),
-                      ])))));},),),)
+                      ]))));
+          },
+        ),
+      ),
+    )
         .animate(delay: Duration(milliseconds: 50 * widget.index))
         .fadeIn(duration: 280.ms)
         .slideY(begin: 0.15, end: 0, duration: 280.ms, curve: Curves.easeOut);
@@ -190,35 +187,84 @@ class LiveBadge extends StatelessWidget {
     ]));
 }
 
-class MiniEqualizer extends StatefulWidget {
+/// Smooth equalizer bars with staggered scaleY animation.
+/// Smooth sinusoidal looping - no jumps or zig-zag.
+class SmoothEqualizer extends StatefulWidget {
   final Color color;
   final int barCount;
   final double width;
   final double height;
-  const MiniEqualizer({super.key, required this.color, this.barCount = 3, this.width = 14, this.height = 12});
-  @override State<MiniEqualizer> createState() => _MiniEqualizerState();
+  const SmoothEqualizer({
+    super.key,
+    required this.color,
+    this.barCount = 3,
+    this.width = 14,
+    this.height = 12,
+  });
+  @override
+  State<SmoothEqualizer> createState() => _SmoothEqualizerState();
 }
-class _MiniEqualizerState extends State<MiniEqualizer> with SingleTickerProviderStateMixin {
+
+class _SmoothEqualizerState extends State<SmoothEqualizer>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  @override void initState() {
+
+  @override
+  void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat();
   }
-  @override void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final barW = widget.width / (widget.barCount * 2 - 1);
-    return AnimatedBuilder(animation: _ctrl, builder: (_, __) => SizedBox(
-      width: widget.width, height: widget.height,
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(widget.barCount, (i) {
-          final phase = _ctrl.value * 2 * pi + (i * pi / widget.barCount);
-          final normalized = (sin(phase) + 1) / 2;
-          final h = (0.25 + 0.75 * normalized) * widget.height;
-          return Container(width: barW, height: h,
-            decoration: BoxDecoration(color: widget.color, borderRadius: BorderRadius.circular(barW / 2)));
-        }))));
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: List.generate(widget.barCount, (i) {
+            // Staggered phase offsets per bar for natural feel
+            final staggerDelay = i * 0.3;
+            final phase = (_ctrl.value + staggerDelay) * 2 * pi;
+            final normalized = (sin(phase) + 1) / 2;
+            final h = (0.3 + 0.7 * normalized) * widget.height;
+            return Container(
+              width: barW,
+              height: h,
+              decoration: BoxDecoration(
+                color: widget.color,
+                borderRadius: BorderRadius.circular(barW / 2),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
   }
+}
+
+/// Legacy alias for backward compatibility
+class MiniEqualizer extends SmoothEqualizer {
+  const MiniEqualizer({
+    super.key,
+    required super.color,
+    super.barCount = 3,
+    super.width = 14,
+    super.height = 12,
+  });
 }
 
 class PulseDot extends StatefulWidget {
