@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,7 +18,8 @@ class AppProvider extends ChangeNotifier {
   static const _keyLastChNum   = 'last_ch_num';
   static const _keyLastChCat   = 'last_ch_cat';
   static const _keyFavorites   = 'favorites';
-  static const _keyRecent      = 'recent_channels';
+  static const _keyVolume      = 'volume_level';
+  static const _keyDataSaver   = 'data_saver';
 
   // ── Theme ───────────────────────────────────────────────────
   ThemeMode _themeMode = ThemeMode.system;
@@ -43,9 +43,15 @@ class AppProvider extends ChangeNotifier {
   // ── Favorites ───────────────────────────────────────────────
   Set<int> _favoriteIds = {};
 
-  // ── Recently watched ────────────────────────────────────────
+  // ── Recently watched (in-memory only, cleared on app close) ─
   List<Map<String, dynamic>> _recentChannels = [];
   static const _maxRecent = 10;
+
+  // ── Volume level ────────────────────────────────────────────
+  double _volumeLevel = 1.0;
+
+  // ── Data saver mode ─────────────────────────────────────────
+  bool _dataSaverEnabled = false;
 
   // ── Getters ─────────────────────────────────────────────────
   ThemeMode get themeMode    => _themeMode;
@@ -61,6 +67,8 @@ class AppProvider extends ChangeNotifier {
   String? get lastChannelCat  => _lastChannelCat;
   Set<int> get favoriteIds   => _favoriteIds;
   List<Map<String, dynamic>> get recentChannels => _recentChannels;
+  double get volumeLevel     => _volumeLevel;
+  bool get dataSaverEnabled  => _dataSaverEnabled;
 
   TC get colors => TC(_isDark);
 
@@ -98,12 +106,14 @@ class AppProvider extends ChangeNotifier {
       _favoriteIds = favJson.map((e) => int.tryParse(e) ?? 0).toSet();
     }
 
-    // Recent channels
-    final recentJson = prefs.getString(_keyRecent);
-    if (recentJson != null) {
-      final decoded = json.decode(recentJson) as List<dynamic>;
-      _recentChannels = decoded.cast<Map<String, dynamic>>();
-    }
+    // Recent channels — NOT loaded from prefs (cleared on app close)
+    _recentChannels = [];
+
+    // Volume level
+    _volumeLevel = prefs.getDouble(_keyVolume) ?? 1.0;
+
+    // Data saver
+    _dataSaverEnabled = prefs.getBool(_keyDataSaver) ?? false;
 
     _applySystemUI();
     notifyListeners();
@@ -223,11 +233,9 @@ class AppProvider extends ChangeNotifier {
     await prefs.setStringList(_keyFavorites, _favoriteIds.map((e) => e.toString()).toList());
   }
 
-  // ── Recently watched ────────────────────────────────────────
-  Future<void> addRecentChannel(Channel ch) async {
-    // Remove if already exists
+  // ── Recently watched (in-memory only) ──────────────────────
+  void addRecentChannel(Channel ch) {
     _recentChannels.removeWhere((e) => e['id'] == ch.id);
-    // Add to front
     _recentChannels.insert(0, {
       'id': ch.id,
       'name': ch.name,
@@ -236,20 +244,20 @@ class AppProvider extends ChangeNotifier {
       'stream': ch.streamUrl,
       'category': ch.category,
     });
-    // Trim to max
     if (_recentChannels.length > _maxRecent) {
       _recentChannels = _recentChannels.sublist(0, _maxRecent);
     }
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyRecent, json.encode(_recentChannels));
   }
 
-  Future<void> removeRecentChannel(int channelId) async {
+  void removeRecentChannel(int channelId) {
     _recentChannels.removeWhere((e) => e['id'] == channelId);
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyRecent, json.encode(_recentChannels));
+  }
+
+  void clearRecentChannels() {
+    _recentChannels.clear();
+    notifyListeners();
   }
 
   List<Channel> getRecentAsChannels() {
@@ -261,6 +269,35 @@ class AppProvider extends ChangeNotifier {
       streamUrl: e['stream'] as String,
       category: e['category'] as String,
     )).toList();
+  }
+
+  /// Get all favorite channels from categories
+  List<Channel> getFavoriteChannels(List<ChannelCategory> categories) {
+    final favChannels = <Channel>[];
+    for (final cat in categories) {
+      for (final ch in cat.channels) {
+        if (_favoriteIds.contains(ch.id)) {
+          favChannels.add(ch);
+        }
+      }
+    }
+    return favChannels;
+  }
+
+  // ── Volume level ────────────────────────────────────────────
+  Future<void> saveVolume(double volume) async {
+    _volumeLevel = volume;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyVolume, volume);
+  }
+
+  // ── Data saver mode ─────────────────────────────────────────
+  Future<void> toggleDataSaver() async {
+    _dataSaverEnabled = !_dataSaverEnabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyDataSaver, _dataSaverEnabled);
   }
 
   /// Fully close the player and reset all state

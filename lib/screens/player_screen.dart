@@ -10,12 +10,16 @@ class PlayerScreen extends StatefulWidget {
   final Channel channel;
   final BetterPlayerController? existingController;
   final VoidCallback? onPipRequested;
+  final List<Channel> channelList;
+  final void Function(Channel)? onChannelChanged;
 
   const PlayerScreen({
     super.key,
     required this.channel,
     this.existingController,
     this.onPipRequested,
+    this.channelList = const [],
+    this.onChannelChanged,
   });
 
   @override
@@ -30,6 +34,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _showControls = true;
   Timer? _hideTimer;
   final GlobalKey _pipKey = GlobalKey();
+  late Channel _currentChannel;
+  int _retryCount = 0;
+  static const _maxRetries = 3;
 
   @override
   void initState() {
@@ -39,6 +46,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       DeviceOrientation.landscapeRight,
     ]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    _currentChannel = widget.channel;
 
     if (widget.existingController != null) {
       _ctrl = widget.existingController;
@@ -50,6 +59,61 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     // Auto-hide controls after 3s
     _scheduleHideControls();
+  }
+
+  void _switchToChannel(Channel ch) {
+    if (ch.id == _currentChannel.id) return;
+    setState(() {
+      _currentChannel = ch;
+      _loading = true;
+      _hasError = false;
+      _retryCount = 0;
+    });
+    widget.onChannelChanged?.call(ch);
+    if (_resumed && _ctrl != null) {
+      // Reuse existing controller
+      try {
+        _ctrl!.videoPlayerController?.setVolume(0);
+        _ctrl!.pause();
+      } catch (_) {}
+      final dataSource = BetterPlayerDataSource(
+        BetterPlayerDataSourceType.network, ch.streamUrl,
+        liveStream: true,
+        videoFormat: BetterPlayerVideoFormat.hls,
+        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
+          minBufferMs: 2000, maxBufferMs: 10000,
+          bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000),
+      );
+      _ctrl!.setupDataSource(dataSource);
+    } else {
+      _resumed = false;
+      _startPlayer();
+    }
+  }
+
+  void _nextChannel() {
+    if (widget.channelList.isEmpty) return;
+    final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
+    if (idx < 0 || idx >= widget.channelList.length - 1) return;
+    HapticFeedback.lightImpact();
+    _switchToChannel(widget.channelList[idx + 1]);
+  }
+
+  void _prevChannel() {
+    if (widget.channelList.isEmpty) return;
+    final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
+    if (idx <= 0) return;
+    HapticFeedback.lightImpact();
+    _switchToChannel(widget.channelList[idx - 1]);
+  }
+
+  void _autoRetry() {
+    if (_retryCount < _maxRetries) {
+      _retryCount++;
+      Future.delayed(Duration(seconds: _retryCount), () {
+        if (mounted && _hasError) _startPlayer();
+      });
+    }
   }
 
   void _startPlayer() {
@@ -91,10 +155,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
           if (!mounted) return;
           switch (event.betterPlayerEventType) {
             case BetterPlayerEventType.initialized:
-              setState(() => _loading = false);
+              setState(() { _loading = false; _retryCount = 0; });
               break;
             case BetterPlayerEventType.exception:
               setState(() { _loading = false; _hasError = true; });
+              _autoRetry();
               break;
             default:
               break;
@@ -103,7 +168,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       ),
       betterPlayerDataSource: BetterPlayerDataSource(
         BetterPlayerDataSourceType.network,
-        widget.channel.streamUrl,
+        _currentChannel.streamUrl,
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
@@ -162,7 +227,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     color: AppTheme.accent, strokeWidth: 2.5,
                     backgroundColor: AppTheme.accent.withOpacity(0.15))),
                 const SizedBox(height: 16),
-                Text('Loading ${widget.channel.name}...',
+                Text('Loading ${_currentChannel.name}...',
                   style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
               ]))),
 
@@ -192,7 +257,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)))),
               ]))),
 
-          // Transparent touch overlay for toggling controls
+          // Transparent touch overlay for toggling controls + swipe gestures
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -201,6 +266,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 if (details.primaryVelocity != null &&
                     details.primaryVelocity! > 300) {
                   Navigator.pop(context);
+                }
+              },
+              onHorizontalDragEnd: (details) {
+                if (details.primaryVelocity != null && widget.channelList.isNotEmpty) {
+                  if (details.primaryVelocity! < -300) {
+                    _nextChannel();
+                  } else if (details.primaryVelocity! > 300) {
+                    _prevChannel();
+                  }
                 }
               },
               child: const SizedBox.expand(),
@@ -241,8 +315,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
                               PulseDot(color: AppTheme.live, size: 8),
                               const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(widget.channel.name,
+                                    Flexible(
+                                      child: Text(_currentChannel.name,
                                   style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
                                   maxLines: 1, overflow: TextOverflow.ellipsis),
                               ),
