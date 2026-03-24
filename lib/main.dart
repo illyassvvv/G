@@ -8,8 +8,13 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Portrait only (player handles landscape itself)
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  // Allow all orientations so Android TV (landscape) and mobile (portrait) both work.
+  // The player screen handles its own orientation independently.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
 
   // Init provider (loads saved theme + last channel from prefs)
   final appProvider = AppProvider();

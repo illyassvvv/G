@@ -1,8 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Android TV: touchscreen is not required -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <!-- Android TV: declare leanback support -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
+    <!-- Internet permission for streaming -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
-        android:label="mystore"
+        android:label="ilyass tv"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:banner="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -20,9 +30,15 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Standard mobile launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Android TV leanback launcher -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

@@ -265,6 +265,28 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ── Responsive grid helper for TV / tablet / phone ──────────
+  SliverGridDelegate _responsiveGrid(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    int cols;
+    double ratio;
+    if (w >= 1200) {
+      cols = 5; ratio = 1.1;       // Large TV
+    } else if (w >= 900) {
+      cols = 4; ratio = 1.05;      // Small TV / large tablet
+    } else if (w >= 600) {
+      cols = 3; ratio = 1.05;      // Tablet
+    } else {
+      cols = 2; ratio = 1.05;      // Phone
+    }
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: cols, crossAxisSpacing: 14,
+      mainAxisSpacing: 14, childAspectRatio: ratio,
+    );
+  }
+
+  bool _isTV(BuildContext context) => MediaQuery.of(context).size.width >= 900;
+
   // ── Build ─────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -418,10 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
             (_, i) => ChannelCardSkeleton(provider: prov),
             childCount: 6,
           ),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, crossAxisSpacing: 14,
-            mainAxisSpacing: 14, childAspectRatio: 1.05,
-          ),
+          gridDelegate: _responsiveGrid(context),
         ),
       ),
     ];
@@ -500,10 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
               provider: prov,
             );
           }, childCount: _searchResults.length),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, crossAxisSpacing: 14,
-            mainAxisSpacing: 14, childAspectRatio: 1.05,
-          ),
+          gridDelegate: _responsiveGrid(context),
         ),
       ),
     ];
@@ -618,10 +634,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 provider: prov,
               );
             }, childCount: cat.channels.length),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, crossAxisSpacing: 14,
-              mainAxisSpacing: 14, childAspectRatio: 1.05,
-            ),
+            gridDelegate: _responsiveGrid(context),
           ),
         ));
       }
@@ -632,10 +645,14 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Mini Player (Floating Island) ───────────────────────────
   Widget _buildMiniPlayer(TC c, bool isDark) {
     final ch = _activeChannel!;
-    return GestureDetector(
+    final isWide = _isTV(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: isWide ? 720 : double.infinity),
+        child: GestureDetector(
       onTap: () => _openFullscreen(ch),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(14, 18, 14, 4),
+        margin: EdgeInsets.fromLTRB(isWide ? 24 : 14, 18, isWide ? 24 : 14, 4),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF0A0A10) : Colors.white,
           borderRadius: BorderRadius.circular(24),
@@ -849,6 +866,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ]),
       ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.06, end: 0, duration: 300.ms),
+    ),
+    ),
     );
   }
 
