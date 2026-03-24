@@ -57,7 +57,7 @@
           "name": "Al Kass 1",
           "number": "01",
           "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Alkass_logo.png/200px-Alkass_logo.png",
-          "stream": "https://liveeu-gcp.alkassdigital.net/alkass3-p/main.m3u8"
+          "stream": "https://liveeu-gcp.alkassdigital.net/alkass1-p/main.m3u8"
         },
         {
           "id": 102,
@@ -65,6 +65,20 @@
           "number": "02",
           "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Alkass_logo.png/200px-Alkass_logo.png",
           "stream": "https://liveeu-gcp.alkassdigital.net/alkass2-p/main.m3u8"
+        },
+        {
+          "id": 103,
+          "name": "Al Kass 3",
+          "number": "03",
+          "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Alkass_logo.png/200px-Alkass_logo.png",
+          "stream": "https://liveeu-gcp.alkassdigital.net/alkass3-p/main.m3u8"
+        },
+        {
+          "id": 104,
+          "name": "Al Kass 4",
+          "number": "04",
+          "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Alkass_logo.png/200px-Alkass_logo.png",
+          "stream": "https://liveeu-gcp.alkassdigital.net/alkass4-p/main.m3u8"
         }
       ]
     }
