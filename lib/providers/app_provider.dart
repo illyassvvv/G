@@ -7,7 +7,7 @@ import '../models/channel.dart';
 import '../models/theme.dart';
 
 /// Player display state — single source of truth
-enum PlayerState { hidden, mini, full }
+enum PlayerState { hidden, mini, expanded, full }
 
 class AppProvider extends ChangeNotifier {
   // ── Preference keys ─────────────────────────────────────────
@@ -245,6 +245,13 @@ class AppProvider extends ChangeNotifier {
     await prefs.setString(_keyRecent, json.encode(_recentChannels));
   }
 
+  Future<void> removeRecentChannel(int channelId) async {
+    _recentChannels.removeWhere((e) => e['id'] == channelId);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyRecent, json.encode(_recentChannels));
+  }
+
   List<Channel> getRecentAsChannels() {
     return _recentChannels.map((e) => Channel(
       id: e['id'] as int,
@@ -254,5 +261,12 @@ class AppProvider extends ChangeNotifier {
       streamUrl: e['stream'] as String,
       category: e['category'] as String,
     )).toList();
+  }
+
+  /// Fully close the player and reset all state
+  void closePlayer() {
+    _activeChannel = null;
+    _playerState = PlayerState.hidden;
+    notifyListeners();
   }
 }
