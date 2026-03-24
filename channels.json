@@ -106,7 +106,15 @@
     {
       "name": "Morocco",
       "icon": "tv",
-      "channels": []
+      "channels": [
+        {
+          "id": 108,
+          "name": "2m Tv",
+          "number": "1",
+          "logo": "https://elahmad-tv.com/images/2m_ma_tv.jpg",
+          "stream": "https://d2qh3gh0k5vp3v.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-n6pess5lwbghr/2M_ES.m3u8"
+        }
+      ]
     }
   ]
 }
