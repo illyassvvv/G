@@ -774,6 +774,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       spreadRadius: isExpanded ? -2.0 : 0.0,
                     ),
                   ],
+                ),
                 child: Icon(_catIcon(cat.icon),
                   color: isExpanded ? Colors.white : c.textDim,
                   size: 21)),
