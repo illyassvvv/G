@@ -8,33 +8,31 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Portrait only (player handles landscape itself)
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  // Init provider (loads saved theme + last channel from prefs)
   final appProvider = AppProvider();
   await appProvider.init();
 
   runApp(
     ChangeNotifierProvider.value(
       value: appProvider,
-      child: const IlyassTvApp(),
+      child: const VarGasTvApp(),
     ),
   );
 }
 
-class IlyassTvApp extends StatelessWidget {
-  const IlyassTvApp({super.key});
+class VarGasTvApp extends StatelessWidget {
+  const VarGasTvApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<AppProvider>().isDark;
+    final prov = context.watch<AppProvider>();
     return MaterialApp(
-      title: 'ilyass tv',
+      title: 'VarGasTv',
       debugShowCheckedModeBanner: false,
       theme:      AppTheme.light,
       darkTheme:  AppTheme.dark,
-      themeMode:  isDark ? ThemeMode.dark : ThemeMode.light,
+      themeMode:  prov.themeMode,
       home: const HomeScreen(),
     );
   }
