@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:better_player_plus/better_player_plus.dart';
@@ -25,6 +26,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _hasError = false;
   bool _resumed = false;
   bool _showControls = true;
+  Timer? _hideTimer;
   final GlobalKey _pipKey = GlobalKey();
 
   @override
@@ -44,10 +46,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _startPlayer();
     }
 
-    // Auto-hide controls after 4s
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) setState(() => _showControls = false);
-    });
+    // Auto-hide controls after 3s
+    _scheduleHideControls();
   }
 
   void _startPlayer() {
@@ -115,20 +115,27 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    _hideTimer?.cancel();
+    // Do NOT dispose controller if it was passed in (reused from mini player)
     if (!_resumed) _ctrl?.dispose();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    // Pause when leaving fullscreen if controller is reused
-    if (_resumed) _ctrl?.pause();
     super.dispose();
+  }
+
+  void _scheduleHideControls() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _showControls = false);
+    });
   }
 
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
     if (_showControls) {
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) setState(() => _showControls = false);
-      });
+      _scheduleHideControls();
+    } else {
+      _hideTimer?.cancel();
     }
   }
 
@@ -191,10 +198,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)))),
               ]))),
 
-          // Top bar with controls
+          // Always-visible back button (safety exit) - never hidden
+          Positioned(
+            top: 0, left: 0, right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: AnimatedOpacity(
+                    opacity: _showControls ? 0.0 : 0.5,
+                    duration: const Duration(milliseconds: 200),
+                    child: _TopBtn(
+                      icon: Icons.close_rounded,
+                      size: 22,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Top bar with controls (shown/hidden on tap)
           AnimatedOpacity(
             opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 250),
             child: IgnorePointer(
               ignoring: !_showControls,
               child: Container(
@@ -208,45 +237,65 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Back button
+                        _TopBtn(
+                          icon: Icons.arrow_back_rounded,
+                          onTap: () => Navigator.pop(context),
+                        ),
+                        const SizedBox(width: 12),
                         // Channel info + LIVE badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withOpacity(0.1))),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            PulseDot(color: AppTheme.live, size: 8),
-                            const SizedBox(width: 8),
-                            Text(widget.channel.name,
-                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppTheme.live.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(6)),
-                              child: const Text('LIVE',
-                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1))),
-                          ])),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.white.withOpacity(0.1))),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              PulseDot(color: AppTheme.live, size: 8),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(widget.channel.name,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.live.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(6)),
+                                child: const Text('LIVE',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1))),
+                            ])),
+                        ),
+                        const SizedBox(width: 12),
                         // Action buttons
                         Row(children: [
                           _TopBtn(icon: Icons.picture_in_picture_alt_rounded,
                             onTap: () => _ctrl?.enablePictureInPicture(_pipKey)),
                           const SizedBox(width: 10),
-                          _TopBtn(icon: Icons.keyboard_arrow_down_rounded, size: 26,
+                          _TopBtn(icon: Icons.close_rounded, size: 22,
                             onTap: () => Navigator.pop(context)),
                         ]),
                       ])))))),
 
           // Bottom gradient
-          if (_showControls)
-            Positioned(bottom: 0, left: 0, right: 0,
-              child: Container(height: 80,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter)))),
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: AnimatedOpacity(
+              opacity: _showControls ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 250),
+              child: IgnorePointer(
+                ignoring: !_showControls,
+                child: Container(height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter))),
+              ),
+            ),
+          ),
         ]),
       ),
     );
