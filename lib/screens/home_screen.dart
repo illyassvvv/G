@@ -292,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           fontWeight: FontWeight.w700, fontSize: 13)),
                     ]))))
               .animate()
-              .slideY(begin: -1, end: 0, duration: 300.ms)),
+              .slideY(begin: -1, end: 0, duration: 300.ms))),
 
         // Main scroll content
         RefreshIndicator(

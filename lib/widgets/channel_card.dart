@@ -163,7 +163,7 @@ class _ChannelCardState extends State<ChannelCard> {
                                 child: Icon(isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                   size: 18, color: isActive ? Colors.white : isDark ? Colors.white.withOpacity(0.8) : Colors.black.withOpacity(0.7))),
                             ])),
-                      ]))))));}},),),)
+                      ])))));},),),)
         .animate(delay: Duration(milliseconds: 50 * widget.index))
         .fadeIn(duration: 280.ms)
         .slideY(begin: 0.15, end: 0, duration: 280.ms, curve: Curves.easeOut);
