@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _miniError = false;
   bool _miniPlayerVisible = false;
   bool _isExpanded = false;
+  bool _isInFullscreen = false;
 
   // Active channel notifier for efficient card updates
   final ValueNotifier<int?> _activeIdNotifier = ValueNotifier<int?>(null);
@@ -71,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _zapTimer?.cancel();
-    _killMini();
+    _disposeController();
     _activeIdNotifier.dispose();
     _scrollCtrl.dispose();
     _miniPlayerAnimCtrl.dispose();
@@ -115,16 +116,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _showSnack('Channel unavailable', icon: Icons.tv_off_rounded);
       return;
     }
+
+    // If same channel is already playing, scroll to player & expand
     if (_activeChannel?.id == ch.id) {
-      _openFullscreen(ch);
+      _scrollCtrl.animateTo(0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic);
+      if (!_isExpanded) {
+        setState(() => _isExpanded = true);
+        _expandAnimCtrl.forward();
+      }
       return;
     }
 
     // Instant UI feedback
     _activeIdNotifier.value = ch.id;
-
-    // Kill old player
-    _killMini();
 
     setState(() {
       _activeChannel = ch;
@@ -141,21 +147,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOutCubic);
 
-    // Save to prefs + add to recent
+    // Save to prefs + add to recent & sync with provider
     final prov = context.read<AppProvider>();
+    prov.setActiveChannel(ch);
     prov.saveLastChannel(
       id: ch.id, name: ch.name, url: ch.streamUrl,
       logo: ch.logoUrl, number: ch.number, category: ch.category);
     prov.addRecentChannel(ch);
 
-    // Debounced start
+    // Debounced start — reuses controller if possible
     _zapTimer?.cancel();
     _zapTimer = Timer(_zapDebounce, () {
-      if (mounted && _activeChannel?.id == ch.id) _startMini(ch);
+      if (mounted && _activeChannel?.id == ch.id) _switchChannel(ch);
     });
   }
 
-  void _killMini() {
+  // Fully dispose the controller (only on close or widget dispose)
+  void _disposeController() {
     final ctrl = _miniCtrl;
     _miniCtrl = null;
     if (ctrl == null) return;
@@ -168,36 +176,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _startMini(Channel ch) {
+  // Switch channel: reuse existing controller via setupDataSource,
+  // or create one on first use. NEVER duplicates controllers.
+  void _switchChannel(Channel ch) {
     try {
-      _miniCtrl = BetterPlayerController(
-        BetterPlayerConfiguration(
-          autoPlay: true,
-          aspectRatio: 16 / 9,
-          fit: BoxFit.contain,
-          handleLifecycle: true,
-          autoDispose: false,
-          controlsConfiguration: BetterPlayerControlsConfiguration(
-            showControls: false,
-            loadingWidget: const SizedBox.shrink()),
-          eventListener: (event) {
-            if (!mounted || _activeChannel?.id != ch.id) return;
-            if (event.betterPlayerEventType ==
-                BetterPlayerEventType.initialized) {
-              setState(() => _miniLoading = false);
-            } else if (event.betterPlayerEventType ==
-                BetterPlayerEventType.exception) {
-              setState(() { _miniLoading = false; _miniError = true; });
-            }
-          }),
-        betterPlayerDataSource: BetterPlayerDataSource(
-          BetterPlayerDataSourceType.network, ch.streamUrl,
-          liveStream: true,
-          videoFormat: BetterPlayerVideoFormat.hls,
-          bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-            minBufferMs: 2000, maxBufferMs: 12000,
-            bufferForPlaybackMs: 1500,
-            bufferForPlaybackAfterRebufferMs: 3000)));
+      final dataSource = BetterPlayerDataSource(
+        BetterPlayerDataSourceType.network, ch.streamUrl,
+        liveStream: true,
+        videoFormat: BetterPlayerVideoFormat.hls,
+        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
+          minBufferMs: 2000, maxBufferMs: 12000,
+          bufferForPlaybackMs: 1500,
+          bufferForPlaybackAfterRebufferMs: 3000));
+
+      if (_miniCtrl != null) {
+        // Reuse existing controller — just swap the data source
+        setState(() { _miniLoading = true; _miniError = false; });
+        _miniCtrl!.setupDataSource(dataSource);
+      } else {
+        // First time — create a single controller
+        _miniCtrl = BetterPlayerController(
+          BetterPlayerConfiguration(
+            autoPlay: true,
+            aspectRatio: 16 / 9,
+            fit: BoxFit.contain,
+            handleLifecycle: true,
+            autoDispose: false,
+            controlsConfiguration: BetterPlayerControlsConfiguration(
+              showControls: false,
+              loadingWidget: const SizedBox.shrink()),
+            eventListener: (event) {
+              if (!mounted) return;
+              if (event.betterPlayerEventType ==
+                  BetterPlayerEventType.initialized) {
+                setState(() => _miniLoading = false);
+              } else if (event.betterPlayerEventType ==
+                  BetterPlayerEventType.exception) {
+                setState(() { _miniLoading = false; _miniError = true; });
+              }
+            }),
+          betterPlayerDataSource: dataSource);
+      }
       if (mounted) setState(() {});
     } catch (_) {
       if (mounted) {
@@ -212,6 +231,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() => _isExpanded = false);
       _expandAnimCtrl.reverse();
     }
+    // Detach BetterPlayer widget from home to prevent controller duplication
+    setState(() => _isInFullscreen = true);
+
     Navigator.push(context, PageRouteBuilder(
       pageBuilder: (_, __, ___) => PlayerScreen(
         channel: ch, existingController: _miniCtrl),
@@ -219,13 +241,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 250),
     )).then((_) {
-      // Resume mini player after returning from fullscreen
-      // Controller is reused - NOT recreated
-      if (_activeChannel != null && mounted && _miniCtrl != null) {
-        try {
-          _miniCtrl!.play();
-        } catch (_) {}
-        setState(() {});
+      // Re-attach player widget after returning from fullscreen
+      if (mounted) {
+        setState(() => _isInFullscreen = false);
+        if (_activeChannel != null && _miniCtrl != null) {
+          try { _miniCtrl!.play(); } catch (_) {}
+        }
       }
     });
   }
@@ -237,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     _miniPlayerAnimCtrl.reverse().then((_) {
       _zapTimer?.cancel();
-      _killMini();
+      _disposeController();
       _activeIdNotifier.value = null;
       final prov = context.read<AppProvider>();
       prov.clearLastChannel();
@@ -249,6 +270,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _miniError = false;
           _miniPlayerVisible = false;
           _isExpanded = false;
+          _isInFullscreen = false;
         });
       }
     });
@@ -349,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ])),
 
         // EXPANDED PLAYER - half screen with channel list
-        if (_miniPlayerVisible && _activeChannel != null && _isExpanded)
+        if (_miniPlayerVisible && _activeChannel != null && _isExpanded && !_isInFullscreen)
           Positioned(left: 0, right: 0, bottom: 0,
             top: MediaQuery.of(context).size.height * 0.35,
             child: AnimatedBuilder(
@@ -376,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             )),
 
         // MINI PLAYER - fixed at bottom (NEVER duplicated, NEVER in scroll)
-        if (_miniPlayerVisible && _activeChannel != null && !_isExpanded)
+        if (_miniPlayerVisible && _activeChannel != null && !_isExpanded && !_isInFullscreen)
           Positioned(left: 0, right: 0, bottom: 0,
             child: SlideTransition(
               position: _miniPlayerSlide,
@@ -614,7 +636,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: GestureDetector(
           onTap: () => _toggleCat(cat.name),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 150),
             curve: Curves.easeInOut,
             margin: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             padding: const EdgeInsets.symmetric(
@@ -634,18 +656,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     : prov.isDark
                         ? Colors.white.withOpacity(0.06)
                         : Colors.black.withOpacity(0.06),
-                width: 1),
-              boxShadow: isExpanded
-                  ? [
-                      BoxShadow(
-                        color: AppTheme.accent.withOpacity(0.1),
-                        blurRadius: 16, spreadRadius: -2),
-                      BoxShadow(color: c.shadow, blurRadius: 8),
-                    ]
-                  : [BoxShadow(color: c.shadow, blurRadius: 8)]),
+                width: 1)),
             child: Row(children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 150),
                 curve: Curves.easeInOut,
                 width: 44, height: 44,
                 decoration: BoxDecoration(
@@ -655,12 +669,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       : prov.isDark
                           ? Colors.white.withOpacity(0.06)
                           : Colors.black.withOpacity(0.04),
-                  borderRadius: BorderRadius.circular(13),
-                  boxShadow: isExpanded
-                      ? [BoxShadow(
-                          color: AppTheme.accent.withOpacity(0.3),
-                          blurRadius: 12)]
-                      : []),
+                  borderRadius: BorderRadius.circular(13)),
                 child: Icon(_catIcon(cat.icon),
                   color: isExpanded ? Colors.white : c.textDim,
                   size: 21)),
@@ -754,9 +763,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
           child: Row(children: [
-            // Thumbnail
+            // Thumbnail — tap to expand player view
             GestureDetector(
-              onTap: () => _openFullscreen(ch),
+              onTap: () {
+                setState(() => _isExpanded = true);
+                _expandAnimCtrl.forward();
+              },
               child: Container(
                 width: 56, height: 42,
                 decoration: BoxDecoration(
@@ -782,9 +794,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       color: AppTheme.live, size: 18)),
                 ]))),
             const SizedBox(width: 12),
-            // Channel info
+            // Channel info — tap to expand player view
             Expanded(child: GestureDetector(
-              onTap: () => _openFullscreen(ch),
+              onTap: () {
+                setState(() => _isExpanded = true);
+                _expandAnimCtrl.forward();
+              },
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -862,18 +877,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildExpandedPlayer(TC c, AppProvider prov) {
     final ch = _activeChannel!;
     final isDark = prov.isDark;
-    final allChannels = _categories.expand((cat) => cat.channels).toList();
+    final activeCat = ch.category;
+    final allChannels = _categories
+        .where((cat) => cat.name == activeCat)
+        .expand((cat) => cat.channels)
+        .toList();
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF111111) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.6 : 0.15),
-            blurRadius: 24, offset: const Offset(0, -6)),
-        ]),
+        border: Border(top: BorderSide(
+          color: AppTheme.accent.withOpacity(0.2), width: 1))),
       child: Column(children: [
         // Drag handle
         Container(
