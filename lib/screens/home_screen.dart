@@ -31,6 +31,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _miniPlayerVisible = false;
   bool _isExpanded = false;
   bool _isInFullscreen = false;
+  bool _pipRequested = false;
+  final GlobalKey _miniPlayerKey = GlobalKey();
 
   // Active channel notifier for efficient card updates
   final ValueNotifier<int?> _activeIdNotifier = ValueNotifier<int?>(null);
@@ -42,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // UI state
   final Set<String> _expanded = {};
   final ScrollController _scrollCtrl = ScrollController();
+  final ScrollController _expandedListCtrl = ScrollController();
 
   // Mini player animation
   late final AnimationController _miniPlayerAnimCtrl;
@@ -75,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _disposeController();
     _activeIdNotifier.dispose();
     _scrollCtrl.dispose();
+    _expandedListCtrl.dispose();
     _miniPlayerAnimCtrl.dispose();
     _expandAnimCtrl.dispose();
     super.dispose();
@@ -195,6 +199,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       logo: ch.logoUrl, number: ch.number, category: ch.category);
     prov.addRecentChannel(ch);
 
+    // Scroll expanded list to the selected channel
+    final activeCat = ch.category;
+    final allChannels = _categories
+        .where((cat) => cat.name == activeCat)
+        .expand((cat) => cat.channels)
+        .toList();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final idx = allChannels.indexWhere((c) => c.id == ch.id);
+      if (idx >= 0 && _expandedListCtrl.hasClients) {
+        _expandedListCtrl.animateTo(
+          idx * 56.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
     _zapTimer?.cancel();
     _zapTimer = Timer(_zapDebounce, () {
       if (mounted && _activeChannel?.id == ch.id) _switchChannel(ch);
@@ -221,6 +242,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         await Future.delayed(const Duration(milliseconds: 80));
         if (!mounted || _activeChannel?.id != ch.id) return;
         _miniCtrl!.setupDataSource(dataSource);
+        Future.delayed(const Duration(seconds: 10), () {
+          if (mounted && _miniLoading) {
+            setState(() { _miniLoading = false; _miniError = true; });
+          }
+        });
       } else {
         // First time — create a single controller
         _miniCtrl = BetterPlayerController(
@@ -267,7 +293,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     Navigator.push(context, PageRouteBuilder(
       pageBuilder: (_, __, ___) => PlayerScreen(
-        channel: ch, existingController: _miniCtrl),
+        channel: ch,
+        existingController: _miniCtrl,
+        onPipRequested: () => setState(() => _pipRequested = true),
+      ),
       transitionsBuilder: (_, anim, __, child) =>
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 250),
@@ -277,6 +306,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         setState(() => _isInFullscreen = false);
         if (_activeChannel != null && _miniCtrl != null) {
           try { _miniCtrl!.play(); } catch (_) {}
+          if (_pipRequested) {
+            _pipRequested = false;
+            Future.delayed(const Duration(milliseconds: 200), () {
+              _miniCtrl?.enablePictureInPicture(_miniPlayerKey);
+            });
+          }
         }
       }
     });
@@ -732,13 +767,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ? AppTheme.accent.withOpacity(0.6)
                         : AppTheme.accent.withOpacity(prov.isDark ? 0.15 : 0.08),
                     width: isExpanded ? 1.5 : 1),
-                  boxShadow: isExpanded
-                      ? [BoxShadow(
-                          color: AppTheme.accent.withOpacity(0.45),
-                          blurRadius: 16,
-                          spreadRadius: -2,
-                        )]
-                      : []),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.accent.withOpacity(isExpanded ? 0.45 : 0.0),
+                      blurRadius: isExpanded ? 16.0 : 0.0,
+                      spreadRadius: isExpanded ? -2.0 : 0.0,
+                    ),
+                  ],
                 child: Icon(_catIcon(cat.icon),
                   color: isExpanded ? Colors.white : c.textDim,
                   size: 21)),
@@ -813,7 +848,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // -- Mini Player (FIXED at bottom - never duplicated)
   Widget _buildMiniPlayer(TC c, bool isDark) {
     final ch = _activeChannel!;
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        setState(() => _isExpanded = true);
+        _expandAnimCtrl.forward();
+      },
+      child: Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF111111) : Colors.white,
         border: Border(top: BorderSide(
@@ -853,7 +893,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       !_miniError && !_miniLoading)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(9),
-                      child: BetterPlayer(controller: _miniCtrl!)),
+                      child: BetterPlayer(key: _miniPlayerKey, controller: _miniCtrl!)),
                   if (_miniLoading)
                     Center(child: SizedBox(width: 16, height: 16,
                       child: CircularProgressIndicator(
@@ -939,7 +979,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   shape: BoxShape.circle),
                 child: Icon(Icons.close_rounded,
                   color: c.textDim, size: 18))),
-          ]))));
+          ])))));
   }
 
   // -- Expanded Player (half screen with channel list below)
@@ -1078,6 +1118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // Channel list
         Expanded(
           child: ListView.builder(
+            controller: _expandedListCtrl,
             padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: allChannels.length,
             itemBuilder: (_, i) {
