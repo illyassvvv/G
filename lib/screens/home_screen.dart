@@ -29,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _miniLoading = false;
   bool _miniError = false;
   bool _miniPlayerVisible = false;
+  bool _isExpanded = false;
 
   // Active channel notifier for efficient card updates
   final ValueNotifier<int?> _activeIdNotifier = ValueNotifier<int?>(null);
@@ -195,18 +196,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _openFullscreen(Channel ch) {
-    _miniCtrl?.pause();
     Navigator.push(context, PageRouteBuilder(
       pageBuilder: (_, __, ___) => PlayerScreen(
         channel: ch, existingController: _miniCtrl),
       transitionsBuilder: (_, anim, __, child) =>
           FadeTransition(opacity: anim, child: child),
-      transitionDuration: const Duration(milliseconds: 250),
+      transitionDuration: const Duration(milliseconds: 200),
     )).then((_) {
-      if (_activeChannel != null && mounted) {
-        _killMini();
-        setState(() { _miniLoading = true; _miniError = false; });
-        _startMini(_activeChannel!);
+      // Resume mini player after returning from fullscreen
+      if (_activeChannel != null && mounted && _miniCtrl != null) {
+        _miniCtrl!.play();
+        setState(() {});
       }
     });
   }
@@ -216,7 +216,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _zapTimer?.cancel();
       _killMini();
       _activeIdNotifier.value = null;
-      context.read<AppProvider>().clearLastChannel();
+      final prov = context.read<AppProvider>();
+      prov.clearLastChannel();
+      prov.closePlayer();
       if (mounted) {
         setState(() {
           _activeChannel = null;
@@ -292,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           fontWeight: FontWeight.w700, fontSize: 13)),
                     ]))))
               .animate()
-              .slideY(begin: -1, end: 0, duration: 300.ms)),
+              .slideY(begin: -1, end: 0, duration: 300.ms))),
 
         // Main scroll content
         RefreshIndicator(
@@ -322,8 +324,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: SizedBox(height: bottomPadding + 120)),
             ])),
 
+        // EXPANDED PLAYER - half screen with channel list
+        if (_miniPlayerVisible && _activeChannel != null && _isExpanded)
+          Positioned(left: 0, right: 0, bottom: 0,
+            top: MediaQuery.of(context).size.height * 0.35,
+            child: GestureDetector(
+              onVerticalDragEnd: (details) {
+                if (details.primaryVelocity != null) {
+                  if (details.primaryVelocity! < -300) {
+                    _openFullscreen(_activeChannel!);
+                  } else if (details.primaryVelocity! > 300) {
+                    setState(() => _isExpanded = false);
+                  }
+                }
+              },
+              child: _buildExpandedPlayer(c, prov))),
+
         // MINI PLAYER - fixed at bottom (NEVER duplicated, NEVER in scroll)
-        if (_miniPlayerVisible && _activeChannel != null)
+        if (_miniPlayerVisible && _activeChannel != null && !_isExpanded)
           Positioned(left: 0, right: 0, bottom: 0,
             child: SlideTransition(
               position: _miniPlayerSlide,
@@ -331,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 onVerticalDragEnd: (details) {
                   if (details.primaryVelocity != null) {
                     if (details.primaryVelocity! < -300) {
-                      _openFullscreen(_activeChannel!);
+                      setState(() => _isExpanded = true);
                     } else if (details.primaryVelocity! > 300) {
                       _closeMini();
                     }
@@ -440,45 +458,67 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             itemBuilder: (_, i) {
               final ch = recentChannels[i];
               final isActive = _activeChannel?.id == ch.id;
-              return GestureDetector(
-                onTap: () => _select(ch),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? AppTheme.accent.withOpacity(0.15)
-                        : prov.isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : Colors.black.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isActive
-                          ? AppTheme.accent.withOpacity(0.4)
-                          : prov.isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.black.withOpacity(0.06))),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: ch.logoUrl, width: 28, height: 28,
-                        fit: BoxFit.contain,
-                        errorWidget: (_, __, ___) =>
-                            Icon(Icons.tv, size: 16, color: c.textDim))),
-                    const SizedBox(width: 8),
-                    Text(ch.name,
-                      style: TextStyle(fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isActive ? AppTheme.accent : c.text)),
-                    if (isActive) ...[
-                      const SizedBox(width: 6),
-                      MiniEqualizer(color: AppTheme.accent,
-                        width: 12, height: 10, barCount: 3),
-                    ],
-                  ])));
+              return Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () => _select(ch),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      margin: const EdgeInsets.only(right: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? AppTheme.accent.withOpacity(0.15)
+                            : prov.isDark
+                                ? Colors.white.withOpacity(0.05)
+                                : Colors.black.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isActive
+                              ? AppTheme.accent.withOpacity(0.4)
+                              : prov.isDark
+                                  ? Colors.white.withOpacity(0.08)
+                                  : Colors.black.withOpacity(0.06))),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: CachedNetworkImage(
+                            imageUrl: ch.logoUrl, width: 28, height: 28,
+                            fit: BoxFit.contain,
+                            errorWidget: (_, __, ___) =>
+                                Icon(Icons.tv, size: 16, color: c.textDim))),
+                        const SizedBox(width: 8),
+                        Text(ch.name,
+                          style: TextStyle(fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isActive ? AppTheme.accent : c.text)),
+                        if (isActive) ...[
+                          const SizedBox(width: 6),
+                          MiniEqualizer(color: AppTheme.accent,
+                            width: 12, height: 10, barCount: 3),
+                        ],
+                        const SizedBox(width: 4),
+                      ]))),
+                  // (X) remove button
+                  Positioned(
+                    top: 0, right: 6,
+                    child: GestureDetector(
+                      onTap: () => prov.removeRecentChannel(ch.id),
+                      child: Container(
+                        width: 18, height: 18,
+                        decoration: BoxDecoration(
+                          color: prov.isDark
+                              ? Colors.white.withOpacity(0.12)
+                              : Colors.black.withOpacity(0.08),
+                          shape: BoxShape.circle),
+                        child: Icon(Icons.close_rounded,
+                          size: 11,
+                          color: prov.isDark
+                              ? Colors.white.withOpacity(0.6)
+                              : Colors.black.withOpacity(0.5))))),
+                ]);
             }))),
     ];
   }
@@ -538,7 +578,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: GestureDetector(
           onTap: () => _toggleCat(cat.name),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
             margin: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             padding: const EdgeInsets.symmetric(
               horizontal: 18, vertical: 16),
@@ -568,7 +609,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   : [BoxShadow(color: c.shadow, blurRadius: 8)]),
             child: Row(children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
                 width: 44, height: 44,
                 decoration: BoxDecoration(
                   gradient: isExpanded
@@ -602,7 +644,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       fontWeight: FontWeight.w500)),
                 ])),
               AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
@@ -619,8 +662,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               const SizedBox(width: 8),
               AnimatedRotation(
                 turns: isExpanded ? 0.5 : 0,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
                 child: Icon(Icons.keyboard_arrow_down_rounded,
                   color: isExpanded ? AppTheme.accent : c.textDim,
                   size: 24)),
@@ -777,6 +820,138 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Icon(Icons.close_rounded,
                   color: c.textDim, size: 18))),
           ]))));
+  }
+
+  // -- Expanded Player (half screen with channel list below)
+  Widget _buildExpandedPlayer(TC c, AppProvider prov) {
+    final ch = _activeChannel!;
+    final isDark = prov.isDark;
+    final allChannels = _categories.expand((cat) => cat.channels).toList();
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111111) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.6 : 0.15),
+            blurRadius: 24, offset: const Offset(0, -6)),
+        ]),
+      child: Column(children: [
+        // Drag handle
+        Container(
+          margin: const EdgeInsets.only(top: 8),
+          width: 36, height: 4,
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(2))),
+        // Player video area
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                color: Colors.black,
+                child: Stack(fit: StackFit.expand, children: [
+                  if (_miniCtrl != null && !_miniError && !_miniLoading)
+                    BetterPlayer(controller: _miniCtrl!),
+                  if (_miniLoading)
+                    Center(child: CircularProgressIndicator(
+                      color: AppTheme.accent, strokeWidth: 2)),
+                  if (_miniError)
+                    Center(child: Icon(Icons.error_outline,
+                      color: AppTheme.live, size: 32)),
+                ]))))),
+        // Channel info + controls
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Row(children: [
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(ch.name,
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.text),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Row(children: [
+                  PulseDot(color: AppTheme.live, size: 5),
+                  const SizedBox(width: 4),
+                  Text('LIVE', style: TextStyle(fontSize: 10,
+                    fontWeight: FontWeight.w700, color: AppTheme.live, letterSpacing: 0.5)),
+                ]),
+              ])),
+            // Play/Pause
+            GestureDetector(
+              onTap: () {
+                if (_miniCtrl != null) {
+                  _miniCtrl!.isPlaying() == true ? _miniCtrl!.pause() : _miniCtrl!.play();
+                  setState(() {});
+                }
+              },
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.buttonGradient, shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: AppTheme.accent.withOpacity(0.3), blurRadius: 8)]),
+                child: Icon(
+                  _miniCtrl?.isPlaying() == true ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  color: Colors.white, size: 22))),
+            const SizedBox(width: 8),
+            // Fullscreen
+            GestureDetector(
+              onTap: () => _openFullscreen(ch),
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                  shape: BoxShape.circle),
+                child: Icon(Icons.fullscreen_rounded, color: c.textDim, size: 20))),
+            const SizedBox(width: 8),
+            // Collapse
+            GestureDetector(
+              onTap: () => setState(() => _isExpanded = false),
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                  shape: BoxShape.circle),
+                child: Icon(Icons.keyboard_arrow_down_rounded, color: c.textDim, size: 20))),
+          ])),
+        Divider(height: 1, color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06)),
+        // Channel list
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemCount: allChannels.length,
+            itemBuilder: (_, i) {
+              final listCh = allChannels[i];
+              final isPlaying = listCh.id == ch.id;
+              return ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: listCh.logoUrl, width: 32, height: 32,
+                    fit: BoxFit.contain,
+                    errorWidget: (_, __, ___) => Icon(Icons.tv, size: 18, color: c.textDim))),
+                title: Text(listCh.name,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                    color: isPlaying ? AppTheme.accent : c.text),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: isPlaying
+                    ? MiniEqualizer(color: AppTheme.accent, width: 14, height: 12, barCount: 3)
+                    : Text('CH ${listCh.number}',
+                        style: TextStyle(fontSize: 10, color: c.textDim)),
+                onTap: () {
+                  setState(() => _isExpanded = false);
+                  _select(listCh);
+                });
+            })),
+      ]));
   }
 
   Widget _glow(Color color, double size, double opacity) => Container(

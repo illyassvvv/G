@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -53,8 +54,8 @@ class _ChannelCardState extends State<ChannelCard> {
           builder: (_, activeId, __) {
             final isActive = activeId == widget.channel.id;
             return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
               transform: Matrix4.identity()..scale(isActive ? 1.02 : 1.0),
               transformAlignment: Alignment.center,
               decoration: BoxDecoration(
@@ -73,7 +74,8 @@ class _ChannelCardState extends State<ChannelCard> {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: isDark ? 16 : 8, sigmaY: isDark ? 16 : 8),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
                     decoration: BoxDecoration(
                       gradient: isActive
                           ? LinearGradient(
@@ -94,7 +96,8 @@ class _ChannelCardState extends State<ChannelCard> {
                           padding: const EdgeInsets.fromLTRB(14, 14, 10, 8),
                           child: Row(children: [
                             AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
                               width: 46, height: 46,
                               decoration: BoxDecoration(
                                 color: isDark ? Colors.white.withOpacity(isActive ? 0.1 : 0.06)
@@ -163,7 +166,7 @@ class _ChannelCardState extends State<ChannelCard> {
                                 child: Icon(isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                   size: 18, color: isActive ? Colors.white : isDark ? Colors.white.withOpacity(0.8) : Colors.black.withOpacity(0.7))),
                             ])),
-                      ]))))));}},),),)
+                      ])))));},),),)
         .animate(delay: Duration(milliseconds: 50 * widget.index))
         .fadeIn(duration: 280.ms)
         .slideY(begin: 0.15, end: 0, duration: 280.ms, curve: Curves.easeOut);
@@ -197,7 +200,10 @@ class MiniEqualizer extends StatefulWidget {
 }
 class _MiniEqualizerState extends State<MiniEqualizer> with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  @override void initState() { super.initState(); _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..repeat(reverse: true); }
+  @override void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+  }
   @override void dispose() { _ctrl.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) {
@@ -206,8 +212,9 @@ class _MiniEqualizerState extends State<MiniEqualizer> with SingleTickerProvider
       width: widget.width, height: widget.height,
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.end,
         children: List.generate(widget.barCount, (i) {
-          final phase = (i / widget.barCount + _ctrl.value) % 1.0;
-          final h = (0.3 + 0.7 * ((1 + (2 * 3.14159 * phase).abs() % 1.0) / 2.0)) * widget.height;
+          final phase = _ctrl.value * 2 * pi + (i * pi / widget.barCount);
+          final normalized = (sin(phase) + 1) / 2;
+          final h = (0.25 + 0.75 * normalized) * widget.height;
           return Container(width: barW, height: h,
             decoration: BoxDecoration(color: widget.color, borderRadius: BorderRadius.circular(barW / 2)));
         }))));

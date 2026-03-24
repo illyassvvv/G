@@ -39,7 +39,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (widget.existingController != null) {
       _ctrl = widget.existingController;
       _resumed = true;
-      _ctrl!.play();
       setState(() => _loading = false);
     } else {
       _startPlayer();
@@ -119,6 +118,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (!_resumed) _ctrl?.dispose();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // Pause when leaving fullscreen if controller is reused
+    if (_resumed) _ctrl?.pause();
     super.dispose();
   }
 
@@ -193,7 +194,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           // Top bar with controls
           AnimatedOpacity(
             opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 200),
             child: IgnorePointer(
               ignoring: !_showControls,
               child: Container(
