@@ -150,6 +150,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             Navigator.pop(context);
           }
         },
+        behavior: HitTestBehavior.opaque,
         child: Stack(children: [
           // Video
           if (_ctrl != null)
@@ -197,24 +198,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: const Text('Retry',
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)))),
               ]))),
-
-          // Always-visible back button (safety exit) - never hidden
-          Positioned(
-            top: 0, left: 0, right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: _TopBtn(
-                    icon: Icons.close_rounded,
-                    size: 22,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                ),
-              ),
-            ),
-          ),
 
           // Top bar with controls (shown/hidden on tap)
           AnimatedOpacity(
@@ -269,7 +252,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         // Action buttons
                         Row(children: [
                           _TopBtn(icon: Icons.picture_in_picture_alt_rounded,
-                            onTap: () => _ctrl?.enablePictureInPicture(_pipKey)),
+                            onTap: () {
+                              _ctrl?.enablePictureInPicture(_pipKey);
+                              Future.delayed(const Duration(milliseconds: 300), () {
+                                if (mounted) Navigator.pop(context);
+                              });
+                            }),
                           const SizedBox(width: 10),
                           _TopBtn(icon: Icons.close_rounded, size: 22,
                             onTap: () => Navigator.pop(context)),
