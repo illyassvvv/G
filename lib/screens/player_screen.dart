@@ -272,24 +272,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _safeGoBack();
-      },
-      child: Focus(
+    return Focus(
         focusNode: _playerFocus,
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
         child: Scaffold(
         backgroundColor: Colors.black,
         body: Stack(children: [
-            // Video
+            // Video (fills entire screen)
             if (_ctrl != null)
-              Center(child: AspectRatio(
-                aspectRatio: 16 / 9,
+              Positioned.fill(
                 child: BetterPlayer(controller: _ctrl!),
-              )),
+              ),
 
             // Loading
             if (_loading)
@@ -400,7 +394,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
           ]),
         ),
-      ),
     );
   }
 }
