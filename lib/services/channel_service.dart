@@ -86,7 +86,7 @@ class ChannelService {
     return results;
   }
 
-  // ── Hardcoded fallback ────────────────────────────────────────
+  // ── Hardcoded fallback (matches channels.json) ──────────────
   static List<ChannelCategory> _fallback() {
     return [
       ChannelCategory(
@@ -95,33 +95,120 @@ class ChannelService {
         channels: const [
           Channel(
             id: 1, name: 'beIN Sports 1', number: '01', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/96/BeIN_Sports_1.svg/200px-BeIN_Sports_1.svg.png',
-            streamUrl: 'http://xmrcars.org:8080/bn1hd/mono.m3u8',
+            logoUrl: 'https://docdog.top/logo/countries/turkey/beinsports1.png',
+            streamUrl: 'http://sportook.online/BEIN-S1/video.m3u8',
           ),
           Channel(
             id: 2, name: 'beIN Sports 2', number: '02', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/d/db/BeIN_Sports_2.svg/200px-BeIN_Sports_2.svg.png',
-            streamUrl: 'http://xmrcars.org:8080/bn2hd/mono.m3u8',
+            logoUrl: 'https://docdog.top/logo/countries/turkey/beinsports2.png',
+            streamUrl: 'http://sportook.online/BEIN-S22/video.m3u8',
           ),
           Channel(
             id: 3, name: 'beIN Sports 3', number: '03', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/3/32/BeIN_Sports_3.svg/200px-BeIN_Sports_3.svg.png',
-            streamUrl: 'http://xmrcars.org:8080/bn3hd/mono.m3u8',
+            logoUrl: 'https://docdog.top/logo/countries/turkey/beinsports3.png',
+            streamUrl: 'http://sportook.online/BEIN-S3/video.m3u8',
           ),
           Channel(
             id: 4, name: 'beIN Sports 4', number: '04', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/07/BeIN_Sports_4.svg/200px-BeIN_Sports_4.svg.png',
+            logoUrl: 'https://docdog.top/logo/countries/turkey/beinsports4.png',
             streamUrl: 'https://man1ted.com/be4/index.m3u8',
           ),
           Channel(
             id: 5, name: 'beIN Sports 5', number: '05', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/8/8d/BeIN_Sports_5.svg/200px-BeIN_Sports_5.svg.png',
+            logoUrl: 'https://assets.bein.com/mena/sites/4/2015/06/beIN_SPORTS5_DIGITAL_Mono.png',
             streamUrl: 'https://man1ted.com/be5/index.m3u8',
           ),
           Channel(
             id: 6, name: 'beIN Sports 6', number: '06', category: 'beIN Sports',
-            logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/8/8d/BeIN_Sports_5.svg/200px-BeIN_Sports_5.svg.png',
+            logoUrl: 'https://assets.bein.com/mena/sites/4/2021/02/beIN_SPORTS6_DIGITAL_Mono.png',
             streamUrl: 'https://man1ted.com/be6/index.m3u8',
+          ),
+        ],
+      ),
+      ChannelCategory(
+        name: 'Al Kass',
+        icon: 'sports',
+        channels: const [
+          Channel(
+            id: 101, name: 'Al Kass 1', number: '01', category: 'Al Kass',
+            logoUrl: 'https://www.elahmad.com/tv/mobiletv/images/alkass_1.jpg?v=7',
+            streamUrl: 'https://liveeu-gcp.alkassdigital.net/alkass1-p/main.m3u8',
+          ),
+          Channel(
+            id: 102, name: 'Al Kass 2', number: '02', category: 'Al Kass',
+            logoUrl: 'https://www.elahmad.com/tv/mobiletv/images/alkass_2.jpg?v=7',
+            streamUrl: 'https://liveeu-gcp.alkassdigital.net/alkass2-p/main.m3u8',
+          ),
+          Channel(
+            id: 103, name: 'Al Kass 3', number: '03', category: 'Al Kass',
+            logoUrl: 'https://www.elahmad.com/tv/mobiletv/images/alkass_3.jpg?v=7',
+            streamUrl: 'https://liveeu-gcp.alkassdigital.net/alkass3-p/main.m3u8',
+          ),
+          Channel(
+            id: 104, name: 'Al Kass 4', number: '04', category: 'Al Kass',
+            logoUrl: 'https://www.elahmad.com/tv/mobiletv/images/alkass_4.jpg?v=7',
+            streamUrl: 'https://liveeu-gcp.alkassdigital.net/alkass4-p/main.m3u8',
+          ),
+          Channel(
+            id: 105, name: 'Al Kass 5', number: '5', category: 'Al Kass',
+            logoUrl: 'https://www.elahmad.com/tv/mobiletv/images/alkass_5.jpg?v=7',
+            streamUrl: 'https://liveeu-gcp.alkassdigital.net/alkass5-p/main.m3u8',
+          ),
+          Channel(
+            id: 106, name: 'Al Kass 6', number: '6', category: 'Al Kass',
+            logoUrl: 'https://www.elahmad.com/tv/mobiletv/images/alkass_6.jpg?v=7',
+            streamUrl: 'https://liveeu-gcp.alkassdigital.net/alkass6-p/main.m3u8',
+          ),
+          Channel(
+            id: 107, name: 'Al Kass 7', number: '7', category: 'Al Kass',
+            logoUrl: 'https://www.elahmad.com/tv/mobiletv/images/alkass_7.jpg?v=7',
+            streamUrl: 'https://liveeu-gcp.alkassdigital.net/alkass7-p/main.m3u8',
+          ),
+        ],
+      ),
+      ChannelCategory(
+        name: 'Morocco',
+        icon: 'tv',
+        channels: const [
+          Channel(
+            id: 108, name: '2m Tv', number: '1', category: 'Morocco',
+            logoUrl: 'https://elahmad-tv.com/images/2m_ma_tv.jpg',
+            streamUrl: 'https://d2qh3gh0k5vp3v.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-n6pess5lwbghr/2M_ES.m3u8',
+          ),
+          Channel(
+            id: 109, name: 'Al Aoula', number: '2', category: 'Morocco',
+            logoUrl: 'https://www.lyngsat.com/logo/tv/aa/al-aoula-ma.png',
+            streamUrl: 'https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_aloula_w1dqfwm%2Fplaylist_dvr.m3u8',
+          ),
+          Channel(
+            id: 110, name: 'Al Maghribia', number: '3', category: 'Morocco',
+            logoUrl: 'https://www.lyngsat.com/logo/tv/aa/al-maghribia-ma.png',
+            streamUrl: 'https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_almaghribia_83tz85q%2Fplaylist_dvr.m3u8',
+          ),
+          Channel(
+            id: 111, name: 'Arryadia', number: '4', category: 'Morocco',
+            logoUrl: 'https://www.lyngsat.com/logo/tv/aa/arryadia-ma.png',
+            streamUrl: 'https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_arryadia_k2tgcj0%2Fplaylist_dvr.m3u8',
+          ),
+          Channel(
+            id: 112, name: 'Assadissa', number: '5', category: 'Morocco',
+            logoUrl: 'https://www.lyngsat.com/logo/tv/aa/assadissa-ma.png',
+            streamUrl: 'https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_assadissa_7b7u5n1%2Fplaylist_dvr.m3u8',
+          ),
+          Channel(
+            id: 113, name: 'Athaqafia', number: '6', category: 'Morocco',
+            logoUrl: 'https://www.lyngsat.com/logo/tv/aa/athaqafia-ma.png',
+            streamUrl: 'https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_arrabia_hthcj4p%2Fplaylist_dvr.m3u8',
+          ),
+          Channel(
+            id: 114, name: 'Tamazight', number: '7', category: 'Morocco',
+            logoUrl: 'https://www.lyngsat.com/logo/tv/tt/tamazight-ma.png',
+            streamUrl: 'https://dhd.koora-live.top/token/https://token.easybroadcast.io/all?url=https%3A%2F%2Fcdn.live.easybroadcast.io%2Fabr_corp%2F73_tamazight_tccybxt%2Fplaylist_dvr.m3u8',
+          ),
+          Channel(
+            id: 115, name: 'Medi1TV Maghreb', number: '8', category: 'Morocco',
+            logoUrl: 'https://www.lyngsat.com/logo/tv/mm/medi-1-tv-ma.png',
+            streamUrl: 'https://cdn.live.easybroadcast.io/abr_corp/83_medi1tv-maghreb_jnbspmg/corp/83_medi1tv-maghreb_jnbspmg_720p/chunks_dvr.m3u8',
           ),
         ],
       ),
