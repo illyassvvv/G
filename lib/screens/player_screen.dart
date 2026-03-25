@@ -130,7 +130,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         allowedScreenSleep: false,
         autoDetectFullscreenAspectRatio: true,
         aspectRatio: 16 / 9,
-        fit: BoxFit.contain,
+        fit: BoxFit.fill,
         controlsConfiguration: BetterPlayerControlsConfiguration(
           showControls: false,
           loadingWidget: const SizedBox.shrink(),
