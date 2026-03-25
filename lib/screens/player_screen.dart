@@ -38,6 +38,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // Guard against double-pop from system back + our handler
   bool _isPopping = false;
 
+  // Headers to send with every stream request (helps with IPTV servers)
+  static const Map<String, String> _streamHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 12; TV) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Connection': 'keep-alive',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +72,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         BetterPlayerDataSourceType.network, ch.streamUrl,
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
+        headers: _streamHeaders,
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
           minBufferMs: 2000, maxBufferMs: 10000,
           bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000),
@@ -161,6 +170,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _currentChannel.streamUrl,
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
+        headers: _streamHeaders,
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
           minBufferMs: 2000, maxBufferMs: 10000,
           bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
