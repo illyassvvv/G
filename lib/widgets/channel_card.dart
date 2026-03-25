@@ -32,7 +32,8 @@ class ChannelCard extends StatefulWidget {
   State<ChannelCard> createState() => _ChannelCardState();
 }
 
-class _ChannelCardState extends State<ChannelCard> {
+class _ChannelCardState extends State<ChannelCard>
+    with SingleTickerProviderStateMixin {
   double _scale = 1.0;
 
   @override
@@ -50,14 +51,15 @@ class _ChannelCardState extends State<ChannelCard> {
       onTapCancel: () => setState(() => _scale = 1.0),
       child: AnimatedScale(
         scale: _scale,
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
         child: ValueListenableBuilder<int?>(
           valueListenable: widget.activeChannelNotifier,
           builder: (_, activeId, __) {
             final isActive = activeId == widget.channel.id;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+            return RepaintBoundary(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
               curve: Curves.easeOut,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
@@ -68,7 +70,7 @@ class _ChannelCardState extends State<ChannelCard> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(21),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
+                  duration: const Duration(milliseconds: 120),
                   curve: Curves.easeOut,
                     decoration: BoxDecoration(
                       gradient: isActive
@@ -90,8 +92,8 @@ class _ChannelCardState extends State<ChannelCard> {
                           padding: const EdgeInsets.fromLTRB(14, 14, 10, 8),
                           child: Row(children: [
                             AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              curve: Curves.easeInOut,
+                              duration: const Duration(milliseconds: 150),
+                              curve: Curves.easeOut,
                               width: 46, height: 46,
                               decoration: BoxDecoration(
                                 color: isDark ? Colors.white.withOpacity(isActive ? 0.1 : 0.06)
@@ -150,7 +152,7 @@ class _ChannelCardState extends State<ChannelCard> {
                                         style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppTheme.accent, letterSpacing: 0.8))])
                                   : LiveBadge(isDark: isDark),
                               AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
+                                duration: const Duration(milliseconds: 150),
                                 width: 34, height: 34,
                                 decoration: BoxDecoration(
                                   gradient: isActive ? AppTheme.buttonGradient : null,
@@ -159,7 +161,7 @@ class _ChannelCardState extends State<ChannelCard> {
                                 child: Icon(isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                   size: 18, color: isActive ? Colors.white : isDark ? Colors.white.withOpacity(0.8) : Colors.black.withOpacity(0.7))),
                             ])),
-                      ]))));
+                      ])))));
           },
         ),
       ),
@@ -227,7 +229,8 @@ class _SmoothEqualizerState extends State<SmoothEqualizer>
   @override
   Widget build(BuildContext context) {
     final barW = widget.width / (widget.barCount * 2 - 1);
-    return AnimatedBuilder(
+    return RepaintBoundary(
+      child: AnimatedBuilder(
       animation: _ctrl,
       builder: (_, __) => SizedBox(
         width: widget.width,
@@ -252,7 +255,7 @@ class _SmoothEqualizerState extends State<SmoothEqualizer>
           }),
         ),
       ),
-    );
+    ));
   }
 }
 

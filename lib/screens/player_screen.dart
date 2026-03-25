@@ -81,8 +81,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000, maxBufferMs: 10000,
-          bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000),
+          minBufferMs: 3000, maxBufferMs: 15000,
+          bufferForPlaybackMs: 2000, bufferForPlaybackAfterRebufferMs: 4000),
       );
       _ctrl!.setupDataSource(dataSource);
     } else {
@@ -172,8 +172,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000, maxBufferMs: 10000,
-          bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
+          minBufferMs: 3000, maxBufferMs: 15000,
+          bufferForPlaybackMs: 2000, bufferForPlaybackAfterRebufferMs: 4000,
         ),
       ),
     );
