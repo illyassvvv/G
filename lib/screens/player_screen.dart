@@ -33,6 +33,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // Focus node for capturing D-pad events on the player
   final FocusNode _playerFocus = FocusNode();
 
+  // Guard against double-pop from system back + our handler
+  bool _isPopping = false;
+
   @override
   void initState() {
     super.initState();
@@ -113,7 +116,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
           if (!mounted) return;
           switch (event.betterPlayerEventType) {
             case BetterPlayerEventType.initialized:
-              setState(() { _loading = false; _retryCount = 0; });
+            case BetterPlayerEventType.play:
+            case BetterPlayerEventType.bufferingEnd:
+              if (_loading) {
+                setState(() { _loading = false; _retryCount = 0; });
+              }
               break;
             case BetterPlayerEventType.exception:
               setState(() { _loading = false; _hasError = true; });
@@ -168,10 +175,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     final key = event.logicalKey;
 
-    // Back button — go back to home
+    // Back button — go back to home (guarded against double-pop)
     if (key == LogicalKeyboardKey.goBack ||
         key == LogicalKeyboardKey.escape) {
-      Navigator.pop(context);
+      _safeGoBack();
       return KeyEventResult.handled;
     }
 
@@ -218,13 +225,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _scheduleHideControls();
   }
 
+  void _safeGoBack() {
+    if (_isPopping || !mounted) return;
+    _isPopping = true;
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      focusNode: _playerFocus,
-      autofocus: true,
-      onKeyEvent: _handleKeyEvent,
-      child: Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _safeGoBack();
+      },
+      child: Focus(
+        focusNode: _playerFocus,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: Scaffold(
         backgroundColor: Colors.black,
         body: Stack(children: [
             // Video
@@ -340,6 +358,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ),
             ),
           ]),
+        ),
       ),
     );
   }
