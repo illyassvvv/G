@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  better_player_plus: ^1.1.5
+  better_player_plus: ^1.0.8
   cached_network_image: ^3.3.1
   google_fonts: ^6.1.0
   flutter_animate: ^4.3.0
