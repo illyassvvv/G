@@ -2,17 +2,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:better_player_plus/better_player_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/channel.dart';
 import '../models/theme.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
-  final List<Channel> channelList;
 
   const PlayerScreen({
     super.key,
     required this.channel,
-    this.channelList = const [],
   });
 
   @override
@@ -26,7 +25,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _showControls = true;
   Timer? _hideTimer;
   Timer? _loadingTimeout;
-  late Channel _currentChannel;
   int _retryCount = 0;
   static const _maxRetries = 3;
   static const _loadingTimeoutDuration = Duration(seconds: 20);
@@ -37,12 +35,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _currentChannel = widget.channel;
     _startPlayer();
     _scheduleHideControls();
   }
 
-  // 1. تعديل إعدادات المشغل لإصلاح الـ Full Screen والـ Loading
   void _startPlayer() {
     _cancelLoadingTimeout();
     _ctrl?.dispose();
@@ -56,10 +52,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         fullScreenByDefault: false,
         allowedScreenSleep: false,
         autoDetectFullscreenAspectRatio: true,
-        
-        // الحل لمشكلة الحواف السوداء: BoxFit.fill يمد الفيديو ليملأ الشاشة تماماً
-        fit: BoxFit.fill, 
-        
+        fit: BoxFit.fill,
         controlsConfiguration: BetterPlayerControlsConfiguration(
           showControls: false,
           loadingWidget: const SizedBox.shrink(),
@@ -87,18 +80,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
       ),
       betterPlayerDataSource: BetterPlayerDataSource(
         BetterPlayerDataSourceType.network,
-        _currentChannel.streamUrl,
+        widget.channel.streamUrl,
         liveStream: true,
-        
-        // الحل لمشكلة عدم اشتغال الستريم: تحديد التنسيق وإضافة Headers (الوكيل)
         videoFormat: BetterPlayerVideoFormat.hls,
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         },
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000, 
+          minBufferMs: 2000,
           maxBufferMs: 15000,
-          bufferForPlaybackMs: 2500, 
+          bufferForPlaybackMs: 2500,
           bufferForPlaybackAfterRebufferMs: 4000,
         ),
       ),
@@ -107,43 +98,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (mounted) setState(() {});
   }
 
-  void _switchToChannel(Channel ch) {
-    if (ch.id == _currentChannel.id) return;
-    _cancelLoadingTimeout();
-    setState(() {
-      _currentChannel = ch;
-      _loading = true;
-      _hasError = false;
-      _retryCount = 0;
-    });
-    _startPlayer(); // إعادة تشغيل المشغل بالكامل للقناة الجديدة
-  }
-
-  // 2. إصلاح مشكلة زر الرجوع والخروج من التطبيق
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
 
-    // معالجة زر الرجوع لمرة واحدة فقط واستهلاكه (Handled)
-    if (key == LogicalKeyboardKey.goBack ||
-        key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.backspace) {
-      _safeGoBack();
-      return KeyEventResult.handled; // هذا السطر يمنع الخروج من التطبيق
-    }
-
-    if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.channelUp) {
-      _nextChannel();
-      _showControlsBriefly();
-      return KeyEventResult.handled;
-    }
-
-    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.channelDown) {
-      _prevChannel();
-      _showControlsBriefly();
-      return KeyEventResult.handled;
-    }
+    // Back button is handled ONLY via PopScope to prevent double-pop
+    // Do NOT handle goBack/escape/backspace here
 
     if (key == LogicalKeyboardKey.select || key == LogicalKeyboardKey.enter) {
       if (_hasError) {
@@ -169,30 +130,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (_isPopping || !mounted) return;
     _isPopping = true;
     _cancelLoadingTimeout();
-    
-    // إيقاف المشغل وتنظيف الذاكرة قبل الخروج
+
     if (_ctrl != null) {
       _ctrl!.pause();
       _ctrl!.dispose();
       _ctrl = null;
     }
-    
+
     Navigator.of(context).pop();
-  }
-
-  // بقية الدوال المساعدة...
-  void _nextChannel() {
-    if (widget.channelList.isEmpty) return;
-    final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
-    if (idx < 0 || idx >= widget.channelList.length - 1) return;
-    _switchToChannel(widget.channelList[idx + 1]);
-  }
-
-  void _prevChannel() {
-    if (widget.channelList.isEmpty) return;
-    final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
-    if (idx <= 0) return;
-    _switchToChannel(widget.channelList[idx - 1]);
   }
 
   void _autoRetry() {
@@ -259,15 +204,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: Scaffold(
           backgroundColor: Colors.black,
           body: Stack(
-            fit: StackFit.expand, // يضمن أن الـ Stack يملأ الشاشة
+            fit: StackFit.expand,
             children: [
-              // الفيديو بملء الشاشة
+              // Video player
               if (_ctrl != null)
                 Center(
                   child: BetterPlayer(controller: _ctrl!),
                 ),
 
-              // دائرة التحميل
+              // Loading overlay with channel logo
               if (_loading)
                 Container(
                   color: Colors.black,
@@ -275,16 +220,40 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: CachedNetworkImage(
+                            imageUrl: widget.channel.logoUrl,
+                            fit: BoxFit.contain,
+                            placeholder: (_, __) => const Icon(
+                              Icons.live_tv_rounded,
+                              color: Colors.white54,
+                              size: 40,
+                            ),
+                            errorWidget: (_, __, ___) => const Icon(
+                              Icons.live_tv_rounded,
+                              color: Colors.white54,
+                              size: 40,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         const CircularProgressIndicator(color: Colors.green),
                         const SizedBox(height: 16),
-                        Text('Loading ${_currentChannel.name}...',
+                        Text('Loading ${widget.channel.name}...',
                             style: const TextStyle(color: Colors.white70)),
                       ],
                     ),
                   ),
                 ),
 
-              // رسالة الخطأ
+              // Error overlay
               if (_hasError)
                 Container(
                   color: Colors.black,
@@ -297,21 +266,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         const Text('Failed to load channel',
                             style: TextStyle(color: Colors.white, fontSize: 18)),
                         const SizedBox(height: 8),
-                        Text('Press OK to retry',
-                            style: const TextStyle(color: Colors.white54)),
+                        const Text('Press OK to retry',
+                            style: TextStyle(color: Colors.white54)),
                       ],
                     ),
                   ),
                 ),
 
-              // واجهة التحكم العلوية
+              // Top bar with channel info and logo
               Positioned(
                 top: 0, left: 0, right: 0,
                 child: AnimatedOpacity(
                   opacity: _showControls ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 300),
                   child: Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -319,31 +288,106 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         colors: [Colors.black.withOpacity(0.8), Colors.transparent],
                       ),
                     ),
-                    child: Text(
-                      '${_currentChannel.number} - ${_currentChannel.name}',
-                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    child: Row(
+                      children: [
+                        // Channel logo
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: CachedNetworkImage(
+                            imageUrl: widget.channel.logoUrl,
+                            fit: BoxFit.contain,
+                            placeholder: (_, __) => const Icon(
+                              Icons.live_tv_rounded,
+                              color: Colors.white54,
+                              size: 22,
+                            ),
+                            errorWidget: (_, __, ___) => const Icon(
+                              Icons.live_tv_rounded,
+                              color: Colors.white54,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.channel.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'CH ${widget.channel.number}',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.6),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        // LIVE badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.live.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.live.withOpacity(0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.circle, color: AppTheme.live, size: 8),
+                              SizedBox(width: 6),
+                              Text(
+                                'LIVE',
+                                style: TextStyle(
+                                  color: AppTheme.live,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
 
-              // واجهة التحكم السفلية (تلميحات الريموت)
+              // Bottom bar
               Positioned(
                 bottom: 0, left: 0, right: 0,
                 child: AnimatedOpacity(
                   opacity: _showControls ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 300),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     color: Colors.black.withOpacity(0.5),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _RemoteHint(icon: Icons.arrow_left, label: 'Prev'),
-                        SizedBox(width: 20),
-                        _RemoteHint(icon: Icons.circle, label: 'OK'),
-                        SizedBox(width: 20),
-                        _RemoteHint(icon: Icons.arrow_right, label: 'Next'),
+                        _RemoteHint(icon: Icons.arrow_back, label: 'Back'),
+                        SizedBox(width: 24),
+                        _RemoteHint(icon: Icons.circle, label: 'Play/Pause'),
                       ],
                     ),
                   ),

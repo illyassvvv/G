@@ -59,20 +59,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openPlayer(Channel ch) {
     if (ch.streamUrl.isEmpty) return;
-    final channelList = _categories
-        .where((cat) => cat.name == ch.category)
-        .expand((cat) => cat.channels)
-        .toList();
     final prov = context.read<AppProvider>();
     prov.setActiveChannel(ch);
     prov.saveLastChannel(
       id: ch.id, name: ch.name, url: ch.streamUrl,
       logo: ch.logoUrl, number: ch.number, category: ch.category);
     Navigator.push(context, MaterialPageRoute(
-      builder: (_) => PlayerScreen(
-        channel: ch,
-        channelList: channelList,
-      ),
+      builder: (_) => PlayerScreen(channel: ch),
     ));
   }
 
