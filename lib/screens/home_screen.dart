@@ -6,8 +6,8 @@ import '../models/channel.dart';
 import '../models/theme.dart';
 import '../providers/app_provider.dart';
 import '../services/channel_service.dart';
-import '../services/external_player_service.dart';
 import '../widgets/channel_card.dart';
+import 'player_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -57,152 +57,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _openPlayer(Channel ch) async {
+  void _openPlayer(Channel ch) {
     if (ch.streamUrl.isEmpty) return;
+    final channelList = _categories
+        .where((cat) => cat.name == ch.category)
+        .expand((cat) => cat.channels)
+        .toList();
     final prov = context.read<AppProvider>();
     prov.setActiveChannel(ch);
     prov.saveLastChannel(
       id: ch.id, name: ch.name, url: ch.streamUrl,
       logo: ch.logoUrl, number: ch.number, category: ch.category);
-
-    final isInstalled = await ExternalPlayerService.isMxPlayerInstalled();
-    if (!isInstalled) {
-      if (mounted) _showInstallMxPlayerDialog();
-      return;
-    }
-
-    final launched = await ExternalPlayerService.launchMxPlayer(
-      url: ch.streamUrl,
-      title: '${ch.number} - ${ch.name}',
-    );
-    if (!launched && mounted) {
-      _showInstallMxPlayerDialog();
-    }
-  }
-
-  void _showInstallMxPlayerDialog() {
-    final prov = context.read<AppProvider>();
-    final c = prov.colors;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Focus(
-        autofocus: true,
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent &&
-              (event.logicalKey == LogicalKeyboardKey.goBack ||
-               event.logicalKey == LogicalKeyboardKey.escape ||
-               event.logicalKey == LogicalKeyboardKey.backspace)) {
-            Navigator.of(ctx).pop();
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: AlertDialog(
-          backgroundColor: c.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: AppTheme.accent.withOpacity(0.3), width: 1.5),
-          ),
-          contentPadding: const EdgeInsets.all(32),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // MX Player icon
-              Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.buttonGradient,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.accent.withOpacity(0.4),
-                      blurRadius: 20, spreadRadius: -4),
-                  ],
-                ),
-                child: const Icon(Icons.ondemand_video_rounded,
-                  color: Colors.white, size: 40),
-              ),
-              const SizedBox(height: 24),
-              Text('MX Player Required',
-                style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.w800,
-                  color: c.text, letterSpacing: -0.5),
-                textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              Text(
-                'MX Player is required to watch channels.\nPlease install it to continue.',
-                style: TextStyle(fontSize: 14, color: c.textDim, height: 1.5),
-                textAlign: TextAlign.center),
-              const SizedBox(height: 28),
-              // Download button
-              _TVFocusableItem(
-                autofocus: true,
-                onSelect: () {
-                  ExternalPlayerService.openMxPlayerStore();
-                },
-                builder: (focused) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.buttonGradient,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: focused ? Colors.white : Colors.transparent,
-                      width: 2.5),
-                    boxShadow: focused
-                        ? [BoxShadow(
-                            color: AppTheme.accent.withOpacity(0.5),
-                            blurRadius: 16, spreadRadius: -2)]
-                        : [BoxShadow(
-                            color: AppTheme.accent.withOpacity(0.3),
-                            blurRadius: 12, offset: const Offset(0, 4))],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.download_rounded,
-                        color: Colors.white, size: focused ? 22 : 20),
-                      const SizedBox(width: 10),
-                      Text('Download MX Player',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: focused ? 16 : 15)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              // Close button
-              _TVFocusableItem(
-                onSelect: () => Navigator.of(ctx).pop(),
-                builder: (focused) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: focused
-                        ? c.surface2.withOpacity(0.8)
-                        : c.surface2.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: focused
-                          ? AppTheme.accent.withOpacity(0.6)
-                          : Colors.transparent,
-                      width: 1.5),
-                  ),
-                  child: Text('Close',
-                    style: TextStyle(
-                      color: focused ? AppTheme.accent : c.textDim,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13)),
-                ),
-              ),
-            ],
-          ),
-        ),
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => PlayerScreen(
+        channel: ch,
+        channelList: channelList,
       ),
-    );
+    ));
   }
 
   IconData _catIcon(String name) {
