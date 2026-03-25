@@ -369,3 +369,4 @@ class _TVFocusableItemState extends State<_TVFocusableItem> {
       ),
     );
   }
+}
