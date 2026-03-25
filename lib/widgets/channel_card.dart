@@ -2,171 +2,140 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
 import '../models/channel.dart';
 import '../models/theme.dart';
 import '../providers/app_provider.dart';
 
-class ChannelCard extends StatefulWidget {
+/// TV-optimized channel card with focus highlight for D-pad navigation.
+class TVChannelCard extends StatefulWidget {
   final Channel channel;
-  final ValueNotifier<int?> activeChannelNotifier;
-  final VoidCallback onTap;
-  final VoidCallback? onFavoriteToggle;
-  final bool isFavorite;
-  final int index;
   final AppProvider provider;
+  final VoidCallback onSelect;
 
-  const ChannelCard({
+  const TVChannelCard({
     super.key,
     required this.channel,
-    required this.activeChannelNotifier,
-    required this.onTap,
-    this.onFavoriteToggle,
-    this.isFavorite = false,
-    required this.index,
     required this.provider,
+    required this.onSelect,
   });
 
   @override
-  State<ChannelCard> createState() => _ChannelCardState();
+  State<TVChannelCard> createState() => _TVChannelCardState();
 }
 
-class _ChannelCardState extends State<ChannelCard> {
-  double _scale = 1.0;
+class _TVChannelCardState extends State<TVChannelCard> {
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final c = widget.provider.colors;
     final isDark = widget.provider.isDark;
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        widget.onTap();
+    return Focus(
+      onFocusChange: (f) => setState(() => _focused = f),
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.select ||
+             event.logicalKey == LogicalKeyboardKey.enter ||
+             event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
+          widget.onSelect();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
-      onTapDown: (_) => setState(() => _scale = 0.97),
-      onTapUp: (_) => setState(() => _scale = 1.0),
-      onTapCancel: () => setState(() => _scale = 1.0),
-      child: AnimatedScale(
-        scale: _scale,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOutCubic,
-        child: ValueListenableBuilder<int?>(
-          valueListenable: widget.activeChannelNotifier,
-          builder: (_, activeId, __) {
-            final isActive = activeId == widget.channel.id;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeOut,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: isActive ? AppTheme.accent.withOpacity(0.7)
-                      : isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
-                  width: isActive ? 1.5 : 1)),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(21),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  curve: Curves.easeOut,
-                    decoration: BoxDecoration(
-                      gradient: isActive
-                          ? LinearGradient(
-                              colors: isDark
-                                  ? [AppTheme.accent.withOpacity(0.14), AppTheme.primaryDeep.withOpacity(0.08)]
-                                  : [AppTheme.accent.withOpacity(0.10), AppTheme.accent.withOpacity(0.03)],
-                              begin: Alignment.topLeft, end: Alignment.bottomRight)
-                          : LinearGradient(
-                              colors: isDark
-                                  ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.02)]
-                                  : [Colors.white.withOpacity(0.85), Colors.white.withOpacity(0.65)],
-                              begin: Alignment.topLeft, end: Alignment.bottomRight),
-                      borderRadius: BorderRadius.circular(21)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 14, 10, 8),
-                          child: Row(children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              curve: Curves.easeInOut,
-                              width: 46, height: 46,
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white.withOpacity(isActive ? 0.1 : 0.06)
-                                    : Colors.grey.withOpacity(isActive ? 0.1 : 0.05),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: isActive ? AppTheme.accent.withOpacity(0.4) : Colors.transparent, width: 1.5),
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: CachedNetworkImage(
-                                imageUrl: widget.channel.logoUrl,
-                                cacheKey: 'logo_${widget.channel.id}',
-                                fit: BoxFit.contain, memCacheWidth: 96, memCacheHeight: 96,
-                                fadeInDuration: const Duration(milliseconds: 150),
-                                fadeOutDuration: const Duration(milliseconds: 100),
-                                useOldImageOnUrlChange: true,
-                                placeholder: (_, __) => Shimmer.fromColors(
-                                  baseColor: c.surface2, highlightColor: c.surface2.withOpacity(0.5),
-                                  child: Container(color: c.surface2)),
-                                errorWidget: (_, __, ___) => Icon(Icons.tv_rounded, color: c.textDim, size: 22))),
-                            const SizedBox(width: 10),
-                            Expanded(child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(widget.channel.name,
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c.text, letterSpacing: -0.2),
-                                  maxLines: 2, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    gradient: isActive ? AppTheme.buttonGradient : null,
-                                    color: isActive ? null : isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
-                                    borderRadius: BorderRadius.circular(7)),
-                                  child: Text('CH ${widget.channel.number}',
-                                    style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600,
-                                      color: isActive ? Colors.white : c.textDim, letterSpacing: 0.5))),
-                              ])),
-                            if (widget.onFavoriteToggle != null)
-                              GestureDetector(
-                                onTap: widget.onFavoriteToggle,
-                                child: Padding(padding: const EdgeInsets.all(6),
-                                  child: Icon(widget.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                                    size: 20, color: widget.isFavorite ? const Color(0xFFFBBF24) : c.textDim.withOpacity(0.5)))),
-                          ])),
-                        const Spacer(),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              isActive
-                                  ? Row(mainAxisSize: MainAxisSize.min, children: [
-                                      SmoothEqualizer(color: AppTheme.accent, barCount: 3, width: 14, height: 12),
-                                      const SizedBox(width: 6),
-                                      const Text('NOW PLAYING',
-                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppTheme.accent, letterSpacing: 0.8))])
-                                  : LiveBadge(isDark: isDark),
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 34, height: 34,
-                                decoration: BoxDecoration(
-                                  gradient: isActive ? AppTheme.buttonGradient : null,
-                                  color: isActive ? null : isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.08),
-                                  shape: BoxShape.circle),
-                                child: Icon(isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                  size: 18, color: isActive ? Colors.white : isDark ? Colors.white.withOpacity(0.8) : Colors.black.withOpacity(0.7))),
-                            ])),
-                      ]))));
-          },
+      child: GestureDetector(
+        onTap: widget.onSelect,
+        child: AnimatedScale(
+          scale: _focused ? 1.05 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: _focused
+                    ? AppTheme.accent.withOpacity(0.9)
+                    : isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
+                width: _focused ? 2.5 : 1),
+              gradient: _focused
+                  ? LinearGradient(
+                      colors: isDark
+                          ? [AppTheme.accent.withOpacity(0.18), AppTheme.primaryDeep.withOpacity(0.10)]
+                          : [AppTheme.accent.withOpacity(0.12), AppTheme.accent.withOpacity(0.04)],
+                      begin: Alignment.topLeft, end: Alignment.bottomRight)
+                  : LinearGradient(
+                      colors: isDark
+                          ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.02)]
+                          : [Colors.white.withOpacity(0.85), Colors.white.withOpacity(0.65)],
+                      begin: Alignment.topLeft, end: Alignment.bottomRight),
+              boxShadow: _focused
+                  ? [BoxShadow(
+                      color: AppTheme.accent.withOpacity(0.4),
+                      blurRadius: 20, spreadRadius: -2)]
+                  : [],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Channel logo
+                Container(
+                  width: 52, height: 52,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(_focused ? 0.12 : 0.06)
+                        : Colors.grey.withOpacity(_focused ? 0.12 : 0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _focused ? AppTheme.accent.withOpacity(0.5) : Colors.transparent,
+                      width: 1.5),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.channel.logoUrl,
+                    cacheKey: 'logo_${widget.channel.id}',
+                    fit: BoxFit.contain,
+                    memCacheWidth: 96, memCacheHeight: 96,
+                    placeholder: (_, __) => Shimmer.fromColors(
+                      baseColor: c.surface2,
+                      highlightColor: c.surface2.withOpacity(0.5),
+                      child: Container(color: c.surface2)),
+                    errorWidget: (_, __, ___) => Icon(Icons.tv_rounded, color: c.textDim, size: 24)),
+                ),
+                const SizedBox(height: 10),
+                // Channel name
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(widget.channel.name,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: _focused ? FontWeight.w800 : FontWeight.w600,
+                      color: _focused ? AppTheme.accent : c.text,
+                      letterSpacing: -0.2),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center),
+                ),
+                const SizedBox(height: 4),
+                // Channel number badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: _focused ? AppTheme.buttonGradient : null,
+                    color: _focused ? null : isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Text('CH ${widget.channel.number}',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
+                      color: _focused ? Colors.white : c.textDim, letterSpacing: 0.5)),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-    )
-        .animate(delay: Duration(milliseconds: 50 * widget.index))
-        .fadeIn(duration: 280.ms)
-        .slideY(begin: 0.15, end: 0, duration: 280.ms, curve: Curves.easeOut);
+    );
   }
 }
 

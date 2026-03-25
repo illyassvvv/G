@@ -8,18 +8,12 @@ import '../widgets/channel_card.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
-  final BetterPlayerController? existingController;
-  final VoidCallback? onPipRequested;
   final List<Channel> channelList;
-  final void Function(Channel)? onChannelChanged;
 
   const PlayerScreen({
     super.key,
     required this.channel,
-    this.existingController,
-    this.onPipRequested,
     this.channelList = const [],
-    this.onChannelChanged,
   });
 
   @override
@@ -30,34 +24,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
   BetterPlayerController? _ctrl;
   bool _loading = true;
   bool _hasError = false;
-  bool _resumed = false;
   bool _showControls = true;
   Timer? _hideTimer;
-  final GlobalKey _pipKey = GlobalKey();
   late Channel _currentChannel;
   int _retryCount = 0;
   static const _maxRetries = 3;
 
+  // Focus node for capturing D-pad events on the player
+  final FocusNode _playerFocus = FocusNode();
+
+  // Guard against double-pop from system back + our handler
+  bool _isPopping = false;
+
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
     _currentChannel = widget.channel;
-
-    if (widget.existingController != null) {
-      _ctrl = widget.existingController;
-      _resumed = true;
-      setState(() => _loading = false);
-    } else {
-      _startPlayer();
-    }
-
-    // Auto-hide controls after 3s
+    _startPlayer();
     _scheduleHideControls();
   }
 
@@ -69,9 +52,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _hasError = false;
       _retryCount = 0;
     });
-    widget.onChannelChanged?.call(ch);
-    if (_resumed && _ctrl != null) {
-      // Reuse existing controller
+    if (_ctrl != null) {
       try {
         _ctrl!.videoPlayerController?.setVolume(0);
         _ctrl!.pause();
@@ -86,7 +67,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
       _ctrl!.setupDataSource(dataSource);
     } else {
-      _resumed = false;
       _startPlayer();
     }
   }
@@ -95,7 +75,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (widget.channelList.isEmpty) return;
     final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
     if (idx < 0 || idx >= widget.channelList.length - 1) return;
-    HapticFeedback.lightImpact();
     _switchToChannel(widget.channelList[idx + 1]);
   }
 
@@ -103,7 +82,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (widget.channelList.isEmpty) return;
     final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
     if (idx <= 0) return;
-    HapticFeedback.lightImpact();
     _switchToChannel(widget.channelList[idx - 1]);
   }
 
@@ -117,7 +95,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _startPlayer() {
-    if (!_resumed) _ctrl?.dispose();
+    _ctrl?.dispose();
     _ctrl = null;
     if (mounted) setState(() { _loading = true; _hasError = false; });
 
@@ -131,31 +109,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
         aspectRatio: 16 / 9,
         fit: BoxFit.contain,
         controlsConfiguration: BetterPlayerControlsConfiguration(
-          enableFullscreen: false,
-          enablePlayPause: true,
-          enableSkips: false,
-          enableMute: true,
-          enableAudioTracks: false,
-          enableQualities: false,
-          enableSubtitles: false,
-          enableOverflowMenu: false,
-          controlBarColor: Colors.black54,
-          loadingColor: AppTheme.accent,
-          progressBarPlayedColor: AppTheme.accent,
-          progressBarBufferedColor: AppTheme.accent.withOpacity(0.3),
-          progressBarBackgroundColor: Colors.white24,
-          iconsColor: Colors.white,
-          playIcon: Icons.play_arrow_rounded,
-          pauseIcon: Icons.pause_rounded,
-          liveTextColor: AppTheme.live,
-          showControlsOnInitialize: false,
+          showControls: false,
           loadingWidget: const SizedBox.shrink(),
         ),
         eventListener: (event) {
           if (!mounted) return;
           switch (event.betterPlayerEventType) {
             case BetterPlayerEventType.initialized:
-              setState(() { _loading = false; _retryCount = 0; });
+            case BetterPlayerEventType.play:
+            case BetterPlayerEventType.bufferingEnd:
+              if (_loading) {
+                setState(() { _loading = false; _retryCount = 0; });
+              }
               break;
             case BetterPlayerEventType.exception:
               setState(() { _loading = false; _hasError = true; });
@@ -183,16 +148,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     _hideTimer?.cancel();
-    // Do NOT dispose controller if it was passed in (reused from mini player)
-    if (!_resumed) _ctrl?.dispose();
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _playerFocus.dispose();
+    _ctrl?.dispose();
     super.dispose();
   }
 
   void _scheduleHideControls() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
+    _hideTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) setState(() => _showControls = false);
     });
   }
@@ -206,118 +169,147 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
+  /// Handle D-pad key events for TV remote
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    final key = event.logicalKey;
+
+    // Back button — go back to home (guarded against double-pop)
+    if (key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.escape) {
+      _safeGoBack();
+      return KeyEventResult.handled;
+    }
+
+    // D-pad Right or Channel Up → next channel
+    if (key == LogicalKeyboardKey.arrowRight ||
+        key == LogicalKeyboardKey.channelUp) {
+      _nextChannel();
+      _showControlsBriefly();
+      return KeyEventResult.handled;
+    }
+
+    // D-pad Left or Channel Down → previous channel
+    if (key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.channelDown) {
+      _prevChannel();
+      _showControlsBriefly();
+      return KeyEventResult.handled;
+    }
+
+    // Center/Enter/Select → toggle play/pause
+    if (key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.gameButtonA) {
+      if (_ctrl != null) {
+        _ctrl!.isPlaying() == true ? _ctrl!.pause() : _ctrl!.play();
+        setState(() {});
+      }
+      _showControlsBriefly();
+      return KeyEventResult.handled;
+    }
+
+    // D-pad Up/Down → show/hide controls
+    if (key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown) {
+      _toggleControls();
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _showControlsBriefly() {
+    setState(() => _showControls = true);
+    _scheduleHideControls();
+  }
+
+  void _safeGoBack() {
+    if (_isPopping || !mounted) return;
+    _isPopping = true;
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(children: [
-          // Video
-          if (_ctrl != null)
-            Center(child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: BetterPlayer(key: _pipKey, controller: _ctrl!),
-            )),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _safeGoBack();
+      },
+      child: Focus(
+        focusNode: _playerFocus,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(children: [
+            // Video
+            if (_ctrl != null)
+              Center(child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: BetterPlayer(controller: _ctrl!),
+              )),
 
-          // Loading
-          if (_loading && !_resumed)
-            Container(color: Colors.black, child: Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(width: 42, height: 42,
-                  child: CircularProgressIndicator(
-                    color: AppTheme.accent, strokeWidth: 2.5,
-                    backgroundColor: AppTheme.accent.withOpacity(0.15))),
-                const SizedBox(height: 16),
-                Text('Loading ${_currentChannel.name}...',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-              ]))),
+            // Loading
+            if (_loading)
+              Container(color: Colors.black, child: Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  SizedBox(width: 42, height: 42,
+                    child: CircularProgressIndicator(
+                      color: AppTheme.accent, strokeWidth: 2.5,
+                      backgroundColor: AppTheme.accent.withOpacity(0.15))),
+                  const SizedBox(height: 16),
+                  Text('Loading ${_currentChannel.name}...',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                ]))),
 
-          // Error
-          if (_hasError)
-            Container(color: Colors.black, child: Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 64, height: 64,
-                  decoration: BoxDecoration(color: AppTheme.live.withOpacity(0.1), shape: BoxShape.circle),
-                  child: const Icon(Icons.wifi_off_rounded, color: AppTheme.live, size: 32)),
-                const SizedBox(height: 16),
-                const Text('Failed to load channel',
-                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                const Text('Check your internet connection',
-                  style: TextStyle(color: Colors.white54, fontSize: 13)),
-                const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: _startPlayer,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.buttonGradient,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [BoxShadow(color: AppTheme.accent.withOpacity(0.3), blurRadius: 12)]),
-                    child: const Text('Retry',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)))),
-              ]))),
+            // Error
+            if (_hasError)
+              Container(color: Colors.black, child: Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 64, height: 64,
+                    decoration: BoxDecoration(color: AppTheme.live.withOpacity(0.1), shape: BoxShape.circle),
+                    child: const Icon(Icons.wifi_off_rounded, color: AppTheme.live, size: 32)),
+                  const SizedBox(height: 16),
+                  const Text('Failed to load channel',
+                    style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  Text('Press OK to retry  |  LEFT/RIGHT to switch channel',
+                    style: TextStyle(color: Colors.white54, fontSize: 13)),
+                ]))),
 
-          // Transparent touch overlay for toggling controls + swipe gestures
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _toggleControls,
-              onVerticalDragEnd: (details) {
-                if (details.primaryVelocity != null &&
-                    details.primaryVelocity! > 300) {
-                  Navigator.pop(context);
-                }
-              },
-              onHorizontalDragEnd: (details) {
-                if (details.primaryVelocity != null && widget.channelList.isNotEmpty) {
-                  if (details.primaryVelocity! < -300) {
-                    _nextChannel();
-                  } else if (details.primaryVelocity! > 300) {
-                    _prevChannel();
-                  }
-                }
-              },
-              child: const SizedBox.expand(),
-            ),
-          ),
-
-          // Top bar with controls (shown/hidden on tap)
-          AnimatedOpacity(
-            opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 250),
-            child: IgnorePointer(
-              ignoring: !_showControls,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.black.withOpacity(0.7), Colors.transparent],
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter)),
-                child: SafeArea(
+            // Top bar overlay (channel info + navigation hints)
+            AnimatedOpacity(
+              opacity: _showControls ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 250),
+              child: IgnorePointer(
+                ignoring: !_showControls,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter)),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Back button
-                        _TopBtn(
-                          icon: Icons.arrow_back_rounded,
-                          onTap: () => Navigator.pop(context),
-                        ),
-                        const SizedBox(width: 12),
                         // Channel info + LIVE badge
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
                               color: Colors.black.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(color: Colors.white.withOpacity(0.1))),
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
                               PulseDot(color: AppTheme.live, size: 8),
-                              const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(_currentChannel.name,
-                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                              const SizedBox(width: 10),
+                              Flexible(
+                                child: Text(_currentChannel.name,
+                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
                                   maxLines: 1, overflow: TextOverflow.ellipsis),
                               ),
                               const SizedBox(width: 10),
@@ -328,56 +320,64 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                   borderRadius: BorderRadius.circular(6)),
                                 child: const Text('LIVE',
                                   style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1))),
+                              const SizedBox(width: 10),
+                              Text('CH ${_currentChannel.number}',
+                                style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
                             ])),
                         ),
-                        const SizedBox(width: 12),
-                        // Action buttons
-                        Row(children: [
-                          _TopBtn(icon: Icons.picture_in_picture_alt_rounded,
-                            onTap: () {
-                              widget.onPipRequested?.call();
-                              Navigator.pop(context);
-                            }),
-                          const SizedBox(width: 10),
-                          _TopBtn(icon: Icons.close_rounded, size: 22,
-                            onTap: () => Navigator.pop(context)),
-                        ]),
-                      ])))))),
+                      ]))))),
 
-          // Bottom gradient
-          Positioned(
-            bottom: 0, left: 0, right: 0,
-            child: AnimatedOpacity(
-              opacity: _showControls ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 250),
-              child: IgnorePointer(
-                ignoring: !_showControls,
-                child: Container(height: 80,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
-                      begin: Alignment.topCenter, end: Alignment.bottomCenter))),
+            // Bottom bar with remote hints
+            Positioned(
+              bottom: 0, left: 0, right: 0,
+              child: AnimatedOpacity(
+                opacity: _showControls ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 250),
+                child: IgnorePointer(
+                  ignoring: !_showControls,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                        begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _RemoteHint(icon: Icons.arrow_left_rounded, label: 'Prev'),
+                        const SizedBox(width: 24),
+                        _RemoteHint(icon: Icons.radio_button_checked, label: 'Play/Pause'),
+                        const SizedBox(width: 24),
+                        _RemoteHint(icon: Icons.arrow_right_rounded, label: 'Next'),
+                        const SizedBox(width: 24),
+                        _RemoteHint(icon: Icons.arrow_back_rounded, label: 'Back'),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-        ]),
+          ]),
+        ),
+      ),
     );
   }
 }
 
-class _TopBtn extends StatelessWidget {
+/// Small widget showing remote control hints at the bottom of the player
+class _RemoteHint extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
-  final double size;
-  const _TopBtn({required this.icon, required this.onTap, this.size = 20});
+  final String label;
+  const _RemoteHint({required this.icon, required this.label});
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.all(10),
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Container(
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1))),
-      child: Icon(icon, color: Colors.white, size: size)));
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6)),
+      child: Icon(icon, color: Colors.white70, size: 16)),
+    const SizedBox(width: 4),
+    Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w500)),
+  ]);
 }

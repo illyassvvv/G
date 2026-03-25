@@ -8,7 +8,13 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  // Android TV: force landscape orientation
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+  // Hide system UI for immersive TV experience
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
   final appProvider = AppProvider();
   await appProvider.init();
