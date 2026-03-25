@@ -265,10 +265,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
         bufferingConfiguration: BetterPlayerBufferingConfiguration(
-          minBufferMs: dataSaver ? 1000 : 2000,
-          maxBufferMs: dataSaver ? 6000 : 12000,
-          bufferForPlaybackMs: dataSaver ? 1000 : 1500,
-          bufferForPlaybackAfterRebufferMs: dataSaver ? 2000 : 3000));
+          minBufferMs: dataSaver ? 1500 : 3000,
+          maxBufferMs: dataSaver ? 8000 : 15000,
+          bufferForPlaybackMs: dataSaver ? 1200 : 2000,
+          bufferForPlaybackAfterRebufferMs: dataSaver ? 2500 : 4000));
 
       if (_miniCtrl != null) {
         // Reuse existing controller — mute, pause, then switch source
@@ -294,6 +294,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             fit: BoxFit.contain,
             handleLifecycle: true,
             autoDispose: false,
+            allowedScreenSleep: false,
             controlsConfiguration: BetterPlayerControlsConfiguration(
               showControls: false,
               loadingWidget: const SizedBox.shrink()),
