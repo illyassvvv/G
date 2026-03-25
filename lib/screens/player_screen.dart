@@ -26,9 +26,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _hasError = false;
   bool _showControls = true;
   Timer? _hideTimer;
+  Timer? _loadingTimeout;
   late Channel _currentChannel;
   int _retryCount = 0;
   static const _maxRetries = 3;
+  static const _loadingTimeoutDuration = Duration(seconds: 20);
 
   // Focus node for capturing D-pad events on the player
   final FocusNode _playerFocus = FocusNode();
@@ -46,6 +48,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _switchToChannel(Channel ch) {
     if (ch.id == _currentChannel.id) return;
+    _cancelLoadingTimeout();
     setState(() {
       _currentChannel = ch;
       _loading = true;
@@ -66,6 +69,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000),
       );
       _ctrl!.setupDataSource(dataSource);
+      _startLoadingTimeout();
     } else {
       _startPlayer();
     }
@@ -94,7 +98,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
+  void _startLoadingTimeout() {
+    _cancelLoadingTimeout();
+    _loadingTimeout = Timer(_loadingTimeoutDuration, () {
+      if (mounted && _loading && !_hasError) {
+        setState(() {
+          _loading = false;
+          _hasError = true;
+        });
+        _autoRetry();
+      }
+    });
+  }
+
+  void _cancelLoadingTimeout() {
+    _loadingTimeout?.cancel();
+    _loadingTimeout = null;
+  }
+
   void _startPlayer() {
+    _cancelLoadingTimeout();
     _ctrl?.dispose();
     _ctrl = null;
     if (mounted) setState(() { _loading = true; _hasError = false; });
@@ -119,10 +142,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
             case BetterPlayerEventType.play:
             case BetterPlayerEventType.bufferingEnd:
               if (_loading) {
-                setState(() { _loading = false; _retryCount = 0; });
+                _cancelLoadingTimeout();
+                setState(() { _loading = false; _hasError = false; _retryCount = 0; });
               }
               break;
             case BetterPlayerEventType.exception:
+              _cancelLoadingTimeout();
               setState(() { _loading = false; _hasError = true; });
               _autoRetry();
               break;
@@ -142,14 +167,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
       ),
     );
+    _startLoadingTimeout();
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _cancelLoadingTimeout();
     _playerFocus.dispose();
+    try {
+      _ctrl?.pause();
+    } catch (_) {}
     _ctrl?.dispose();
+    _ctrl = null;
     super.dispose();
   }
 
@@ -171,7 +202,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   /// Handle D-pad key events for TV remote
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent) return KeyEventResult.handled;
 
     final key = event.logicalKey;
 
@@ -198,11 +229,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return KeyEventResult.handled;
     }
 
-    // Center/Enter/Select → toggle play/pause
+    // Center/Enter/Select -> toggle play/pause or retry on error
     if (key == LogicalKeyboardKey.select ||
         key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.gameButtonA) {
-      if (_ctrl != null) {
+      if (_hasError) {
+        _retryCount = 0;
+        _startPlayer();
+      } else if (_ctrl != null) {
         _ctrl!.isPlaying() == true ? _ctrl!.pause() : _ctrl!.play();
         setState(() {});
       }
@@ -217,7 +251,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return KeyEventResult.handled;
     }
 
-    return KeyEventResult.ignored;
+    return KeyEventResult.handled;
   }
 
   void _showControlsBriefly() {
@@ -228,7 +262,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _safeGoBack() {
     if (_isPopping || !mounted) return;
     _isPopping = true;
-    Navigator.pop(context);
+    _cancelLoadingTimeout();
+    // Pause and clean up the controller before popping
+    try {
+      _ctrl?.pause();
+    } catch (_) {}
+    Navigator.of(context).pop();
   }
 
   @override
@@ -276,8 +315,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   const Text('Failed to load channel',
                     style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
-                  Text('Press OK to retry  |  LEFT/RIGHT to switch channel',
-                    style: TextStyle(color: Colors.white54, fontSize: 13)),
+                  Text(_retryCount < _maxRetries
+                    ? 'Retrying... ($_retryCount/$_maxRetries)'
+                    : 'Press OK to retry  |  LEFT/RIGHT to switch channel',
+                    style: const TextStyle(color: Colors.white54, fontSize: 13)),
                 ]))),
 
             // Top bar overlay (channel info + navigation hints)
