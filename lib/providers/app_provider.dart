@@ -10,14 +10,13 @@ enum PlayerState { hidden, mini, expanded, full }
 
 class AppProvider extends ChangeNotifier {
   // ── Preference keys ─────────────────────────────────────────
-  static const _keyThemeMode   = 'theme_mode'; // 'system', 'dark', 'light'
+  static const _keyThemeMode   = 'theme_mode';
   static const _keyLastChId    = 'last_ch_id';
   static const _keyLastChName  = 'last_ch_name';
   static const _keyLastChUrl   = 'last_ch_url';
   static const _keyLastChLogo  = 'last_ch_logo';
   static const _keyLastChNum   = 'last_ch_num';
   static const _keyLastChCat   = 'last_ch_cat';
-  static const _keyFavorites   = 'favorites';
   static const _keyVolume      = 'volume_level';
   static const _keyDataSaver   = 'data_saver';
 
@@ -40,13 +39,6 @@ class AppProvider extends ChangeNotifier {
   String? _lastChannelNum;
   String? _lastChannelCat;
 
-  // ── Favorites ───────────────────────────────────────────────
-  Set<int> _favoriteIds = {};
-
-  // ── Recently watched (in-memory only, cleared on app close) ─
-  List<Map<String, dynamic>> _recentChannels = [];
-  static const _maxRecent = 10;
-
   // ── Volume level ────────────────────────────────────────────
   double _volumeLevel = 1.0;
 
@@ -65,8 +57,6 @@ class AppProvider extends ChangeNotifier {
   String? get lastChannelLogo => _lastChannelLogo;
   String? get lastChannelNum  => _lastChannelNum;
   String? get lastChannelCat  => _lastChannelCat;
-  Set<int> get favoriteIds   => _favoriteIds;
-  List<Map<String, dynamic>> get recentChannels => _recentChannels;
   double get volumeLevel     => _volumeLevel;
   bool get dataSaverEnabled  => _dataSaverEnabled;
 
@@ -76,8 +66,8 @@ class AppProvider extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Theme: default to system
-    final themeStr = prefs.getString(_keyThemeMode) ?? 'system';
+    // Theme: default to dark for TV
+    final themeStr = prefs.getString(_keyThemeMode) ?? 'dark';
     switch (themeStr) {
       case 'dark':
         _themeMode = ThemeMode.dark;
@@ -99,15 +89,6 @@ class AppProvider extends ChangeNotifier {
     _lastChannelLogo = prefs.getString(_keyLastChLogo);
     _lastChannelNum  = prefs.getString(_keyLastChNum);
     _lastChannelCat  = prefs.getString(_keyLastChCat);
-
-    // Favorites
-    final favJson = prefs.getStringList(_keyFavorites);
-    if (favJson != null) {
-      _favoriteIds = favJson.map((e) => int.tryParse(e) ?? 0).toSet();
-    }
-
-    // Recent channels — NOT loaded from prefs (cleared on app close)
-    _recentChannels = [];
 
     // Volume level
     _volumeLevel = prefs.getDouble(_keyVolume) ?? 1.0;
@@ -217,71 +198,6 @@ class AppProvider extends ChangeNotifier {
     await prefs.remove(_keyLastChLogo);
     await prefs.remove(_keyLastChNum);
     await prefs.remove(_keyLastChCat);
-  }
-
-  // ── Favorites ───────────────────────────────────────────────
-  bool isFavorite(int channelId) => _favoriteIds.contains(channelId);
-
-  Future<void> toggleFavorite(int channelId) async {
-    if (_favoriteIds.contains(channelId)) {
-      _favoriteIds.remove(channelId);
-    } else {
-      _favoriteIds.add(channelId);
-    }
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_keyFavorites, _favoriteIds.map((e) => e.toString()).toList());
-  }
-
-  // ── Recently watched (in-memory only) ──────────────────────
-  void addRecentChannel(Channel ch) {
-    _recentChannels.removeWhere((e) => e['id'] == ch.id);
-    _recentChannels.insert(0, {
-      'id': ch.id,
-      'name': ch.name,
-      'number': ch.number,
-      'logo': ch.logoUrl,
-      'stream': ch.streamUrl,
-      'category': ch.category,
-    });
-    if (_recentChannels.length > _maxRecent) {
-      _recentChannels = _recentChannels.sublist(0, _maxRecent);
-    }
-    notifyListeners();
-  }
-
-  void removeRecentChannel(int channelId) {
-    _recentChannels.removeWhere((e) => e['id'] == channelId);
-    notifyListeners();
-  }
-
-  void clearRecentChannels() {
-    _recentChannels.clear();
-    notifyListeners();
-  }
-
-  List<Channel> getRecentAsChannels() {
-    return _recentChannels.map((e) => Channel(
-      id: e['id'] as int,
-      name: e['name'] as String,
-      number: e['number'] as String,
-      logoUrl: e['logo'] as String,
-      streamUrl: e['stream'] as String,
-      category: e['category'] as String,
-    )).toList();
-  }
-
-  /// Get all favorite channels from categories
-  List<Channel> getFavoriteChannels(List<ChannelCategory> categories) {
-    final favChannels = <Channel>[];
-    for (final cat in categories) {
-      for (final ch in cat.channels) {
-        if (_favoriteIds.contains(ch.id)) {
-          favChannels.add(ch);
-        }
-      }
-    }
-    return favChannels;
   }
 
   // ── Volume level ────────────────────────────────────────────
