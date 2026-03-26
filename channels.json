@@ -168,7 +168,15 @@
     {
       "name": "Cartoon",
       "icon": "movie",
-      "channels": []
+      "channels": [
+        {
+          "id": 116,
+          "name": "Tom and Jerry",
+          "number": "1",
+          "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/refs/heads/main/images/IMG_6538.jpeg",
+          "stream": "https://live20.bozztv.com/giatvplayout7/giatv-208314/playlist.m3u8"
+        }
+      ]
     }
   ]
 }
