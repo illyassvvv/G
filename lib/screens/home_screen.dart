@@ -65,7 +65,33 @@ class _HomeScreenState extends State<HomeScreen> {
       id: ch.id, name: ch.name, url: ch.streamUrl,
       logo: ch.logoUrl, number: ch.number, category: ch.category);
 
-    final intent = AndroidIntent(
+    // Try MX Player Pro first, then MX Player free
+    const mxPackages = [
+      'com.mxtech.videoplayer.pro',
+      'com.mxtech.videoplayer.ad',
+      'com.mxtech.videoplayer',
+    ];
+
+    for (final pkg in mxPackages) {
+      try {
+        final intent = AndroidIntent(
+          action: 'action_view',
+          data: ch.streamUrl,
+          type: 'video/*',
+          package: pkg,
+          arguments: <String, dynamic>{
+            'title': ch.name,
+          },
+        );
+        await intent.launch();
+        return;
+      } catch (_) {
+        continue;
+      }
+    }
+
+    // Fallback: open without specific package (will show chooser)
+    final fallback = AndroidIntent(
       action: 'action_view',
       data: ch.streamUrl,
       type: 'video/*',
@@ -73,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'title': ch.name,
       },
     );
-    await intent.launch();
+    await fallback.launch();
   }
 
   IconData _catIcon(String name) {
