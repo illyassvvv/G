@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:android_intent_plus/android_intent.dart';
 import '../models/channel.dart';
 import '../models/theme.dart';
 import '../providers/app_provider.dart';
 import '../services/channel_service.dart';
 import '../widgets/channel_card.dart';
-import 'player_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -57,16 +57,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openPlayer(Channel ch) {
+  void _openPlayer(Channel ch) async {
     if (ch.streamUrl.isEmpty) return;
     final prov = context.read<AppProvider>();
     prov.setActiveChannel(ch);
     prov.saveLastChannel(
       id: ch.id, name: ch.name, url: ch.streamUrl,
       logo: ch.logoUrl, number: ch.number, category: ch.category);
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => PlayerScreen(channel: ch),
-    ));
+
+    final intent = AndroidIntent(
+      action: 'action_view',
+      data: ch.streamUrl,
+      type: 'video/*',
+      arguments: <String, dynamic>{
+        'title': ch.name,
+      },
+    );
+    await intent.launch();
   }
 
   IconData _catIcon(String name) {
