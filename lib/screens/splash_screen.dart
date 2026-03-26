@@ -11,29 +11,76 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _fadeCtrl;
+  late final AnimationController _slideCtrl;
+  late final AnimationController _glowCtrl;
   late final Animation<double> _fadeAnim;
+  late final Animation<double> _arabicFadeAnim;
+  late final Animation<Offset> _slideAnim;
+  late final Animation<Offset> _arabicSlideAnim;
+  late final Animation<double> _glowAnim;
 
   @override
   void initState() {
     super.initState();
 
-    // Fade in over 1 second
+    // Main fade in over 1 second
     _fadeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
 
-    _fadeAnim = CurvedAnimation(
-      parent: _fadeCtrl,
-      curve: Curves.easeIn,
+    // Slide animation
+    _slideCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
     );
 
-    // Start fade in
-    _fadeCtrl.forward();
+    // Glow pulse animation
+    _glowCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
 
-    // Navigate to home after 4 seconds total (1s fade + 3s display)
+    // "VargasTv" fades in and slides up
+    _fadeAnim = CurvedAnimation(
+      parent: _fadeCtrl,
+      curve: Curves.easeOutCubic,
+    );
+
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideCtrl,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // "فاركاس" fades in slightly delayed
+    _arabicFadeAnim = CurvedAnimation(
+      parent: _fadeCtrl,
+      curve: const Interval(0.3, 1.0, curve: Curves.easeOutCubic),
+    );
+
+    _arabicSlideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideCtrl,
+      curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+    ));
+
+    // Glow pulse
+    _glowAnim = Tween<double>(begin: 0.2, end: 0.6).animate(
+      CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut),
+    );
+
+    // Start animations
+    _fadeCtrl.forward();
+    _slideCtrl.forward();
+
+    // Navigate to home after 4 seconds total
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -52,6 +99,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _fadeCtrl.dispose();
+    _slideCtrl.dispose();
+    _glowCtrl.dispose();
     super.dispose();
   }
 
@@ -59,68 +108,90 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // App icon with glow
-              Container(
-                width: 80,
-                height: 80,
+      body: Stack(
+        children: [
+          // Ambient green glow behind text
+          Center(
+            child: AnimatedBuilder(
+              animation: _glowAnim,
+              builder: (_, __) => Container(
+                width: 300,
+                height: 300,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.buttonGradient,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.accent.withOpacity(0.4),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.live_tv_rounded,
-                  color: Colors.white,
-                  size: 40,
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppTheme.accent.withOpacity(_glowAnim.value * 0.15),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 30),
-              // "VargasTv" in green
-              Text(
-                'VargasTv',
-                style: GoogleFonts.poppins(
-                  fontSize: 42,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.accent,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // "فاركاس" in white
-              Text(
-                '\u0641\u0627\u0631\u0643\u0627\u0633',
-                style: GoogleFonts.cairo(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  letterSpacing: 2.0,
-                ),
-              ),
-              const SizedBox(height: 40),
-              // Subtle loading indicator
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: AppTheme.accent.withOpacity(0.6),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          // Text content
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // "VargasTv" - green with slide + fade
+                SlideTransition(
+                  position: _slideAnim,
+                  child: FadeTransition(
+                    opacity: _fadeAnim,
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [AppTheme.accent2, AppTheme.accent, AppTheme.primaryDark],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
+                      child: Text(
+                        'VargasTv',
+                        style: GoogleFonts.poppins(
+                          fontSize: 52,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 2.0,
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // "فاركاس" - white with delayed slide + fade
+                SlideTransition(
+                  position: _arabicSlideAnim,
+                  child: FadeTransition(
+                    opacity: _arabicFadeAnim,
+                    child: Text(
+                      '\u0641\u0627\u0631\u0643\u0627\u0633',
+                      style: GoogleFonts.cairo(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withOpacity(0.9),
+                        letterSpacing: 4.0,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                // Thin accent line that fades in
+                FadeTransition(
+                  opacity: _arabicFadeAnim,
+                  child: Container(
+                    width: 60,
+                    height: 2,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.accentGradient,
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
