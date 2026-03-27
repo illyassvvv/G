@@ -58,6 +58,27 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Build categories list with Favorites always first
+  List<ChannelCategory> _buildDisplayCategories(AppProvider prov) {
+    // Collect all favorite channels from all categories
+    final List<Channel> favChannels = [];
+    for (final cat in _categories) {
+      for (final ch in cat.channels) {
+        if (prov.isFavorite(ch.id)) {
+          favChannels.add(ch);
+        }
+      }
+    }
+
+    final favCategory = ChannelCategory(
+      name: 'Favorites',
+      icon: 'favorite',
+      channels: favChannels,
+    );
+
+    return [favCategory, ..._categories];
+  }
+
   void _openPlayer(Channel ch) {
     if (ch.streamUrl.isEmpty) return;
     final channelList = _categories
@@ -77,92 +98,20 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
-  /// Show a popup menu on OK press with Watch / Add to Favorite options
-  void _showChannelMenu(Channel ch, AppProvider prov) {
+  void _toggleFavorite(Channel ch, AppProvider prov) {
+    prov.toggleFavorite(ch.id);
     final isFav = prov.isFavorite(ch.id);
-    showDialog(
-      context: context,
-      barrierColor: Colors.black54,
-      builder: (ctx) {
-        return Center(
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: 260,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppTheme.accent.withOpacity(0.3),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.6),
-                    blurRadius: 30,
-                    spreadRadius: 5,
-                  ),
-                  BoxShadow(
-                    color: AppTheme.accent.withOpacity(0.08),
-                    blurRadius: 20,
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Channel name header
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.white.withOpacity(0.06),
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      ch.name,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // Watch option
-                  _PopupMenuItem(
-                    icon: Icons.play_circle_outline_rounded,
-                    label: 'Watch',
-                    autofocus: true,
-                    onSelect: () {
-                      Navigator.of(ctx).pop();
-                      _openPlayer(ch);
-                    },
-                  ),
-                  // Favorite option
-                  _PopupMenuItem(
-                    icon: isFav
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    label: isFav ? 'Remove from Favorites' : 'Add to Favorites',
-                    iconColor: isFav ? AppTheme.live : null,
-                    onSelect: () {
-                      prov.toggleFavorite(ch.id);
-                      Navigator.of(ctx).pop();
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isFav
+              ? '${ch.name} added to Favorites'
+              : '${ch.name} removed from Favorites'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+      setState(() {});
+    }
   }
 
   IconData _catIcon(String name) {
@@ -174,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'movie': return Icons.movie;
       case 'music_note': return Icons.music_note;
       case 'news': return Icons.newspaper;
+      case 'favorite': return Icons.favorite;
       default: return Icons.live_tv;
     }
   }
@@ -231,20 +181,20 @@ class _HomeScreenState extends State<HomeScreen> {
         else if (_dataError != null)
           _buildError(c)
         else
-          Row(children: [
-            // Left sidebar - category list
-            _buildSidebar(prov, c),
-            // Vertical divider - softer
-            Container(width: 1, color: Colors.white.withOpacity(0.04)),
-            // Right content - channel grid
-            Expanded(child: _buildChannelGrid(prov, c)),
-          ]),
+          Builder(builder: (_) {
+            final displayCats = _buildDisplayCategories(prov);
+            return Row(children: [
+              _buildSidebar(prov, c, displayCats),
+              Container(width: 1, color: Colors.white.withOpacity(0.04)),
+              Expanded(child: _buildChannelGrid(prov, c, displayCats)),
+            ]);
+          }),
       ]),
       ),
     );
   }
 
-  Widget _buildSidebar(AppProvider prov, TC c) {
+  Widget _buildSidebar(AppProvider prov, TC c, List<ChannelCategory> displayCats) {
     return Container(
       width: 220,
       decoration: BoxDecoration(
@@ -290,9 +240,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView.builder(
             controller: _sidebarScrollCtrl,
             padding: const EdgeInsets.symmetric(vertical: 10),
-            itemCount: _categories.length,
+            itemCount: displayCats.length,
             itemBuilder: (_, i) {
-              final cat = _categories[i];
+              final cat = displayCats[i];
               final isSelected = i == _selectedCatIndex;
               return _TVFocusableItem(
                 autofocus: i == 0,
@@ -365,9 +315,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildChannelGrid(AppProvider prov, TC c) {
-    if (_categories.isEmpty) return const SizedBox.shrink();
-    final cat = _categories[_selectedCatIndex];
+  Widget _buildChannelGrid(AppProvider prov, TC c, List<ChannelCategory> displayCats) {
+    if (displayCats.isEmpty) return const SizedBox.shrink();
+    final safeIndex = _selectedCatIndex.clamp(0, displayCats.length - 1);
+    final cat = displayCats[safeIndex];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -407,7 +358,8 @@ class _HomeScreenState extends State<HomeScreen> {
               return TVChannelCard(
                 channel: ch,
                 provider: prov,
-                onSelect: () => _showChannelMenu(ch, prov),
+                onSelect: () => _openPlayer(ch),
+                onLongPress: () => _toggleFavorite(ch, prov),
               );
             },
           ),
@@ -496,77 +448,6 @@ class _TVFocusableItemState extends State<_TVFocusableItem> {
       child: GestureDetector(
         onTap: widget.onSelect,
         child: widget.builder(_focused),
-      ),
-    );
-  }
-}
-
-/// Popup menu item for channel actions (Watch / Favorite)
-class _PopupMenuItem extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final Color? iconColor;
-  final bool autofocus;
-  final VoidCallback onSelect;
-
-  const _PopupMenuItem({
-    required this.icon,
-    required this.label,
-    this.iconColor,
-    this.autofocus = false,
-    required this.onSelect,
-  });
-
-  @override
-  State<_PopupMenuItem> createState() => _PopupMenuItemState();
-}
-
-class _PopupMenuItemState extends State<_PopupMenuItem> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      autofocus: widget.autofocus,
-      onFocusChange: (f) => setState(() => _focused = f),
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.select ||
-             event.logicalKey == LogicalKeyboardKey.enter ||
-             event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
-          widget.onSelect();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: GestureDetector(
-        onTap: widget.onSelect,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: _focused
-                ? AppTheme.accent.withOpacity(0.15)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(children: [
-            Icon(widget.icon,
-              color: _focused
-                  ? (widget.iconColor ?? AppTheme.accent)
-                  : (widget.iconColor ?? Colors.white70),
-              size: 20),
-            const SizedBox(width: 12),
-            Text(widget.label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: _focused ? FontWeight.w600 : FontWeight.w500,
-                color: _focused ? Colors.white : Colors.white70,
-              ),
-            ),
-          ]),
-        ),
       ),
     );
   }

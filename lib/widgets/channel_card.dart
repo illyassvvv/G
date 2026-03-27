@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,12 +13,14 @@ class TVChannelCard extends StatefulWidget {
   final Channel channel;
   final AppProvider provider;
   final VoidCallback onSelect;
+  final VoidCallback? onLongPress;
 
   const TVChannelCard({
     super.key,
     required this.channel,
     required this.provider,
     required this.onSelect,
+    this.onLongPress,
   });
 
   @override
@@ -26,6 +29,16 @@ class TVChannelCard extends StatefulWidget {
 
 class _TVChannelCardState extends State<TVChannelCard> {
   bool _focused = false;
+  DateTime? _keyDownTime;
+  bool _longPressTriggered = false;
+  static const _longPressDuration = Duration(milliseconds: 600);
+  Timer? _longPressTimer;
+
+  @override
+  void dispose() {
+    _longPressTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,17 +48,44 @@ class _TVChannelCardState extends State<TVChannelCard> {
     return Focus(
       onFocusChange: (f) => setState(() => _focused = f),
       onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.select ||
-             event.logicalKey == LogicalKeyboardKey.enter ||
-             event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
-          widget.onSelect();
+        final isOkKey = event.logicalKey == LogicalKeyboardKey.select ||
+            event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.gameButtonA;
+
+        if (!isOkKey) return KeyEventResult.ignored;
+
+        if (event is KeyDownEvent) {
+          if (_keyDownTime == null) {
+            _keyDownTime = DateTime.now();
+            _longPressTriggered = false;
+            _longPressTimer?.cancel();
+            _longPressTimer = Timer(_longPressDuration, () {
+              if (_keyDownTime != null && !_longPressTriggered) {
+                _longPressTriggered = true;
+                if (widget.onLongPress != null) {
+                  widget.onLongPress!();
+                }
+              }
+            });
+          }
           return KeyEventResult.handled;
         }
+
+        if (event is KeyUpEvent) {
+          _longPressTimer?.cancel();
+          if (!_longPressTriggered) {
+            widget.onSelect();
+          }
+          _keyDownTime = null;
+          _longPressTriggered = false;
+          return KeyEventResult.handled;
+        }
+
         return KeyEventResult.ignored;
       },
       child: GestureDetector(
         onTap: widget.onSelect,
+        onLongPress: widget.onLongPress,
         child: AnimatedScale(
           scale: _focused ? 1.07 : 1.0,
           duration: const Duration(milliseconds: 200),
