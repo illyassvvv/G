@@ -168,8 +168,9 @@ class StreamResolverService {
   /// Tries to extract a URL from HTML/JS body content (meta refresh, JS redirect).
   static String? _extractUrlFromBody(String body) {
     // Check for meta refresh tag
+    // e.g. <meta http-equiv="refresh" content="0;url=http://...">
     final metaRefreshPattern = RegExp(
-      r'<meta[^>]*http-equiv=["\']refresh["\'][^>]*content=["\'][^"\']*url=([^"\'>\s]+)',
+      r'<meta[^>]*http-equiv\s*=\s*"refresh"[^>]*content\s*=\s*"[^"]*url=([^"\s>]+)',
       caseSensitive: false,
     );
     final metaMatch = metaRefreshPattern.firstMatch(body);
@@ -178,8 +179,9 @@ class StreamResolverService {
     }
 
     // Check for window.location or location.href redirect
+    // e.g. window.location = "http://..." or location.href = "http://..."
     final jsRedirectPattern = RegExp(
-      r'(?:window\.location|location\.href)\s*=\s*["\']([^"\']+)["\']',
+      r'(?:window\.location|location\.href)\s*=\s*"([^"]+)"',
       caseSensitive: false,
     );
     final jsMatch = jsRedirectPattern.firstMatch(body);
@@ -189,7 +191,7 @@ class StreamResolverService {
 
     // Check for direct m3u8 URL in body
     final m3u8Pattern = RegExp(
-      r'(https?://[^\s"\'<>]+\.m3u8[^\s"\'<>]*)',
+      r'(https?://[^\s"<>]+\.m3u8[^\s"<>]*)',
       caseSensitive: false,
     );
     final m3u8Match = m3u8Pattern.firstMatch(body);
