@@ -14,6 +14,7 @@ class TVChannelCard extends StatefulWidget {
   final AppProvider provider;
   final VoidCallback onSelect;
   final VoidCallback? onLongPress;
+  final bool isFavorite;
 
   const TVChannelCard({
     super.key,
@@ -21,6 +22,10 @@ class TVChannelCard extends StatefulWidget {
     required this.provider,
     required this.onSelect,
     this.onLongPress,
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+=======
+    this.isFavorite = false,
+>>>>>>> main
   });
 
   @override
@@ -70,17 +75,13 @@ class _TVChannelCardState extends State<TVChannelCard> {
           }
           return KeyEventResult.handled;
         }
-
-        if (event is KeyUpEvent) {
-          _longPressTimer?.cancel();
-          if (!_longPressTriggered) {
-            widget.onSelect();
-          }
-          _keyDownTime = null;
-          _longPressTriggered = false;
+        // Long-press simulation: menu button or gamepad Y for favorites
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.contextMenu ||
+             event.logicalKey == LogicalKeyboardKey.gameButtonY)) {
+          widget.onLongPress?.call();
           return KeyEventResult.handled;
         }
-
         return KeyEventResult.ignored;
       },
       child: GestureDetector(
@@ -122,7 +123,16 @@ class _TVChannelCardState extends State<TVChannelCard> {
                     ]
                   : [],
             ),
-            child: Column(
+            child: Stack(
+              children: [
+                // Favorite indicator
+                if (widget.isFavorite)
+                  Positioned(
+                    top: 6, right: 6,
+                    child: Icon(Icons.favorite_rounded,
+                      color: AppTheme.live, size: 16),
+                  ),
+                Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -175,6 +185,8 @@ class _TVChannelCardState extends State<TVChannelCard> {
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
                       color: _focused ? Colors.white : c.textDim, letterSpacing: 0.5)),
                 ),
+              ],
+            ),
               ],
             ),
           ),
