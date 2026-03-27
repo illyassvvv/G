@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../models/channel.dart';
+import '../services/url_resolver_service.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -61,15 +62,36 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     debugPrint('[VargasTV] Stream URL: ${_currentChannel.streamUrl}');
     debugPrint('[VargasTV] Platform: ${Platform.operatingSystem}');
 
+    // Resolve redirect/token URLs before passing to the player
+    _resolveAndPlay(_currentChannel.streamUrl);
+  }
+
+  Future<void> _resolveAndPlay(String originalUrl) async {
+    try {
+      // Follow all redirects to get the final direct stream URL
+      final resolvedUrl = await UrlResolverService.resolveStreamUrl(originalUrl);
+      if (_disposed || !mounted) return;
+
+      debugPrint('[VargasTV] Resolved URL: $resolvedUrl');
+
+      _initializePlayer(resolvedUrl);
+    } catch (e) {
+      debugPrint('[VargasTV] URL resolution failed: $e, using original');
+      if (_disposed || !mounted) return;
+      _initializePlayer(originalUrl);
+    }
+  }
+
+  void _initializePlayer(String streamUrl) {
     // Headers for stream requests - Android TV needs proper User-Agent
     final Map<String, String> streamHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Android TV)',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Safari/537.36',
       'Accept': '*/*',
       'Connection': 'keep-alive',
     };
 
     final controller = VideoPlayerController.networkUrl(
-      Uri.parse(_currentChannel.streamUrl),
+      Uri.parse(streamUrl),
       httpHeaders: streamHeaders,
       videoPlayerOptions: VideoPlayerOptions(
         mixWithOthers: false,
@@ -177,6 +199,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   }
 
   void _safeGoBack() {
+    // Guard: prevent any duplicate back navigation
     if (_isPopping || _disposed || !mounted) return;
 
     // Debounce: ignore rapid back presses within 500ms
@@ -189,18 +212,25 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     _isPopping = true;
     _cancelLoadingTimeout();
 
-    if (_ctrl != null) {
+    // Stop and clean up the player before navigating back
+    final ctrl = _ctrl;
+    _ctrl = null;
+    if (ctrl != null) {
       try {
-        _ctrl!.removeListener(_playerListener);
-        _ctrl!.pause();
-        _ctrl!.dispose();
+        ctrl.removeListener(_playerListener);
+        ctrl.pause();
+        ctrl.dispose();
       } catch (_) {}
-      _ctrl = null;
     }
 
     if (mounted) {
       Navigator.of(context).pop();
     }
+
+    // Reset flag after delay to handle edge cases
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _isPopping = false;
+    });
   }
 
   void _nextChannel() {
@@ -272,13 +302,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   @override
   void dispose() {
     _disposed = true;
+    _isPopping = true; // Prevent any pending back navigation
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _cancelLoadingTimeout();
     _playerFocus.dispose();
-    if (_ctrl != null) {
-      _ctrl!.removeListener(_playerListener);
-      _ctrl!.dispose();
+    final ctrl = _ctrl;
+    _ctrl = null;
+    if (ctrl != null) {
+      ctrl.removeListener(_playerListener);
+      ctrl.dispose();
     }
     super.dispose();
   }

@@ -22,10 +22,7 @@ class TVChannelCard extends StatefulWidget {
     required this.provider,
     required this.onSelect,
     this.onLongPress,
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-=======
     this.isFavorite = false,
->>>>>>> main
   });
 
   @override
