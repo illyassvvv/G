@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
 import '../models/channel.dart';
+import '../models/theme.dart';
 import '../services/stream_resolver_service.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -37,13 +39,26 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   bool _disposed = false;
   DateTime? _lastBackPress;
 
+  // ── OSD overlay (channel info on switch) ───────────────
+  bool _showOSD = false;
+  Timer? _osdTimer;
+
+  // ── Channel number input via remote numpad ───────────
+  String _numberInput = '';
+  Timer? _numberTimer;
+
+  // ── DVR / Time-shift ───────────────────────────────
+  bool _isDvrStream = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _currentChannel = widget.channel;
+    _isDvrStream = _checkDvr(_currentChannel.streamUrl);
     _startPlayer();
     _scheduleHideControls();
+    _showOSDOverlay();
   }
 
   void _startPlayer() {
@@ -59,8 +74,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     if (mounted) setState(() { _loading = true; _hasError = false; });
 
     debugPrint('[VargasTV] Starting player for: ${_currentChannel.name}');
-    debugPrint('[VargasTV] Stream URL: ${_currentChannel.streamUrl}');
-    debugPrint('[VargasTV] Platform: ${Platform.operatingSystem}');
 
     // Resolve token/redirect URLs before passing to the player
     _resolveAndPlay(_currentChannel.streamUrl);
@@ -149,8 +162,62 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       _loading = true;
       _hasError = false;
       _retryCount = 0;
+      _isDvrStream = _checkDvr(ch.streamUrl);
     });
+    _showOSDOverlay();
     _startPlayer();
+  }
+
+  bool _checkDvr(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('dvr') || lower.contains('timeshift');
+  }
+
+  // ── OSD Overlay ───────────────────────────────────────
+  void _showOSDOverlay() {
+    _osdTimer?.cancel();
+    setState(() => _showOSD = true);
+    _osdTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _showOSD = false);
+    });
+  }
+
+  // ── Channel number input ──────────────────────────────
+  void _onDigitPressed(int digit) {
+    _numberTimer?.cancel();
+    setState(() {
+      _numberInput += digit.toString();
+      if (_numberInput.length > 3) {
+        _numberInput = _numberInput.substring(_numberInput.length - 3);
+      }
+    });
+    _numberTimer = Timer(const Duration(seconds: 2), _tryNavigateToNumber);
+  }
+
+  void _tryNavigateToNumber() {
+    if (_numberInput.isEmpty) return;
+    final input = _numberInput;
+    setState(() => _numberInput = '');
+    // Try exact match, then padded match
+    final target = widget.channelList.cast<Channel?>().firstWhere(
+      (ch) => ch!.number == input || ch.number == input.padLeft(2, '0'),
+      orElse: () => null,
+    );
+    if (target != null && target.id != _currentChannel.id) {
+      _switchToChannel(target);
+    }
+  }
+
+  // ── DVR seek ───────────────────────────────────────
+  void _seekRelative(Duration offset) {
+    if (_ctrl == null || !_ctrl!.value.isInitialized) return;
+    final current = _ctrl!.value.position;
+    final duration = _ctrl!.value.duration;
+    var target = current + offset;
+    if (target < Duration.zero) target = Duration.zero;
+    if (target > duration) target = duration;
+    _ctrl!.seekTo(target);
+    _showControlsBriefly();
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -161,30 +228,62 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     final key = event.logicalKey;
 
     // NOTE: Do NOT handle LogicalKeyboardKey.goBack here!
-    // On Android TV, the Back/Return button fires both a KeyEvent (goBack)
-    // AND a system back navigation event. If we handle goBack here and call
-    // Navigator.pop(), the system back event still propagates — but the
-    // PlayerScreen is already gone, so it reaches HomeScreen and pops that
-    // too, exiting the app. Instead, we let PopScope handle goBack via
-    // onPopInvokedWithResult, which properly consumes the system event.
     if (key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.backspace) {
       _safeGoBack();
       return KeyEventResult.handled;
     }
 
+    // ── Number keys for direct channel input ──────────────
+    const digitKeys = {
+      LogicalKeyboardKey.digit0: 0, LogicalKeyboardKey.digit1: 1,
+      LogicalKeyboardKey.digit2: 2, LogicalKeyboardKey.digit3: 3,
+      LogicalKeyboardKey.digit4: 4, LogicalKeyboardKey.digit5: 5,
+      LogicalKeyboardKey.digit6: 6, LogicalKeyboardKey.digit7: 7,
+      LogicalKeyboardKey.digit8: 8, LogicalKeyboardKey.digit9: 9,
+      LogicalKeyboardKey.numpad0: 0, LogicalKeyboardKey.numpad1: 1,
+      LogicalKeyboardKey.numpad2: 2, LogicalKeyboardKey.numpad3: 3,
+      LogicalKeyboardKey.numpad4: 4, LogicalKeyboardKey.numpad5: 5,
+      LogicalKeyboardKey.numpad6: 6, LogicalKeyboardKey.numpad7: 7,
+      LogicalKeyboardKey.numpad8: 8, LogicalKeyboardKey.numpad9: 9,
+    };
+    if (digitKeys.containsKey(key)) {
+      _onDigitPressed(digitKeys[key]!);
+      return KeyEventResult.handled;
+    }
+
+    // ── Media rewind / fast-forward for DVR ───────────────
+    if (key == LogicalKeyboardKey.mediaRewind) {
+      _seekRelative(const Duration(seconds: -30));
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaFastForward) {
+      _seekRelative(const Duration(seconds: 30));
+      return KeyEventResult.handled;
+    }
+
+    // ── Left / Right: seek (DVR + controls visible) or channel switch ──
     if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.channelUp) {
-      _nextChannel();
+      if (_showControls && _isDvrStream) {
+        _seekRelative(const Duration(seconds: 30));
+      } else {
+        _nextChannel();
+      }
       _showControlsBriefly();
       return KeyEventResult.handled;
     }
 
     if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.channelDown) {
-      _prevChannel();
+      if (_showControls && _isDvrStream) {
+        _seekRelative(const Duration(seconds: -30));
+      } else {
+        _prevChannel();
+      }
       _showControlsBriefly();
       return KeyEventResult.handled;
     }
 
+    // ── OK / Enter ────────────────────────────────────────
     if (key == LogicalKeyboardKey.select || key == LogicalKeyboardKey.enter) {
       if (_hasError) {
         _retryCount = 0;
@@ -197,6 +296,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       return KeyEventResult.handled;
     }
 
+    // ── Up / Down toggle controls ─────────────────────────
     if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
       _toggleControls();
       return KeyEventResult.handled;
@@ -318,9 +418,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
+    _osdTimer?.cancel();
+    _numberTimer?.cancel();
     _cancelLoadingTimeout();
     _playerFocus.dispose();
-    // Only dispose if not already cleaned up by _safeGoBack
     _cleanupPlayer();
     super.dispose();
   }
@@ -386,45 +487,151 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                   ),
                 ),
 
+              // ── OSD: channel info bar ──────────────────────
               Positioned(
                 top: 0, left: 0, right: 0,
                 child: AnimatedOpacity(
-                  opacity: _showControls ? 1.0 : 0.0,
+                  opacity: (_showControls || _showOSD) ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 300),
                   child: Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                        colors: [Colors.black.withOpacity(0.85), Colors.transparent],
                       ),
                     ),
-                    child: Text(
-                      '${_currentChannel.number} - ${_currentChannel.name}',
-                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
+                    child: Row(children: [
+                      // Channel logo
+                      Container(
+                        width: 48, height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: _currentChannel.logoUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: _currentChannel.logoUrl,
+                                fit: BoxFit.contain,
+                                memCacheWidth: 96, memCacheHeight: 96,
+                                errorWidget: (_, __, ___) => const Icon(
+                                    Icons.tv_rounded, color: Colors.white54, size: 24),
+                              )
+                            : const Icon(Icons.tv_rounded, color: Colors.white54, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      // Channel info
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${_currentChannel.number}  ${_currentChannel.name}',
+                            style: const TextStyle(
+                              color: Colors.white, fontSize: 20,
+                              fontWeight: FontWeight.w700, letterSpacing: -0.3),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.accent.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(6)),
+                              child: Text(_currentChannel.category,
+                                style: TextStyle(color: AppTheme.accent,
+                                  fontSize: 11, fontWeight: FontWeight.w600)),
+                            ),
+                            if (_isDvrStream) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(6)),
+                                child: const Text('DVR',
+                                  style: TextStyle(color: Colors.lightBlueAccent,
+                                    fontSize: 11, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ]),
+                        ],
+                      )),
+                      // LIVE indicator
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.live.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.live.withOpacity(0.3))),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Container(width: 6, height: 6,
+                            decoration: const BoxDecoration(
+                              color: AppTheme.live, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          const Text('LIVE', style: TextStyle(
+                            color: AppTheme.live, fontSize: 11,
+                            fontWeight: FontWeight.w800, letterSpacing: 1)),
+                        ]),
+                      ),
+                    ]),
                   ),
                 ),
               ),
 
+              // ── Number input overlay (top-right) ────────────
+              if (_numberInput.isNotEmpty)
+                Positioned(
+                  top: 80, right: 32,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.75),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.accent.withOpacity(0.5)),
+                    ),
+                    child: Text(_numberInput,
+                      style: const TextStyle(color: Colors.white,
+                        fontSize: 36, fontWeight: FontWeight.w700,
+                        fontFamily: 'monospace', letterSpacing: 4)),
+                  ),
+                ),
+
+              // ── Bottom controls bar ─────────────────────────
               Positioned(
                 bottom: 0, left: 0, right: 0,
                 child: AnimatedOpacity(
                   opacity: _showControls ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 300),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    color: Colors.black.withOpacity(0.5),
-                    child: const Row(
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Colors.black.withOpacity(0.85), Colors.transparent],
+                      ),
+                    ),
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _RemoteHint(icon: Icons.arrow_left, label: 'Prev'),
-                        SizedBox(width: 20),
-                        _RemoteHint(icon: Icons.circle, label: 'OK'),
-                        SizedBox(width: 20),
-                        _RemoteHint(icon: Icons.arrow_right, label: 'Next'),
-                      ],
+                      children: _isDvrStream
+                          ? const [
+                              _RemoteHint(icon: Icons.fast_rewind_rounded, label: '-30s'),
+                              SizedBox(width: 32),
+                              _RemoteHint(icon: Icons.circle, label: 'Play/Pause'),
+                              SizedBox(width: 32),
+                              _RemoteHint(icon: Icons.fast_forward_rounded, label: '+30s'),
+                            ]
+                          : const [
+                              _RemoteHint(icon: Icons.arrow_left_rounded, label: 'Prev'),
+                              SizedBox(width: 32),
+                              _RemoteHint(icon: Icons.circle, label: 'OK'),
+                              SizedBox(width: 32),
+                              _RemoteHint(icon: Icons.arrow_right_rounded, label: 'Next'),
+                            ],
                     ),
                   ),
                 ),

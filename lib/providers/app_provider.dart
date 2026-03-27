@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,8 +26,12 @@ class AppProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   bool _isDark = true;
 
+  // ── Cached SharedPreferences (avoids repeated getInstance calls) ──
+  SharedPreferences? _prefs;
+
   // ── Connectivity ────────────────────────────────────────────
   bool _hasInternet = true;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
 
   // ── Player state (single source of truth) ───────────────────
   PlayerState _playerState = PlayerState.hidden;
@@ -67,9 +72,26 @@ class AppProvider extends ChangeNotifier {
 
   TC get colors => TC(_isDark);
 
+  /// Returns the last watched channel as a [Channel] object, or null.
+  Channel? get lastChannel {
+    if (_lastChannelId == null ||
+        _lastChannelUrl == null ||
+        _lastChannelUrl!.isEmpty) {
+      return null;
+    }
+    return Channel(
+      id: _lastChannelId!,
+      name: _lastChannelName ?? 'Unknown',
+      number: _lastChannelNum ?? '00',
+      logoUrl: _lastChannelLogo ?? '',
+      streamUrl: _lastChannelUrl!,
+      category: _lastChannelCat ?? '',
+    );
+  }
+
   // ── Init ────────────────────────────────────────────────────
   Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
 
     // Theme: default to dark for TV
     final themeStr = prefs.getString(_keyThemeMode) ?? 'dark';
@@ -108,8 +130,9 @@ class AppProvider extends ChangeNotifier {
     _applySystemUI();
     notifyListeners();
 
-    // Listen to connectivity changes
-    Connectivity().onConnectivityChanged.listen((results) {
+    // Listen to connectivity changes — cancel any previous subscription first
+    _connectivitySub?.cancel();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
       final connected = results.any((r) => r != ConnectivityResult.none);
       if (connected != _hasInternet) {
         _hasInternet = connected;
@@ -127,6 +150,12 @@ class AppProvider extends ChangeNotifier {
     };
   }
 
+  // ── Cached prefs helper ───────────────────────────────────
+  Future<SharedPreferences> _getPrefs() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs!;
+  }
+
   // ── Theme ───────────────────────────────────────────────────
   Future<void> toggleTheme() async {
     if (_themeMode == ThemeMode.system) {
@@ -141,7 +170,7 @@ class AppProvider extends ChangeNotifier {
     }
     _applySystemUI();
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setString(_keyThemeMode, _themeMode == ThemeMode.dark ? 'dark' : _themeMode == ThemeMode.light ? 'light' : 'system');
   }
 
@@ -183,13 +212,15 @@ class AppProvider extends ChangeNotifier {
     _lastChannelNum  = number;
     _lastChannelCat  = category;
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_keyLastChId, id);
-    await prefs.setString(_keyLastChName, name);
-    await prefs.setString(_keyLastChUrl, url);
-    await prefs.setString(_keyLastChLogo, logo);
-    await prefs.setString(_keyLastChNum, number);
-    await prefs.setString(_keyLastChCat, category);
+    final prefs = await _getPrefs();
+    await Future.wait([
+      prefs.setInt(_keyLastChId, id),
+      prefs.setString(_keyLastChName, name),
+      prefs.setString(_keyLastChUrl, url),
+      prefs.setString(_keyLastChLogo, logo),
+      prefs.setString(_keyLastChNum, number),
+      prefs.setString(_keyLastChCat, category),
+    ]);
   }
 
   Future<void> clearLastChannel() async {
@@ -200,20 +231,22 @@ class AppProvider extends ChangeNotifier {
     _lastChannelNum  = null;
     _lastChannelCat  = null;
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyLastChId);
-    await prefs.remove(_keyLastChName);
-    await prefs.remove(_keyLastChUrl);
-    await prefs.remove(_keyLastChLogo);
-    await prefs.remove(_keyLastChNum);
-    await prefs.remove(_keyLastChCat);
+    final prefs = await _getPrefs();
+    await Future.wait([
+      prefs.remove(_keyLastChId),
+      prefs.remove(_keyLastChName),
+      prefs.remove(_keyLastChUrl),
+      prefs.remove(_keyLastChLogo),
+      prefs.remove(_keyLastChNum),
+      prefs.remove(_keyLastChCat),
+    ]);
   }
 
   // ── Volume level ────────────────────────────────────────────
   Future<void> saveVolume(double volume) async {
     _volumeLevel = volume;
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setDouble(_keyVolume, volume);
   }
 
@@ -227,7 +260,7 @@ class AppProvider extends ChangeNotifier {
       _favoriteIds.add(channelId);
     }
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setStringList(
       _keyFavorites,
       _favoriteIds.map((id) => id.toString()).toList(),
@@ -238,7 +271,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> toggleDataSaver() async {
     _dataSaverEnabled = !_dataSaverEnabled;
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
     await prefs.setBool(_keyDataSaver, _dataSaverEnabled);
   }
 
@@ -247,5 +280,12 @@ class AppProvider extends ChangeNotifier {
     _activeChannel = null;
     _playerState = PlayerState.hidden;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    _connectivitySub = null;
+    super.dispose();
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -25,8 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Currently selected category index in left sidebar
   int _selectedCatIndex = 0;
 
-  // Debounce guard: prevents double-opening the player when key events
-  // bleed from the player back into the home screen on navigation.
+  // Debounce guard
   DateTime? _lastOpenTime;
 
   // Focus management for TV remote
@@ -34,18 +35,102 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _sidebarScrollCtrl = ScrollController();
   final ScrollController _gridScrollCtrl = ScrollController();
 
+  // ── Resume last channel ───────────────────────────────────
+  bool _resumePromptShown = false;
+
+  // ── Channel number input on home screen ───────────────────
+  String _numberInput = '';
+  Timer? _numberTimer;
+
+  // ── Screensaver ───────────────────────────────────────────
+  bool _screensaverActive = false;
+  Timer? _screensaverTimer;
+  static const _screensaverDelay = Duration(minutes: 5);
+
   @override
   void initState() {
     super.initState();
     _loadChannels();
+    _resetScreensaverTimer();
+    // Listen for any key to reset screensaver
+    HardwareKeyboard.instance.addHandler(_globalKeyHandler);
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_globalKeyHandler);
     _sidebarFocus.dispose();
     _sidebarScrollCtrl.dispose();
     _gridScrollCtrl.dispose();
+    _numberTimer?.cancel();
+    _screensaverTimer?.cancel();
     super.dispose();
+  }
+
+  // ── Global key handler for screensaver + number input ─────
+  bool _globalKeyHandler(KeyEvent event) {
+    // Dismiss screensaver on any key
+    if (_screensaverActive && event is KeyDownEvent) {
+      setState(() => _screensaverActive = false);
+      _resetScreensaverTimer();
+      return true; // consume the event
+    }
+    // Reset inactivity timer on any key
+    _resetScreensaverTimer();
+
+    // Number input on home screen (only when not in screensaver)
+    if (event is KeyDownEvent && !_screensaverActive) {
+      const digitKeys = {
+        LogicalKeyboardKey.digit0: 0, LogicalKeyboardKey.digit1: 1,
+        LogicalKeyboardKey.digit2: 2, LogicalKeyboardKey.digit3: 3,
+        LogicalKeyboardKey.digit4: 4, LogicalKeyboardKey.digit5: 5,
+        LogicalKeyboardKey.digit6: 6, LogicalKeyboardKey.digit7: 7,
+        LogicalKeyboardKey.digit8: 8, LogicalKeyboardKey.digit9: 9,
+        LogicalKeyboardKey.numpad0: 0, LogicalKeyboardKey.numpad1: 1,
+        LogicalKeyboardKey.numpad2: 2, LogicalKeyboardKey.numpad3: 3,
+        LogicalKeyboardKey.numpad4: 4, LogicalKeyboardKey.numpad5: 5,
+        LogicalKeyboardKey.numpad6: 6, LogicalKeyboardKey.numpad7: 7,
+        LogicalKeyboardKey.numpad8: 8, LogicalKeyboardKey.numpad9: 9,
+      };
+      if (digitKeys.containsKey(event.logicalKey)) {
+        _onDigitPressed(digitKeys[event.logicalKey]!);
+        return true;
+      }
+    }
+    return false; // let other handlers process
+  }
+
+  void _onDigitPressed(int digit) {
+    _numberTimer?.cancel();
+    setState(() {
+      _numberInput += digit.toString();
+      if (_numberInput.length > 3) {
+        _numberInput = _numberInput.substring(_numberInput.length - 3);
+      }
+    });
+    _numberTimer = Timer(const Duration(seconds: 2), _tryNavigateToNumber);
+  }
+
+  void _tryNavigateToNumber() {
+    if (_numberInput.isEmpty) return;
+    final input = _numberInput;
+    setState(() => _numberInput = '');
+    // Search all channels across all categories
+    for (final cat in _categories) {
+      for (final ch in cat.channels) {
+        if (ch.number == input || ch.number == input.padLeft(2, '0')) {
+          _openPlayer(ch);
+          return;
+        }
+      }
+    }
+  }
+
+  void _resetScreensaverTimer() {
+    _screensaverTimer?.cancel();
+    _screensaverTimer = Timer(_screensaverDelay, () {
+      if (mounted) setState(() => _screensaverActive = true);
+    });
   }
 
   Future<void> _loadChannels() async {
@@ -54,12 +139,40 @@ class _HomeScreenState extends State<HomeScreen> {
       final cats = await ChannelService.fetchCategories();
       if (mounted) {
         setState(() { _categories = cats; _loadingData = false; });
+        // Show resume dialog after channels are loaded
+        if (!_resumePromptShown) {
+          _resumePromptShown = true;
+          _showResumeDialog();
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() { _loadingData = false; _dataError = e.toString(); });
       }
     }
+  }
+
+  void _showResumeDialog() {
+    final prov = context.read<AppProvider>();
+    final last = prov.lastChannel;
+    if (last == null || last.streamUrl.isEmpty) return;
+    // Wait a frame so the UI is fully built before showing the dialog
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (ctx) => _ResumeDialog(
+          channelName: last.name,
+          channelNumber: last.number,
+          onResume: () {
+            Navigator.of(ctx).pop();
+            _openPlayer(last);
+          },
+          onCancel: () => Navigator.of(ctx).pop(),
+        ),
+      );
+    });
   }
 
   void _openPlayer(Channel ch) {
@@ -194,13 +307,32 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildError(c)
         else
           Row(children: [
-            // Left sidebar - category list
             _buildSidebar(prov, c, displayCats),
-            // Vertical divider
             Container(width: 1, color: c.border),
-            // Right content - channel grid
             Expanded(child: _buildChannelGrid(prov, c, displayCats)),
           ]),
+
+        // ── Number input overlay ─────────────────────────────
+        if (_numberInput.isNotEmpty)
+          Positioned(
+            top: 24, right: 32,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.accent.withOpacity(0.5)),
+              ),
+              child: Text(_numberInput,
+                style: const TextStyle(color: Colors.white,
+                  fontSize: 36, fontWeight: FontWeight.w700,
+                  fontFamily: 'monospace', letterSpacing: 4)),
+            ),
+          ),
+
+        // ── Screensaver overlay ──────────────────────────────
+        if (_screensaverActive)
+          const Positioned.fill(child: _ScreensaverOverlay()),
       ]),
       ),
     ),
@@ -469,6 +601,194 @@ class _TVFocusableItemState extends State<_TVFocusableItem> {
         onTap: widget.onSelect,
         child: widget.builder(_focused),
       ),
+    );
+  }
+}
+
+/// Dialog shown on app startup to resume last watched channel.
+class _ResumeDialog extends StatelessWidget {
+  final String channelName;
+  final String channelNumber;
+  final VoidCallback onResume;
+  final VoidCallback onCancel;
+
+  const _ResumeDialog({
+    required this.channelName,
+    required this.channelNumber,
+    required this.onResume,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 380,
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.accent.withOpacity(0.2)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.6),
+                blurRadius: 40, spreadRadius: 8),
+            ],
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 56, height: 56,
+              decoration: BoxDecoration(
+                color: AppTheme.accent.withOpacity(0.12),
+                shape: BoxShape.circle),
+              child: const Icon(Icons.play_circle_outline_rounded,
+                color: AppTheme.accent, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text('Resume Watching?',
+              style: TextStyle(color: Colors.white, fontSize: 18,
+                fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text('$channelNumber - $channelName',
+              style: TextStyle(color: AppTheme.accent.withOpacity(0.8),
+                fontSize: 14, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              _TVFocusableItem(
+                onSelect: onCancel,
+                builder: (focused) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: focused
+                        ? Colors.white.withOpacity(0.15)
+                        : Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: focused
+                          ? Colors.white.withOpacity(0.5)
+                          : Colors.white.withOpacity(0.1)),
+                  ),
+                  child: const Text('Cancel',
+                    style: TextStyle(color: Colors.white70, fontSize: 14,
+                      fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(width: 16),
+              _TVFocusableItem(
+                autofocus: true,
+                onSelect: onResume,
+                builder: (focused) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.buttonGradient,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: focused ? Colors.white : Colors.transparent,
+                      width: 2),
+                    boxShadow: [
+                      BoxShadow(color: AppTheme.accent.withOpacity(0.3),
+                        blurRadius: 12, offset: const Offset(0, 4)),
+                    ],
+                  ),
+                  child: const Text('Resume',
+                    style: TextStyle(color: Colors.white, fontSize: 14,
+                      fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// OLED-friendly screensaver with bouncing VargasTV logo.
+class _ScreensaverOverlay extends StatefulWidget {
+  const _ScreensaverOverlay();
+
+  @override
+  State<_ScreensaverOverlay> createState() => _ScreensaverOverlayState();
+}
+
+class _ScreensaverOverlayState extends State<_ScreensaverOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _anim;
+  double _dx = 1.0, _dy = 1.0;
+  double _x = 100, _y = 100;
+  static const _logoW = 160.0, _logoH = 50.0;
+  static const _speed = 1.2;
+
+  @override
+  void initState() {
+    super.initState();
+    final rng = Random();
+    _x = rng.nextDouble() * 300 + 50;
+    _y = rng.nextDouble() * 200 + 50;
+    _dx = rng.nextBool() ? _speed : -_speed;
+    _dy = rng.nextBool() ? _speed : -_speed;
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..addListener(_tick)
+     ..repeat();
+  }
+
+  void _tick() {
+    final size = MediaQuery.of(context).size;
+    setState(() {
+      _x += _dx;
+      _y += _dy;
+      if (_x <= 0 || _x + _logoW >= size.width) _dx = -_dx;
+      if (_y <= 0 || _y + _logoH >= size.height) _dy = -_dy;
+      _x = _x.clamp(0, size.width - _logoW);
+      _y = _y.clamp(0, size.height - _logoH);
+    });
+  }
+
+  @override
+  void dispose() {
+    _anim.removeListener(_tick);
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      child: Stack(children: [
+        Positioned(
+          left: _x, top: _y,
+          child: Opacity(
+            opacity: 0.7,
+            child: RichText(text: TextSpan(children: [
+              TextSpan(
+                text: 'Vargas',
+                style: GoogleFonts.poppins(
+                  fontSize: 28, fontWeight: FontWeight.w700,
+                  color: Colors.white, letterSpacing: -0.5),
+              ),
+              TextSpan(
+                text: 'TV',
+                style: GoogleFonts.poppins(
+                  fontSize: 28, fontWeight: FontWeight.w700,
+                  color: AppTheme.accent, letterSpacing: -0.5),
+              ),
+            ])),
+          ),
+        ),
+        const Positioned(
+          bottom: 32, left: 0, right: 0,
+          child: Text('Press any button to dismiss',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white24, fontSize: 12)),
+        ),
+      ]),
     );
   }
 }
