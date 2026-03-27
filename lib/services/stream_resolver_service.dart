@@ -109,6 +109,55 @@ class StreamResolverService {
               }
             }
 
+            // ── Handle m3u8 master playlists from token/proxy servers ──
+            // Some IPTV token servers (e.g. dhd.koora-live.top/token/...)
+            // act as proxies: they fetch a tokenized m3u8 playlist from the
+            // upstream CDN and return it directly with content-type
+            // application/vnd.apple.mpegurl. The original proxy URL has an
+            // embedded URL in its path (e.g. /token/https://...) which can
+            // cause issues with Uri.parse() and ExoPlayer's URL handling.
+            //
+            // Fix: read the m3u8 body, extract the best-quality variant URL
+            // (which is a clean, direct CDN URL with token query params),
+            // and return that instead. This gives ExoPlayer a standard URL
+            // it can handle without issues.
+            if (_isTokenOrProxyUrl(currentUrl) &&
+                (contentType.contains('mpegurl') ||
+                 contentType.contains('x-mpegurl') ||
+                 contentType.contains('apple.mpegurl') ||
+                 contentType.contains('octet-stream'))) {
+              final body = await streamedResponse.stream
+                  .bytesToString()
+                  .timeout(_timeout);
+
+              // Check if body is actually an m3u8 playlist
+              if (body.trimLeft().startsWith('#EXTM3U')) {
+                final variantUrl = _extractBestVariantFromM3u8(body);
+                if (variantUrl != null) {
+                  debugPrint(
+                      '[StreamResolver] Extracted variant from m3u8: $variantUrl');
+                  if (cookies.isNotEmpty) {
+                    collectedHeaders['Cookie'] = cookies.join('; ');
+                  }
+                  return ResolvedStream(
+                    url: variantUrl,
+                    headers: collectedHeaders.isNotEmpty
+                        ? collectedHeaders
+                        : null,
+                  );
+                }
+                // If it's a media playlist (no variants), check for a bare
+                // m3u8 URL inside the body (some proxies embed one).
+                final m3u8Url = _extractUrlFromBody(body);
+                if (m3u8Url != null) {
+                  debugPrint(
+                      '[StreamResolver] Found m3u8 URL in body: $m3u8Url');
+                  currentUrl = m3u8Url;
+                  continue;
+                }
+              }
+            }
+
             debugPrint('[StreamResolver] Resolved to: $currentUrl');
 
             // Build final headers for the player
@@ -221,6 +270,59 @@ class StreamResolverService {
     if (m3u8Match != null) return m3u8Match.group(1);
 
     return null;
+  }
+
+  /// Checks if a URL looks like a token/proxy URL that wraps another URL.
+  /// These URLs have embedded URLs in their path (e.g. /token/https://...).
+  static bool _isTokenOrProxyUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('/token/') ||
+        lower.contains('/proxy/') ||
+        lower.contains('/redirect/');
+  }
+
+  /// Parses an HLS master playlist and returns the highest-bandwidth variant URL.
+  ///
+  /// A master playlist looks like:
+  /// ```
+  /// #EXTM3U
+  /// #EXT-X-STREAM-INF:BANDWIDTH=1636196,RESOLUTION=854x480,...
+  /// https://cdn.example.com/480p/chunks.m3u8?token=abc
+  /// #EXT-X-STREAM-INF:BANDWIDTH=778760,RESOLUTION=640x360,...
+  /// https://cdn.example.com/360p/chunks.m3u8?token=abc
+  /// ```
+  ///
+  /// Returns the URL of the highest bandwidth variant, or null if the body
+  /// is not a master playlist (e.g. it's a media playlist with segments).
+  static String? _extractBestVariantFromM3u8(String body) {
+    final lines = body.split('\n');
+    String? bestUrl;
+    int bestBandwidth = 0;
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.startsWith('#EXT-X-STREAM-INF:')) {
+        // Extract BANDWIDTH value
+        final bwMatch = RegExp(r'BANDWIDTH=(\d+)').firstMatch(line);
+        final bandwidth =
+            bwMatch != null ? int.tryParse(bwMatch.group(1)!) ?? 0 : 0;
+
+        // The next non-empty, non-comment line is the variant URL
+        for (int j = i + 1; j < lines.length; j++) {
+          final candidate = lines[j].trim();
+          if (candidate.isEmpty || candidate.startsWith('#')) continue;
+          if (candidate.startsWith('http')) {
+            if (bandwidth > bestBandwidth) {
+              bestBandwidth = bandwidth;
+              bestUrl = candidate;
+            }
+          }
+          break; // only check the first non-comment line after STREAM-INF
+        }
+      }
+    }
+
+    return bestUrl;
   }
 }
 
