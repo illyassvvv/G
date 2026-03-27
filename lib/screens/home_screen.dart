@@ -25,6 +25,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // Currently selected category index in left sidebar
   int _selectedCatIndex = 0;
 
+  // Debounce guard: prevents double-opening the player when key events
+  // bleed from the player back into the home screen on navigation.
+  DateTime? _lastOpenTime;
+
   // Focus management for TV remote
   final FocusNode _sidebarFocus = FocusNode();
   final ScrollController _sidebarScrollCtrl = ScrollController();
@@ -60,6 +64,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openPlayer(Channel ch) {
     if (ch.streamUrl.isEmpty) return;
+    // Debounce: block rapid re-entry that can happen when key events from the
+    // player screen bleed into the home screen on pop (Android TV key buffering).
+    final now = DateTime.now();
+    if (_lastOpenTime != null &&
+        now.difference(_lastOpenTime!) < const Duration(milliseconds: 800)) {
+      return;
+    }
+    _lastOpenTime = now;
     final channelList = _categories
         .where((cat) => cat.name == ch.category)
         .expand((cat) => cat.channels)

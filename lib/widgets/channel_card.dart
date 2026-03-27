@@ -50,6 +50,14 @@ class _TVChannelCardState extends State<TVChannelCard> {
     return Focus(
       onFocusChange: (f) => setState(() => _focused = f),
       onKeyEvent: (node, event) {
+        // Long-press simulation via menu/gamepad Y → favorite (long-hold OK)
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.contextMenu ||
+             event.logicalKey == LogicalKeyboardKey.gameButtonY)) {
+          widget.onLongPress?.call();
+          return KeyEventResult.handled;
+        }
+
         final isOkKey = event.logicalKey == LogicalKeyboardKey.select ||
             event.logicalKey == LogicalKeyboardKey.enter ||
             event.logicalKey == LogicalKeyboardKey.gameButtonA;
@@ -57,6 +65,7 @@ class _TVChannelCardState extends State<TVChannelCard> {
         if (!isOkKey) return KeyEventResult.ignored;
 
         if (event is KeyDownEvent) {
+          // Start long-press timer only on first KeyDown (ignore repeats)
           if (_keyDownTime == null) {
             _keyDownTime = DateTime.now();
             _longPressTriggered = false;
@@ -64,21 +73,29 @@ class _TVChannelCardState extends State<TVChannelCard> {
             _longPressTimer = Timer(_longPressDuration, () {
               if (_keyDownTime != null && !_longPressTriggered) {
                 _longPressTriggered = true;
-                if (widget.onLongPress != null) {
-                  widget.onLongPress!();
-                }
+                _keyDownTime = null; // clear so next press starts fresh
+                widget.onLongPress?.call();
               }
             });
           }
           return KeyEventResult.handled;
         }
-        // Long-press simulation: menu button or gamepad Y for favorites
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.contextMenu ||
-             event.logicalKey == LogicalKeyboardKey.gameButtonY)) {
-          widget.onLongPress?.call();
+
+        if (event is KeyUpEvent) {
+          // Cancel pending long-press timer
+          _longPressTimer?.cancel();
+          _longPressTimer = null;
+          final wasLongPress = _longPressTriggered;
+          // Always clear state so next press works correctly
+          _keyDownTime = null;
+          _longPressTriggered = false;
+          // Only open channel if we didn't already trigger a long-press (favorite)
+          if (!wasLongPress) {
+            widget.onSelect();
+          }
           return KeyEventResult.handled;
         }
+
         return KeyEventResult.ignored;
       },
       child: GestureDetector(

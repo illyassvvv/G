@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -19,6 +20,8 @@ class StreamResolverService {
     'Accept': '*/*',
     'Accept-Language': 'en-US,en;q=0.9',
     'Connection': 'keep-alive',
+    // Required by some token servers that check the referer
+    'Referer': 'https://www.google.com/',
   };
 
   /// Resolves the given [url] by following all HTTP redirects manually.
@@ -165,39 +168,57 @@ class StreamResolverService {
     return false;
   }
 
-  /// Tries to extract a URL from HTML/JS body content (meta refresh, JS redirect).
+  /// Tries to extract a URL from HTML/JS/JSON body content.
   static String? _extractUrlFromBody(String body) {
-    // Check for meta refresh tag
-    // e.g. <meta http-equiv="refresh" content="0;url=http://...">
+    final trimmed = body.trim();
+
+    // ── 1. JSON response (most modern token servers return JSON) ──────────
+    // e.g. {"url":"https://...m3u8"} or {"stream":"..."} or {"link":"..."}
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        final dynamic json = jsonDecode(trimmed);
+        final Map<String, dynamic>? obj = json is Map<String, dynamic>
+            ? json
+            : (json is List && json.isNotEmpty && json.first is Map)
+                ? json.first as Map<String, dynamic>
+                : null;
+        if (obj != null) {
+          for (final key in [
+            'url', 'stream_url', 'link', 'src', 'source',
+            'hls', 'stream', 'file', 'path', 'manifest',
+          ]) {
+            final val = obj[key];
+            if (val is String && val.startsWith('http')) return val;
+          }
+        }
+      } catch (_) {
+        // not valid JSON – fall through to HTML patterns
+      }
+    }
+
+    // ── 2. HTML meta refresh ───────────────────────────────────────────────
     final metaRefreshPattern = RegExp(
       r'<meta[^>]*http-equiv\s*=\s*"refresh"[^>]*content\s*=\s*"[^"]*url=([^"\s>]+)',
       caseSensitive: false,
     );
-    final metaMatch = metaRefreshPattern.firstMatch(body);
-    if (metaMatch != null) {
-      return metaMatch.group(1);
-    }
+    final metaMatch = metaRefreshPattern.firstMatch(trimmed);
+    if (metaMatch != null) return metaMatch.group(1);
 
-    // Check for window.location or location.href redirect
-    // e.g. window.location = "http://..." or location.href = "http://..."
+    // ── 3. JS window.location / location.href redirect ────────────────────
     final jsRedirectPattern = RegExp(
       r'(?:window\.location|location\.href)\s*=\s*"([^"]+)"',
       caseSensitive: false,
     );
-    final jsMatch = jsRedirectPattern.firstMatch(body);
-    if (jsMatch != null) {
-      return jsMatch.group(1);
-    }
+    final jsMatch = jsRedirectPattern.firstMatch(trimmed);
+    if (jsMatch != null) return jsMatch.group(1);
 
-    // Check for direct m3u8 URL in body
+    // ── 4. Bare m3u8 URL anywhere in the body ─────────────────────────────
     final m3u8Pattern = RegExp(
       r'(https?://[^\s"<>]+\.m3u8[^\s"<>]*)',
       caseSensitive: false,
     );
-    final m3u8Match = m3u8Pattern.firstMatch(body);
-    if (m3u8Match != null) {
-      return m3u8Match.group(1);
-    }
+    final m3u8Match = m3u8Pattern.firstMatch(trimmed);
+    if (m3u8Match != null) return m3u8Match.group(1);
 
     return null;
   }
