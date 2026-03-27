@@ -11,6 +11,14 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnim;
+  late final Animation<double> _scaleAnim;
+
+  bool _showTV = false;
+=======
     with TickerProviderStateMixin {
   late final AnimationController _fadeCtrl;
   late final AnimationController _slideCtrl;
@@ -20,11 +28,37 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<Offset> _slideAnim;
   late final Animation<Offset> _arabicSlideAnim;
   late final Animation<double> _glowAnim;
+>>>>>>> main
 
   @override
   void initState() {
     super.initState();
 
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _scaleAnim = Tween<double>(begin: 0.95, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    // Start fade+scale animation
+    _controller.forward();
+
+    // Delay "TV" appearance by 200ms
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) setState(() => _showTV = true);
+    });
+
+    // Navigate to home after splash
+    Future.delayed(const Duration(milliseconds: 1800), () {
+=======
     // Main fade in over 1 second
     _fadeCtrl = AnimationController(
       vsync: this,
@@ -82,14 +116,22 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Navigate to home after 4 seconds total
     Future.delayed(const Duration(seconds: 4), () {
+>>>>>>> main
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => const HomeScreen(),
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+            transitionsBuilder: (_, anim, __, child) {
+              return FadeTransition(opacity: anim, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 400),
+=======
             transitionsBuilder: (_, animation, __, child) {
               return FadeTransition(opacity: animation, child: child);
             },
             transitionDuration: const Duration(milliseconds: 500),
+>>>>>>> main
           ),
         );
       }
@@ -98,15 +140,65 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+    _controller.dispose();
+=======
     _fadeCtrl.dispose();
     _slideCtrl.dispose();
     _glowCtrl.dispose();
+>>>>>>> main
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+      backgroundColor: const Color(0xFF0D0D0D),
+      body: Center(
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  'Vargas',
+                  style: GoogleFonts.poppins(
+                    fontSize: 52,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -1.5,
+                  ),
+                ),
+                AnimatedOpacity(
+                  opacity: _showTV ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                  child: Text(
+                    'TV',
+                    style: GoogleFonts.poppins(
+                      fontSize: 52,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.accent,
+                      letterSpacing: -1.5,
+                      shadows: [
+                        Shadow(
+                          color: AppTheme.accent.withOpacity(0.4),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+=======
       backgroundColor: AppTheme.darkBg,
       body: Stack(
         children: [
@@ -192,6 +284,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
         ],
+>>>>>>> main
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +22,10 @@ class TVChannelCard extends StatefulWidget {
     required this.provider,
     required this.onSelect,
     this.onLongPress,
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+=======
     this.isFavorite = false,
+>>>>>>> main
   });
 
   @override
@@ -30,6 +34,16 @@ class TVChannelCard extends StatefulWidget {
 
 class _TVChannelCardState extends State<TVChannelCard> {
   bool _focused = false;
+  DateTime? _keyDownTime;
+  bool _longPressTriggered = false;
+  static const _longPressDuration = Duration(milliseconds: 600);
+  Timer? _longPressTimer;
+
+  @override
+  void dispose() {
+    _longPressTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,11 +53,26 @@ class _TVChannelCardState extends State<TVChannelCard> {
     return Focus(
       onFocusChange: (f) => setState(() => _focused = f),
       onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.select ||
-             event.logicalKey == LogicalKeyboardKey.enter ||
-             event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
-          widget.onSelect();
+        final isOkKey = event.logicalKey == LogicalKeyboardKey.select ||
+            event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.gameButtonA;
+
+        if (!isOkKey) return KeyEventResult.ignored;
+
+        if (event is KeyDownEvent) {
+          if (_keyDownTime == null) {
+            _keyDownTime = DateTime.now();
+            _longPressTriggered = false;
+            _longPressTimer?.cancel();
+            _longPressTimer = Timer(_longPressDuration, () {
+              if (_keyDownTime != null && !_longPressTriggered) {
+                _longPressTriggered = true;
+                if (widget.onLongPress != null) {
+                  widget.onLongPress!();
+                }
+              }
+            });
+          }
           return KeyEventResult.handled;
         }
         // Long-press simulation: menu button or gamepad Y for favorites
@@ -59,7 +88,7 @@ class _TVChannelCardState extends State<TVChannelCard> {
         onTap: widget.onSelect,
         onLongPress: widget.onLongPress,
         child: AnimatedScale(
-          scale: _focused ? 1.05 : 1.0,
+          scale: _focused ? 1.07 : 1.0,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
@@ -69,24 +98,29 @@ class _TVChannelCardState extends State<TVChannelCard> {
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: _focused
-                    ? AppTheme.accent.withOpacity(0.9)
-                    : isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
-                width: _focused ? 2.5 : 1),
+                    ? AppTheme.accent.withOpacity(0.7)
+                    : isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04),
+                width: _focused ? 2 : 0.5),
               gradient: _focused
                   ? LinearGradient(
                       colors: isDark
-                          ? [AppTheme.accent.withOpacity(0.18), AppTheme.primaryDeep.withOpacity(0.10)]
-                          : [AppTheme.accent.withOpacity(0.12), AppTheme.accent.withOpacity(0.04)],
+                          ? [AppTheme.accent.withOpacity(0.15), AppTheme.primaryDeep.withOpacity(0.08)]
+                          : [AppTheme.accent.withOpacity(0.10), AppTheme.accent.withOpacity(0.03)],
                       begin: Alignment.topLeft, end: Alignment.bottomRight)
                   : LinearGradient(
                       colors: isDark
-                          ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.02)]
+                          ? [Colors.white.withOpacity(0.04), Colors.white.withOpacity(0.015)]
                           : [Colors.white.withOpacity(0.85), Colors.white.withOpacity(0.65)],
                       begin: Alignment.topLeft, end: Alignment.bottomRight),
               boxShadow: _focused
-                  ? [BoxShadow(
-                      color: AppTheme.accent.withOpacity(0.4),
-                      blurRadius: 20, spreadRadius: -2)]
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.accent.withOpacity(0.3),
+                        blurRadius: 24, spreadRadius: -4),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 12, offset: const Offset(0, 4)),
+                    ]
                   : [],
             ),
             child: Stack(
@@ -106,8 +140,8 @@ class _TVChannelCardState extends State<TVChannelCard> {
                 Container(
                   width: 52, height: 52,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(_focused ? 0.12 : 0.06)
-                        : Colors.grey.withOpacity(_focused ? 0.12 : 0.05),
+                    color: isDark ? Colors.white.withOpacity(_focused ? 0.10 : 0.05)
+                        : Colors.grey.withOpacity(_focused ? 0.10 : 0.04),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: _focused ? AppTheme.accent.withOpacity(0.5) : Colors.transparent,

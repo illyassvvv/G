@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:better_player_plus/better_player_plus.dart';
+import 'package:video_player/video_player.dart';
 import '../models/channel.dart';
-import '../models/theme.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -19,8 +19,8 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> {
-  BetterPlayerController? _ctrl;
+class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver {
+  VideoPlayerController? _ctrl;
   bool _loading = true;
   bool _hasError = false;
   bool _showControls = true;
@@ -29,82 +29,95 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late Channel _currentChannel;
   int _retryCount = 0;
   static const _maxRetries = 3;
-  static const _loadingTimeoutDuration = Duration(seconds: 20);
+  static const _loadingTimeoutDuration = Duration(seconds: 25);
 
   final FocusNode _playerFocus = FocusNode();
   bool _isPopping = false;
+  bool _disposed = false;
+  DateTime? _lastBackPress;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentChannel = widget.channel;
     _startPlayer();
     _scheduleHideControls();
   }
 
-  // 1. تعديل إعدادات المشغل لإصلاح الـ Full Screen والـ Loading
   void _startPlayer() {
     _cancelLoadingTimeout();
-    _ctrl?.dispose();
+
+    final oldCtrl = _ctrl;
     _ctrl = null;
+    if (oldCtrl != null) {
+      oldCtrl.removeListener(_playerListener);
+      oldCtrl.dispose();
+    }
+
     if (mounted) setState(() { _loading = true; _hasError = false; });
 
-    _ctrl = BetterPlayerController(
-      BetterPlayerConfiguration(
-        autoPlay: true,
-        looping: false,
-        fullScreenByDefault: false,
-        allowedScreenSleep: false,
-        autoDetectFullscreenAspectRatio: true,
-        
-        // الحل لمشكلة الحواف السوداء: BoxFit.fill يمد الفيديو ليملأ الشاشة تماماً
-        fit: BoxFit.fill, 
-        
-        controlsConfiguration: BetterPlayerControlsConfiguration(
-          showControls: false,
-          loadingWidget: const SizedBox.shrink(),
-        ),
-        eventListener: (event) {
-          if (!mounted) return;
-          switch (event.betterPlayerEventType) {
-            case BetterPlayerEventType.initialized:
-            case BetterPlayerEventType.play:
-            case BetterPlayerEventType.bufferingEnd:
-              if (_loading) {
-                _cancelLoadingTimeout();
-                setState(() { _loading = false; _hasError = false; _retryCount = 0; });
-              }
-              break;
-            case BetterPlayerEventType.exception:
-              _cancelLoadingTimeout();
-              setState(() { _loading = false; _hasError = true; });
-              _autoRetry();
-              break;
-            default:
-              break;
-          }
-        },
-      ),
-      betterPlayerDataSource: BetterPlayerDataSource(
-        BetterPlayerDataSourceType.network,
-        _currentChannel.streamUrl,
-        liveStream: true,
-        
-        // الحل لمشكلة عدم اشتغال الستريم: تحديد التنسيق وإضافة Headers (الوكيل)
-        videoFormat: BetterPlayerVideoFormat.hls,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000, 
-          maxBufferMs: 15000,
-          bufferForPlaybackMs: 2500, 
-          bufferForPlaybackAfterRebufferMs: 4000,
-        ),
+    debugPrint('[VargasTV] Starting player for: ${_currentChannel.name}');
+    debugPrint('[VargasTV] Stream URL: ${_currentChannel.streamUrl}');
+    debugPrint('[VargasTV] Platform: ${Platform.operatingSystem}');
+
+    // Headers for stream requests - Android TV needs proper User-Agent
+    final Map<String, String> streamHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Android TV)',
+      'Accept': '*/*',
+      'Connection': 'keep-alive',
+    };
+
+    final controller = VideoPlayerController.networkUrl(
+      Uri.parse(_currentChannel.streamUrl),
+      httpHeaders: streamHeaders,
+      videoPlayerOptions: VideoPlayerOptions(
+        mixWithOthers: false,
+        allowBackgroundPlayback: false,
       ),
     );
+
+    _ctrl = controller;
+
+    controller.initialize().then((_) {
+      if (_disposed || !mounted) return;
+      debugPrint('[VargasTV] Player initialized successfully');
+      controller.play();
+      _cancelLoadingTimeout();
+      setState(() { _loading = false; _hasError = false; _retryCount = 0; });
+    }).catchError((error) {
+      if (_disposed || !mounted) return;
+      debugPrint('[VargasTV] Player initialization error: $error');
+      _cancelLoadingTimeout();
+      setState(() { _loading = false; _hasError = true; });
+      _autoRetry();
+    });
+
+    controller.addListener(_playerListener);
+
     _startLoadingTimeout();
     if (mounted) setState(() {});
+  }
+
+  void _playerListener() {
+    if (_disposed || !mounted || _ctrl == null) return;
+    final value = _ctrl!.value;
+
+    if (value.hasError) {
+      debugPrint('[VargasTV] Playback error: ${value.errorDescription}');
+      if (!_hasError) {
+        _cancelLoadingTimeout();
+        setState(() { _loading = false; _hasError = true; });
+        _autoRetry();
+      }
+    } else if (value.isPlaying && _loading) {
+      _cancelLoadingTimeout();
+      setState(() { _loading = false; _hasError = false; _retryCount = 0; });
+    } else if (value.isBuffering && !_loading && !_hasError) {
+      setState(() { _loading = true; });
+    } else if (!value.isBuffering && _loading && !_hasError && value.isInitialized) {
+      setState(() { _loading = false; });
+    }
   }
 
   void _switchToChannel(Channel ch) {
@@ -116,21 +129,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _hasError = false;
       _retryCount = 0;
     });
-    _startPlayer(); // إعادة تشغيل المشغل بالكامل للقناة الجديدة
+    _startPlayer();
   }
 
-  // 2. إصلاح مشكلة زر الرجوع والخروج من التطبيق
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
 
-    // معالجة زر الرجوع لمرة واحدة فقط واستهلاكه (Handled)
     if (key == LogicalKeyboardKey.goBack ||
         key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.backspace) {
       _safeGoBack();
-      return KeyEventResult.handled; // هذا السطر يمنع الخروج من التطبيق
+      return KeyEventResult.handled;
     }
 
     if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.channelUp) {
@@ -149,8 +160,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       if (_hasError) {
         _retryCount = 0;
         _startPlayer();
-      } else if (_ctrl != null) {
-        _ctrl!.isPlaying() == true ? _ctrl!.pause() : _ctrl!.play();
+      } else if (_ctrl != null && _ctrl!.value.isInitialized) {
+        _ctrl!.value.isPlaying ? _ctrl!.pause() : _ctrl!.play();
         setState(() {});
       }
       _showControlsBriefly();
@@ -166,21 +177,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _safeGoBack() {
-    if (_isPopping || !mounted) return;
+    if (_isPopping || _disposed || !mounted) return;
+
+    // Debounce: ignore rapid back presses within 500ms
+    final now = DateTime.now();
+    if (_lastBackPress != null &&
+        now.difference(_lastBackPress!) < const Duration(milliseconds: 500)) {
+      return;
+    }
+    _lastBackPress = now;
     _isPopping = true;
     _cancelLoadingTimeout();
-    
-    // إيقاف المشغل وتنظيف الذاكرة قبل الخروج
+
     if (_ctrl != null) {
-      _ctrl!.pause();
-      _ctrl!.dispose();
+      try {
+        _ctrl!.removeListener(_playerListener);
+        _ctrl!.pause();
+        _ctrl!.dispose();
+      } catch (_) {}
       _ctrl = null;
     }
-    
-    Navigator.of(context).pop();
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
-  // بقية الدوال المساعدة...
   void _nextChannel() {
     if (widget.channelList.isEmpty) return;
     final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
@@ -198,6 +220,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _autoRetry() {
     if (_retryCount < _maxRetries) {
       _retryCount++;
+      debugPrint('[VargasTV] Auto-retry #$_retryCount/$_maxRetries');
       Future.delayed(Duration(seconds: _retryCount), () {
         if (mounted && _hasError) _startPlayer();
       });
@@ -237,11 +260,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_ctrl == null || !_ctrl!.value.isInitialized) return;
+    if (state == AppLifecycleState.paused) {
+      _ctrl!.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      _ctrl!.play();
+    }
+  }
+
+  @override
   void dispose() {
+    _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _cancelLoadingTimeout();
     _playerFocus.dispose();
-    _ctrl?.dispose();
+    if (_ctrl != null) {
+      _ctrl!.removeListener(_playerListener);
+      _ctrl!.dispose();
+    }
     super.dispose();
   }
 
@@ -259,15 +297,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: Scaffold(
           backgroundColor: Colors.black,
           body: Stack(
-            fit: StackFit.expand, // يضمن أن الـ Stack يملأ الشاشة
+            fit: StackFit.expand,
             children: [
-              // الفيديو بملء الشاشة
-              if (_ctrl != null)
+              if (_ctrl != null && _ctrl!.value.isInitialized)
                 Center(
-                  child: BetterPlayer(controller: _ctrl!),
+                  child: AspectRatio(
+                    aspectRatio: _ctrl!.value.aspectRatio,
+                    child: VideoPlayer(_ctrl!),
+                  ),
                 ),
 
-              // دائرة التحميل
               if (_loading)
                 Container(
                   color: Colors.black,
@@ -284,7 +323,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ),
                 ),
 
-              // رسالة الخطأ
               if (_hasError)
                 Container(
                   color: Colors.black,
@@ -297,14 +335,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         const Text('Failed to load channel',
                             style: TextStyle(color: Colors.white, fontSize: 18)),
                         const SizedBox(height: 8),
-                        Text('Press OK to retry',
-                            style: const TextStyle(color: Colors.white54)),
+                        const Text('Press OK to retry',
+                            style: TextStyle(color: Colors.white54)),
                       ],
                     ),
                   ),
                 ),
 
-              // واجهة التحكم العلوية
               Positioned(
                 top: 0, left: 0, right: 0,
                 child: AnimatedOpacity(
@@ -327,7 +364,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               ),
 
-              // واجهة التحكم السفلية (تلميحات الريموت)
               Positioned(
                 bottom: 0, left: 0, right: 0,
                 child: AnimatedOpacity(

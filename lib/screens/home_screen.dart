@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/channel.dart';
 import '../models/theme.dart';
@@ -56,6 +57,27 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() { _loadingData = false; _dataError = e.toString(); });
       }
     }
+  }
+
+  /// Build categories list with Favorites always first
+  List<ChannelCategory> _buildDisplayCategories(AppProvider prov) {
+    // Collect all favorite channels from all categories
+    final List<Channel> favChannels = [];
+    for (final cat in _categories) {
+      for (final ch in cat.channels) {
+        if (prov.isFavorite(ch.id)) {
+          favChannels.add(ch);
+        }
+      }
+    }
+
+    final favCategory = ChannelCategory(
+      name: 'Favorites',
+      icon: 'favorite',
+      channels: favChannels,
+    );
+
+    return [favCategory, ..._categories];
   }
 
   void _openPlayer(Channel ch) {
@@ -145,7 +167,11 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'movie': return Icons.movie;
       case 'music_note': return Icons.music_note;
       case 'news': return Icons.newspaper;
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+      case 'favorite': return Icons.favorite;
+=======
       case 'favorite': return Icons.favorite_rounded;
+>>>>>>> main
       default: return Icons.live_tv;
     }
   }
@@ -157,13 +183,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final displayCats = _getDisplayCategories(prov);
 
     return Scaffold(
-      backgroundColor: c.bg,
-      body: Stack(children: [
+      backgroundColor: const Color(0xFF0D0D0D),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0D0D0D), Color(0xFF1A1A1A)],
+          ),
+        ),
+        child: Stack(children: [
         // Ambient glows
         Positioned(top: -120, right: -80,
-          child: _glow(AppTheme.accent, 350, prov.isDark ? 0.06 : 0.03)),
+          child: _glow(AppTheme.accent, 350, prov.isDark ? 0.05 : 0.03)),
         Positioned(bottom: -150, left: -50,
-          child: _glow(AppTheme.primaryDark, 300, prov.isDark ? 0.04 : 0.02)),
+          child: _glow(AppTheme.primaryDark, 300, prov.isDark ? 0.03 : 0.02)),
 
         // No internet banner
         if (!prov.hasInternet)
@@ -196,6 +230,16 @@ class _HomeScreenState extends State<HomeScreen> {
         else if (_dataError != null)
           _buildError(c)
         else
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+          Builder(builder: (_) {
+            final displayCats = _buildDisplayCategories(prov);
+            return Row(children: [
+              _buildSidebar(prov, c, displayCats),
+              Container(width: 1, color: Colors.white.withOpacity(0.04)),
+              Expanded(child: _buildChannelGrid(prov, c, displayCats)),
+            ]);
+          }),
+=======
           Row(children: [
             // Left sidebar - category list
             _buildSidebar(prov, c, displayCats),
@@ -204,46 +248,62 @@ class _HomeScreenState extends State<HomeScreen> {
             // Right content - channel grid
             Expanded(child: _buildChannelGrid(prov, c, displayCats)),
           ]),
+>>>>>>> main
       ]),
+      ),
     );
   }
 
   Widget _buildSidebar(AppProvider prov, TC c, List<ChannelCategory> displayCats) {
     return Container(
       width: 220,
-      color: c.surface.withOpacity(0.5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111).withOpacity(0.7),
+      ),
       child: Column(children: [
-        // App title
+        // App title - Premium VargasTV header
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
+          padding: const EdgeInsets.fromLTRB(20, 24, 16, 20),
           child: Row(children: [
-            Container(width: 36, height: 36,
-              decoration: BoxDecoration(
-                gradient: AppTheme.buttonGradient,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(color: AppTheme.accent.withOpacity(0.3),
-                    blurRadius: 12, spreadRadius: -2),
-                ]),
-              child: const Icon(Icons.live_tv_rounded,
-                color: Colors.white, size: 18)),
-            const SizedBox(width: 10),
             RichText(text: TextSpan(
-              style: TextStyle(fontFamily: 'Inter', fontSize: 20,
-                fontWeight: FontWeight.w800, color: c.text,
-                letterSpacing: -0.5),
-              children: const [
-                TextSpan(text: 'VarGas'),
-                TextSpan(text: 'Tv',
-                  style: TextStyle(color: AppTheme.accent)),
-              ])),
+              children: [
+                TextSpan(
+                  text: 'Vargas',
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                TextSpan(
+                  text: 'TV',
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.accent,
+                    letterSpacing: -0.5,
+                    shadows: [
+                      Shadow(
+                        color: AppTheme.accent.withOpacity(0.35),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )),
           ])),
-        Divider(height: 1, color: c.border),
+        Container(height: 1, color: Colors.white.withOpacity(0.04)),
         // Category list
         Expanded(
           child: ListView.builder(
             controller: _sidebarScrollCtrl,
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+            padding: const EdgeInsets.symmetric(vertical: 10),
+=======
             padding: const EdgeInsets.symmetric(vertical: 8),
+>>>>>>> main
             itemCount: displayCats.length,
             itemBuilder: (_, i) {
               final cat = displayCats[i];
@@ -257,25 +317,57 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 builder: (focused) => AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  curve: Curves.easeOutCubic,
+                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: (isSelected || focused)
                         ? LinearGradient(colors: [
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+                            AppTheme.accent.withOpacity(focused ? 0.22 : 0.10),
+                            AppTheme.accent.withOpacity(focused ? 0.12 : 0.04),
+=======
                             (isFav ? AppTheme.live : AppTheme.accent).withOpacity(focused ? 0.25 : 0.12),
                             (isFav ? AppTheme.live : AppTheme.accent).withOpacity(focused ? 0.15 : 0.06),
+>>>>>>> main
                           ])
                         : null,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: focused
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+                          ? AppTheme.accent.withOpacity(0.7)
+                          : Colors.transparent,
+                      width: focused ? 1.5 : 0),
+                    boxShadow: focused
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.accent.withOpacity(0.15),
+                              blurRadius: 12,
+                              spreadRadius: -2,
+                            ),
+                          ]
+                        : [],
+=======
                           ? (isFav ? AppTheme.live : AppTheme.accent).withOpacity(0.8)
                           : isSelected
                               ? (isFav ? AppTheme.live : AppTheme.accent).withOpacity(0.3)
                               : Colors.transparent,
                       width: focused ? 2 : 1),
+>>>>>>> main
                   ),
                   child: Row(children: [
+                    // Left green indicator for selected category
+                    if (isSelected && !focused)
+                      Container(
+                        width: 3,
+                        height: 20,
+                        margin: const EdgeInsets.only(right: 10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accent,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     Icon(_catIcon(cat.icon),
                       color: (isSelected || focused)
                           ? (isFav ? AppTheme.live : AppTheme.accent)
@@ -286,12 +378,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: (isSelected || focused) ? FontWeight.w700 : FontWeight.w500,
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+                        color: (isSelected || focused) ? Colors.white : c.textDim),
+=======
                         color: (isSelected || focused)
                             ? (isFav ? AppTheme.live : AppTheme.accent)
                             : c.text),
+>>>>>>> main
                       maxLines: 1, overflow: TextOverflow.ellipsis)),
                     Text('${cat.channels.length}',
-                      style: TextStyle(fontSize: 11, color: c.textDim,
+                      style: TextStyle(fontSize: 11,
+                        color: (isSelected || focused)
+                            ? AppTheme.accent.withOpacity(0.7)
+                            : c.textDim.withOpacity(0.5),
                         fontWeight: FontWeight.w600)),
                   ]),
                 ),
@@ -304,12 +403,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildChannelGrid(AppProvider prov, TC c, List<ChannelCategory> displayCats) {
     if (displayCats.isEmpty) return const SizedBox.shrink();
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+    final safeIndex = _selectedCatIndex.clamp(0, displayCats.length - 1);
+    final cat = displayCats[safeIndex];
+=======
     if (_selectedCatIndex >= displayCats.length) {
       _selectedCatIndex = 0;
     }
     final cat = displayCats[_selectedCatIndex];
     final isFav = cat.name == 'Favorites';
     final accentColor = isFav ? AppTheme.live : AppTheme.accent;
+>>>>>>> main
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -326,7 +430,11 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+                color: AppTheme.accent.withOpacity(0.12),
+=======
                 color: accentColor.withOpacity(0.15),
+>>>>>>> main
                 borderRadius: BorderRadius.circular(10)),
               child: Text('${cat.channels.length} channels',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
@@ -354,8 +462,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 channel: ch,
                 provider: prov,
                 onSelect: () => _openPlayer(ch),
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+                onLongPress: () => _toggleFavorite(ch, prov),
+=======
                 onLongPress: () => _toggleFavorite(ch),
                 isFavorite: prov.favoriteIds.contains(ch.id),
+>>>>>>> main
               );
             },
           ),
