@@ -7,7 +7,6 @@ import '../models/channel.dart';
 import '../models/theme.dart';
 import '../providers/app_provider.dart';
 import '../services/channel_service.dart';
-import '../services/mx_player_service.dart';
 import '../widgets/channel_card.dart';
 import 'player_screen.dart';
 
@@ -59,59 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Build categories list with Favorites always first
-  List<ChannelCategory> _buildDisplayCategories(AppProvider prov) {
-    // Collect all favorite channels from all categories
-    final List<Channel> favChannels = [];
-    for (final cat in _categories) {
-      for (final ch in cat.channels) {
-        if (prov.isFavorite(ch.id)) {
-          favChannels.add(ch);
-        }
-      }
-    }
-
-    final favCategory = ChannelCategory(
-      name: 'Favorites',
-      icon: 'favorite',
-      channels: favChannels,
-    );
-
-    return [favCategory, ..._categories];
-  }
-
   void _openPlayer(Channel ch) {
-    if (ch.streamUrl.isEmpty) return;
-    final prov = context.read<AppProvider>();
-    prov.setActiveChannel(ch);
-    prov.saveLastChannel(
-      id: ch.id, name: ch.name, url: ch.streamUrl,
-      logo: ch.logoUrl, number: ch.number, category: ch.category);
-    // Launch directly in MX Player
-    _launchInMxPlayer(ch);
-  }
-
-  Future<void> _launchInMxPlayer(Channel ch) async {
-    final launched = await MxPlayerService.launchInMxPlayer(
-      streamUrl: ch.streamUrl,
-      title: ch.name,
-    );
-    if (!launched && mounted) {
-      _showMxPlayerNotInstalledDialog();
-    }
-  }
-
-  void _showMxPlayerNotInstalledDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const _MxPlayerDialog(),
-    );
-  }
-
-  /// Open in-app player as fallback (preserving existing logic)
-  // ignore: unused_element
-  void _openInAppPlayer(Channel ch) {
     if (ch.streamUrl.isEmpty) return;
     final channelList = _categories
         .where((cat) => cat.name == ch.category)
@@ -167,11 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'movie': return Icons.movie;
       case 'music_note': return Icons.music_note;
       case 'news': return Icons.newspaper;
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-      case 'favorite': return Icons.favorite;
-=======
       case 'favorite': return Icons.favorite_rounded;
->>>>>>> main
       default: return Icons.live_tv;
     }
   }
@@ -230,16 +173,6 @@ class _HomeScreenState extends State<HomeScreen> {
         else if (_dataError != null)
           _buildError(c)
         else
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-          Builder(builder: (_) {
-            final displayCats = _buildDisplayCategories(prov);
-            return Row(children: [
-              _buildSidebar(prov, c, displayCats),
-              Container(width: 1, color: Colors.white.withOpacity(0.04)),
-              Expanded(child: _buildChannelGrid(prov, c, displayCats)),
-            ]);
-          }),
-=======
           Row(children: [
             // Left sidebar - category list
             _buildSidebar(prov, c, displayCats),
@@ -248,7 +181,6 @@ class _HomeScreenState extends State<HomeScreen> {
             // Right content - channel grid
             Expanded(child: _buildChannelGrid(prov, c, displayCats)),
           ]),
->>>>>>> main
       ]),
       ),
     );
@@ -299,11 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: ListView.builder(
             controller: _sidebarScrollCtrl,
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-            padding: const EdgeInsets.symmetric(vertical: 10),
-=======
             padding: const EdgeInsets.symmetric(vertical: 8),
->>>>>>> main
             itemCount: displayCats.length,
             itemBuilder: (_, i) {
               final cat = displayCats[i];
@@ -323,38 +251,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                     gradient: (isSelected || focused)
                         ? LinearGradient(colors: [
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                            AppTheme.accent.withOpacity(focused ? 0.22 : 0.10),
-                            AppTheme.accent.withOpacity(focused ? 0.12 : 0.04),
-=======
                             (isFav ? AppTheme.live : AppTheme.accent).withOpacity(focused ? 0.25 : 0.12),
                             (isFav ? AppTheme.live : AppTheme.accent).withOpacity(focused ? 0.15 : 0.06),
->>>>>>> main
                           ])
                         : null,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: focused
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                          ? AppTheme.accent.withOpacity(0.7)
-                          : Colors.transparent,
-                      width: focused ? 1.5 : 0),
-                    boxShadow: focused
-                        ? [
-                            BoxShadow(
-                              color: AppTheme.accent.withOpacity(0.15),
-                              blurRadius: 12,
-                              spreadRadius: -2,
-                            ),
-                          ]
-                        : [],
-=======
                           ? (isFav ? AppTheme.live : AppTheme.accent).withOpacity(0.8)
                           : isSelected
                               ? (isFav ? AppTheme.live : AppTheme.accent).withOpacity(0.3)
                               : Colors.transparent,
                       width: focused ? 2 : 1),
->>>>>>> main
                   ),
                   child: Row(children: [
                     // Left green indicator for selected category
@@ -378,13 +286,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: (isSelected || focused) ? FontWeight.w700 : FontWeight.w500,
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                        color: (isSelected || focused) ? Colors.white : c.textDim),
-=======
                         color: (isSelected || focused)
                             ? (isFav ? AppTheme.live : AppTheme.accent)
                             : c.text),
->>>>>>> main
                       maxLines: 1, overflow: TextOverflow.ellipsis)),
                     Text('${cat.channels.length}',
                       style: TextStyle(fontSize: 11,
@@ -403,17 +307,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildChannelGrid(AppProvider prov, TC c, List<ChannelCategory> displayCats) {
     if (displayCats.isEmpty) return const SizedBox.shrink();
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-    final safeIndex = _selectedCatIndex.clamp(0, displayCats.length - 1);
-    final cat = displayCats[safeIndex];
-=======
     if (_selectedCatIndex >= displayCats.length) {
       _selectedCatIndex = 0;
     }
     final cat = displayCats[_selectedCatIndex];
     final isFav = cat.name == 'Favorites';
     final accentColor = isFav ? AppTheme.live : AppTheme.accent;
->>>>>>> main
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -430,11 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                color: AppTheme.accent.withOpacity(0.12),
-=======
                 color: accentColor.withOpacity(0.15),
->>>>>>> main
                 borderRadius: BorderRadius.circular(10)),
               child: Text('${cat.channels.length} channels',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
@@ -462,12 +357,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 channel: ch,
                 provider: prov,
                 onSelect: () => _openPlayer(ch),
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                onLongPress: () => _toggleFavorite(ch, prov),
-=======
                 onLongPress: () => _toggleFavorite(ch),
                 isFavorite: prov.favoriteIds.contains(ch.id),
->>>>>>> main
               );
             },
           ),
@@ -517,119 +408,6 @@ class _HomeScreenState extends State<HomeScreen> {
     decoration: BoxDecoration(shape: BoxShape.circle,
       gradient: RadialGradient(
         colors: [color.withOpacity(opacity), Colors.transparent])));
-}
-
-/// MX Player not installed dialog - fully navigable with D-pad remote
-class _MxPlayerDialog extends StatelessWidget {
-  const _MxPlayerDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppTheme.darkSurface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: AppTheme.accent.withOpacity(0.3)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64, height: 64,
-              decoration: BoxDecoration(
-                color: AppTheme.live.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.error_outline_rounded,
-                color: AppTheme.live, size: 36),
-            ),
-            const SizedBox(height: 20),
-            const Text('MX Player Not Installed',
-              style: TextStyle(color: Colors.white, fontSize: 18,
-                fontWeight: FontWeight.w800)),
-            const SizedBox(height: 10),
-            Text(
-              'MX Player is required to play channels.\nPlease install it from the Play Store.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.6),
-                fontSize: 13, height: 1.5),
-            ),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                // Cancel button
-                Expanded(
-                  child: _TVFocusableItem(
-                    onSelect: () => Navigator.of(context).pop(),
-                    builder: (focused) => Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: focused
-                            ? Colors.white.withOpacity(0.15)
-                            : Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: focused
-                              ? Colors.white.withOpacity(0.5)
-                              : Colors.white.withOpacity(0.1),
-                          width: focused ? 2 : 1),
-                      ),
-                      child: const Center(
-                        child: Text('Cancel',
-                          style: TextStyle(color: Colors.white,
-                            fontWeight: FontWeight.w700, fontSize: 14)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Open Play Store button
-                Expanded(
-                  child: _TVFocusableItem(
-                    autofocus: true,
-                    onSelect: () {
-                      Navigator.of(context).pop();
-                      MxPlayerService.openPlayStore();
-                    },
-                    builder: (focused) => Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.buttonGradient,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: focused ? Colors.white : Colors.transparent,
-                          width: focused ? 2 : 0),
-                        boxShadow: focused
-                            ? [BoxShadow(
-                                color: AppTheme.accent.withOpacity(0.4),
-                                blurRadius: 16, spreadRadius: -2)]
-                            : [],
-                      ),
-                      child: const Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.shop_rounded,
-                              color: Colors.white, size: 18),
-                            SizedBox(width: 8),
-                            Text('Open Play Store',
-                              style: TextStyle(color: Colors.white,
-                                fontWeight: FontWeight.w800, fontSize: 14)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// A focusable item for TV remote D-pad navigation.

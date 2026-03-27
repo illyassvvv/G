@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../models/channel.dart';
+import '../services/stream_resolver_service.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -61,42 +62,62 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     debugPrint('[VargasTV] Stream URL: ${_currentChannel.streamUrl}');
     debugPrint('[VargasTV] Platform: ${Platform.operatingSystem}');
 
-    // Headers for stream requests - Android TV needs proper User-Agent
-    final Map<String, String> streamHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Android TV)',
-      'Accept': '*/*',
-      'Connection': 'keep-alive',
-    };
+    // Resolve token/redirect URLs before passing to the player
+    _resolveAndPlay(_currentChannel.streamUrl);
+  }
 
-    final controller = VideoPlayerController.networkUrl(
-      Uri.parse(_currentChannel.streamUrl),
-      httpHeaders: streamHeaders,
-      videoPlayerOptions: VideoPlayerOptions(
-        mixWithOthers: false,
-        allowBackgroundPlayback: false,
-      ),
-    );
-
-    _ctrl = controller;
-
-    controller.initialize().then((_) {
+  Future<void> _resolveAndPlay(String originalUrl) async {
+    try {
+      final resolved = await StreamResolverService.resolveStreamUrl(originalUrl);
       if (_disposed || !mounted) return;
-      debugPrint('[VargasTV] Player initialized successfully');
-      controller.play();
-      _cancelLoadingTimeout();
-      setState(() { _loading = false; _hasError = false; _retryCount = 0; });
-    }).catchError((error) {
+
+      debugPrint('[VargasTV] Resolved URL: ${resolved.url}');
+
+      // Merge resolved headers with default Android TV headers
+      final Map<String, String> streamHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Android TV) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+        if (resolved.headers != null) ...resolved.headers!,
+      };
+
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(resolved.url),
+        httpHeaders: streamHeaders,
+        videoPlayerOptions: VideoPlayerOptions(
+          mixWithOthers: false,
+          allowBackgroundPlayback: false,
+        ),
+      );
+
+      _ctrl = controller;
+
+      controller.initialize().then((_) {
+        if (_disposed || !mounted) return;
+        debugPrint('[VargasTV] Player initialized successfully');
+        controller.play();
+        _cancelLoadingTimeout();
+        setState(() { _loading = false; _hasError = false; _retryCount = 0; });
+      }).catchError((error) {
+        if (_disposed || !mounted) return;
+        debugPrint('[VargasTV] Player initialization error: $error');
+        _cancelLoadingTimeout();
+        setState(() { _loading = false; _hasError = true; });
+        _autoRetry();
+      });
+
+      controller.addListener(_playerListener);
+
+      _startLoadingTimeout();
+      if (mounted) setState(() {});
+    } catch (e) {
       if (_disposed || !mounted) return;
-      debugPrint('[VargasTV] Player initialization error: $error');
-      _cancelLoadingTimeout();
+      debugPrint('[VargasTV] Stream resolution failed: $e');
       setState(() { _loading = false; _hasError = true; });
       _autoRetry();
-    });
-
-    controller.addListener(_playerListener);
-
-    _startLoadingTimeout();
-    if (mounted) setState(() {});
+    }
   }
 
   void _playerListener() {
@@ -133,6 +154,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    // Only handle KeyDownEvent to prevent duplicate triggers from
+    // KeyDown + KeyUp both firing the same action
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
@@ -177,6 +200,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   }
 
   void _safeGoBack() {
+    // Guard: prevent any duplicate back navigation
     if (_isPopping || _disposed || !mounted) return;
 
     // Debounce: ignore rapid back presses within 500ms
@@ -186,20 +210,34 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       return;
     }
     _lastBackPress = now;
+
+    // Set flag IMMEDIATELY to block any subsequent calls
     _isPopping = true;
     _cancelLoadingTimeout();
 
-    if (_ctrl != null) {
-      try {
-        _ctrl!.removeListener(_playerListener);
-        _ctrl!.pause();
-        _ctrl!.dispose();
-      } catch (_) {}
-      _ctrl = null;
-    }
+    // Stop and clean up the player before navigating
+    _cleanupPlayer();
 
     if (mounted) {
       Navigator.of(context).pop();
+    }
+
+    // Reset flag after a delay to handle edge cases
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _isPopping = false;
+    });
+  }
+
+  /// Safely cleans up the video player controller.
+  void _cleanupPlayer() {
+    final ctrl = _ctrl;
+    _ctrl = null;
+    if (ctrl != null) {
+      try {
+        ctrl.removeListener(_playerListener);
+        ctrl.pause();
+        ctrl.dispose();
+      } catch (_) {}
     }
   }
 
@@ -276,10 +314,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     _hideTimer?.cancel();
     _cancelLoadingTimeout();
     _playerFocus.dispose();
-    if (_ctrl != null) {
-      _ctrl!.removeListener(_playerListener);
-      _ctrl!.dispose();
-    }
+    // Only dispose if not already cleaned up by _safeGoBack
+    _cleanupPlayer();
     super.dispose();
   }
 
@@ -288,7 +324,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _safeGoBack();
+        // Only handle if not already popped — prevents double-pop
+        // when both system back and key handler fire
+        if (!didPop && !_isPopping) _safeGoBack();
       },
       child: Focus(
         focusNode: _playerFocus,
