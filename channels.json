@@ -216,6 +216,13 @@
           "number": "3",
           "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774612223.png",
           "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-3-usa/5d58265a862a476dc7f97694addb5ded/index.m3u8"
+        },
+        {
+          "id": 122,
+          "name": "Mbc 4",
+          "number": "4",
+          "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774612298.png",
+          "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-4/24f134f1cd63db9346439e96b86ca6ed/index.m3u8"
         }
       ]
     }
