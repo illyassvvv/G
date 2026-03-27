@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:better_player_plus/better_player_plus.dart';
@@ -29,7 +30,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late Channel _currentChannel;
   int _retryCount = 0;
   static const _maxRetries = 3;
-  static const _loadingTimeoutDuration = Duration(seconds: 20);
+  static const _loadingTimeoutDuration = Duration(seconds: 25);
+  bool _useSoftwareDecoder = false;
 
   final FocusNode _playerFocus = FocusNode();
   bool _isPopping = false;
@@ -42,12 +44,27 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _scheduleHideControls();
   }
 
-  // 1. تعديل إعدادات المشغل لإصلاح الـ Full Screen والـ Loading
+  // Determine if running on Android TV
+  bool get _isAndroidTV => Platform.isAndroid;
+
   void _startPlayer() {
     _cancelLoadingTimeout();
     _ctrl?.dispose();
     _ctrl = null;
     if (mounted) setState(() { _loading = true; _hasError = false; });
+
+    debugPrint('[VargasTV] Starting player for: ${_currentChannel.name}');
+    debugPrint('[VargasTV] Stream URL: ${_currentChannel.streamUrl}');
+    debugPrint('[VargasTV] Platform: ${Platform.operatingSystem}, softwareDecode: $_useSoftwareDecoder');
+
+    // Headers for stream requests - Android TV needs proper User-Agent
+    final Map<String, String> streamHeaders = {
+      'User-Agent': _isAndroidTV
+          ? 'Mozilla/5.0 (Linux; Android 12; TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Accept': '*/*',
+      'Connection': 'keep-alive',
+    };
 
     _ctrl = BetterPlayerController(
       BetterPlayerConfiguration(
@@ -55,11 +72,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
         looping: false,
         fullScreenByDefault: false,
         allowedScreenSleep: false,
+        handleLifecycle: true,
         autoDetectFullscreenAspectRatio: true,
-        
-        // الحل لمشكلة الحواف السوداء: BoxFit.fill يمد الفيديو ليملأ الشاشة تماماً
-        fit: BoxFit.fill, 
-        
+        // Important for Android TV rendering
+        useRootNavigator: true,
+        fit: BoxFit.fill,
         controlsConfiguration: BetterPlayerControlsConfiguration(
           showControls: false,
           loadingWidget: const SizedBox.shrink(),
@@ -68,6 +85,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
           if (!mounted) return;
           switch (event.betterPlayerEventType) {
             case BetterPlayerEventType.initialized:
+              debugPrint('[VargasTV] Player initialized successfully');
+              if (_loading) {
+                _cancelLoadingTimeout();
+                setState(() { _loading = false; _hasError = false; _retryCount = 0; _useSoftwareDecoder = false; });
+              }
+              break;
             case BetterPlayerEventType.play:
             case BetterPlayerEventType.bufferingEnd:
               if (_loading) {
@@ -75,7 +98,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 setState(() { _loading = false; _hasError = false; _retryCount = 0; });
               }
               break;
+            case BetterPlayerEventType.bufferingStart:
+              debugPrint('[VargasTV] Buffering started...');
+              break;
             case BetterPlayerEventType.exception:
+              debugPrint('[VargasTV] Player exception: ${event.parameters}');
               _cancelLoadingTimeout();
               setState(() { _loading = false; _hasError = true; });
               _autoRetry();
@@ -89,17 +116,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         BetterPlayerDataSourceType.network,
         _currentChannel.streamUrl,
         liveStream: true,
-        
-        // الحل لمشكلة عدم اشتغال الستريم: تحديد التنسيق وإضافة Headers (الوكيل)
         videoFormat: BetterPlayerVideoFormat.hls,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000, 
-          maxBufferMs: 15000,
-          bufferForPlaybackMs: 2500, 
-          bufferForPlaybackAfterRebufferMs: 4000,
+        headers: streamHeaders,
+        bufferingConfiguration: BetterPlayerBufferingConfiguration(
+          minBufferMs: _isAndroidTV ? 5000 : 2000,
+          maxBufferMs: _isAndroidTV ? 30000 : 15000,
+          bufferForPlaybackMs: _isAndroidTV ? 3000 : 2500,
+          bufferForPlaybackAfterRebufferMs: _isAndroidTV ? 6000 : 4000,
         ),
       ),
     );
@@ -198,6 +221,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _autoRetry() {
     if (_retryCount < _maxRetries) {
       _retryCount++;
+      debugPrint('[VargasTV] Auto-retry #$_retryCount/$_maxRetries (softwareDecode: $_useSoftwareDecoder)');
+      // On Android TV, try software decoding on the 2nd retry
+      if (_isAndroidTV && _retryCount == 2 && !_useSoftwareDecoder) {
+        debugPrint('[VargasTV] Switching to software decoder fallback');
+        _useSoftwareDecoder = true;
+      }
       Future.delayed(Duration(seconds: _retryCount), () {
         if (mounted && _hasError) _startPlayer();
       });
