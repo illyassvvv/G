@@ -162,6 +162,13 @@
           "number": "8",
           "logo": "https://www.lyngsat.com/logo/tv/mm/medi-1-tv-ma.png",
           "stream": "https://cdn.live.easybroadcast.io/abr_corp/83_medi1tv-maghreb_jnbspmg/corp/83_medi1tv-maghreb_jnbspmg_720p/chunks_dvr.m3u8"
+        },
+        {
+          "id": 118,
+          "name": "Mbc 5",
+          "number": "9",
+          "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774611631.png",
+          "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-5/ee6b000cee0629411b666ab26cb13e9b/index.m3u8"
         }
       ]
     },
