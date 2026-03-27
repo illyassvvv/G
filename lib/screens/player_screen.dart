@@ -160,8 +160,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
 
     final key = event.logicalKey;
 
-    if (key == LogicalKeyboardKey.goBack ||
-        key == LogicalKeyboardKey.escape ||
+    // NOTE: Do NOT handle LogicalKeyboardKey.goBack here!
+    // On Android TV, the Back/Return button fires both a KeyEvent (goBack)
+    // AND a system back navigation event. If we handle goBack here and call
+    // Navigator.pop(), the system back event still propagates — but the
+    // PlayerScreen is already gone, so it reaches HomeScreen and pops that
+    // too, exiting the app. Instead, we let PopScope handle goBack via
+    // onPopInvokedWithResult, which properly consumes the system event.
+    if (key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.backspace) {
       _safeGoBack();
       return KeyEventResult.handled;

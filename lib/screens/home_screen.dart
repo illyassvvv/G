@@ -137,7 +137,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final c = prov.colors;
     final displayCats = _getDisplayCategories(prov);
 
-    return Scaffold(
+    // Prevent accidental app exit on single back press.
+    // On Android TV the system back event can leak through from child screens;
+    // this PopScope ensures the HomeScreen is never popped unintentionally.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        // Do nothing — HomeScreen is the root, never pop it.
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
       body: Container(
         decoration: const BoxDecoration(
@@ -195,6 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ]),
       ]),
       ),
+    ),
     );
   }
 
