@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Number input on home screen (only when not in screensaver)
     if (event is KeyDownEvent && !_screensaverActive) {
-      final digitKeys = {
+      const digitKeys = {
         LogicalKeyboardKey.digit0: 0, LogicalKeyboardKey.digit1: 1,
         LogicalKeyboardKey.digit2: 2, LogicalKeyboardKey.digit3: 3,
         LogicalKeyboardKey.digit4: 4, LogicalKeyboardKey.digit5: 5,
@@ -250,13 +250,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final c = prov.colors;
     final displayCats = _getDisplayCategories(prov);
 
-    // Prevent accidental app exit on single back press.
-    // On Android TV the system back event can leak through from child screens;
-    // this PopScope ensures the HomeScreen is never popped unintentionally.
+    // Handle back press on home screen — show exit confirmation dialog.
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        // Do nothing — HomeScreen is the root, never pop it.
+        if (!didPop) _showExitDialog();
       },
       child: Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
@@ -461,7 +459,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildChannelGrid(AppProvider prov, TC c, List<ChannelCategory> displayCats) {
     if (displayCats.isEmpty) return const SizedBox.shrink();
     if (_selectedCatIndex >= displayCats.length) {
-      _selectedCatIndex = 0;
+      // Schedule the state update for after the current build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _selectedCatIndex = 0);
+      });
+      // Use 0 for this frame to avoid out-of-bounds
+      return const SizedBox.shrink();
     }
     final cat = displayCats[_selectedCatIndex];
     final isFav = cat.name == 'Favorites';
@@ -555,6 +558,108 @@ class _HomeScreenState extends State<HomeScreen> {
               fontWeight: FontWeight.w800, fontSize: 14))),
       ),
     ]));
+
+  // ── Exit confirmation dialog ─────────────────────────────
+  DateTime? _lastBackPress;
+
+  void _showExitDialog() {
+    // Debounce rapid back presses
+    final now = DateTime.now();
+    if (_lastBackPress != null &&
+        now.difference(_lastBackPress!) < const Duration(milliseconds: 500)) {
+      return;
+    }
+    _lastBackPress = now;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (ctx) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 360,
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A1A),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.accent.withOpacity(0.2)),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.6),
+                  blurRadius: 40, spreadRadius: 8),
+              ],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                  color: AppTheme.live.withOpacity(0.12),
+                  shape: BoxShape.circle),
+                child: const Icon(Icons.exit_to_app_rounded,
+                  color: AppTheme.live, size: 32),
+              ),
+              const SizedBox(height: 16),
+              Text('Exit VargasTV?',
+                style: GoogleFonts.poppins(
+                  color: Colors.white, fontSize: 18,
+                  fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              const Text('Are you sure you want to exit?',
+                style: TextStyle(color: Colors.white54, fontSize: 14)),
+              const SizedBox(height: 24),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                _TVFocusableItem(
+                  autofocus: true,
+                  onSelect: () => Navigator.of(ctx).pop(),
+                  builder: (focused) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: focused
+                          ? Colors.white.withOpacity(0.15)
+                          : Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: focused
+                            ? Colors.white.withOpacity(0.5)
+                            : Colors.white.withOpacity(0.1)),
+                    ),
+                    child: const Text('Cancel',
+                      style: TextStyle(color: Colors.white70, fontSize: 14,
+                        fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                _TVFocusableItem(
+                  onSelect: () {
+                    Navigator.of(ctx).pop();
+                    SystemNavigator.pop();
+                  },
+                  builder: (focused) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [
+                        AppTheme.live.withOpacity(focused ? 1.0 : 0.8),
+                        AppTheme.live.withOpacity(focused ? 0.8 : 0.6),
+                      ]),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: focused ? Colors.white : Colors.transparent,
+                        width: 2),
+                    ),
+                    child: const Text('Exit',
+                      style: TextStyle(color: Colors.white, fontSize: 14,
+                        fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _glow(Color color, double size, double opacity) => Container(
     width: size, height: size,

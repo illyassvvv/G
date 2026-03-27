@@ -227,15 +227,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
 
     final key = event.logicalKey;
 
-    // NOTE: Do NOT handle LogicalKeyboardKey.goBack here!
-    if (key == LogicalKeyboardKey.escape ||
+    // Handle all back/return key variants (including Android TV remote)
+    if (key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.backspace) {
       _safeGoBack();
       return KeyEventResult.handled;
     }
 
     // ── Number keys for direct channel input ──────────────
-    final digitKeys = {
+    const digitKeys = {
       LogicalKeyboardKey.digit0: 0, LogicalKeyboardKey.digit1: 1,
       LogicalKeyboardKey.digit2: 2, LogicalKeyboardKey.digit3: 3,
       LogicalKeyboardKey.digit4: 4, LogicalKeyboardKey.digit5: 5,
@@ -330,7 +331,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
 
     // Reset flag after a delay to handle edge cases
     Future.delayed(const Duration(milliseconds: 300), () {
-      _isPopping = false;
+      if (!_disposed) _isPopping = false;
     });
   }
 
