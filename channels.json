@@ -202,6 +202,13 @@
           "number": "1",
           "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774612020.png",
           "stream": "https://shd-gcp-live-orng.shahid.net/live/bitmovin-mbc-1-na/eec141533c90dd34722c503a296dd0d8/index.m3u8"
+        },
+        {
+          "id": 120,
+          "name": "Mbc 2",
+          "number": "2",
+          "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774612175.png",
+          "stream": "https://man1ted.com/mbc2/index.m3u8"
         }
       ]
     }
