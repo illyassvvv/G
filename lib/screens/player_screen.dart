@@ -235,7 +235,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     }
 
     // ── Number keys for direct channel input ──────────────
-    const digitKeys = {
+    final digitKeys = {
       LogicalKeyboardKey.digit0: 0, LogicalKeyboardKey.digit1: 1,
       LogicalKeyboardKey.digit2: 2, LogicalKeyboardKey.digit3: 3,
       LogicalKeyboardKey.digit4: 4, LogicalKeyboardKey.digit5: 5,
