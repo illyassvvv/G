@@ -209,6 +209,13 @@
           "number": "2",
           "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774612175.png",
           "stream": "https://man1ted.com/mbc2/index.m3u8"
+        },
+        {
+          "id": 121,
+          "name": "Mbc 3",
+          "number": "3",
+          "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774612223.png",
+          "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-3-usa/5d58265a862a476dc7f97694addb5ded/index.m3u8"
         }
       ]
     }
