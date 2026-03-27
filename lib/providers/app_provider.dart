@@ -46,11 +46,7 @@ class AppProvider extends ChangeNotifier {
   // ── Data saver mode ─────────────────────────────────────────
   bool _dataSaverEnabled = false;
 
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-  // ── Favorites ─────────────────────────────────────────────
-=======
   // ── Favorites ─────────────────────────────────────────────────
->>>>>>> main
   Set<int> _favoriteIds = {};
 
   // ── Getters ─────────────────────────────────────────────────
@@ -67,11 +63,7 @@ class AppProvider extends ChangeNotifier {
   String? get lastChannelCat  => _lastChannelCat;
   double get volumeLevel     => _volumeLevel;
   bool get dataSaverEnabled  => _dataSaverEnabled;
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-  Set<int> get favoriteIds   => _favoriteIds;
-=======
   Set<int> get favoriteIds     => _favoriteIds;
->>>>>>> main
 
   TC get colors => TC(_isDark);
 
@@ -251,19 +243,6 @@ class AppProvider extends ChangeNotifier {
   // ── Favorites ──────────────────────────────────────────────
   bool isFavorite(int channelId) => _favoriteIds.contains(channelId);
 
-  Future<void> toggleFavorite(int channelId) async {
-    if (_favoriteIds.contains(channelId)) {
-      _favoriteIds.remove(channelId);
-    } else {
-      _favoriteIds.add(channelId);
-    }
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _keyFavorites,
-      _favoriteIds.map((id) => id.toString()).toList(),
-    );
-  }
 
   /// Fully close the player and reset all state
   void closePlayer() {

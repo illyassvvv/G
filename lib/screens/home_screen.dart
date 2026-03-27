@@ -8,6 +8,7 @@ import '../models/theme.dart';
 import '../providers/app_provider.dart';
 import '../services/channel_service.dart';
 import '../services/mx_player_service.dart';
+import '../services/url_resolver_service.dart';
 import '../widgets/channel_card.dart';
 import 'player_screen.dart';
 
@@ -59,26 +60,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Build categories list with Favorites always first
-  List<ChannelCategory> _buildDisplayCategories(AppProvider prov) {
-    // Collect all favorite channels from all categories
-    final List<Channel> favChannels = [];
-    for (final cat in _categories) {
-      for (final ch in cat.channels) {
-        if (prov.isFavorite(ch.id)) {
-          favChannels.add(ch);
-        }
-      }
-    }
-
-    final favCategory = ChannelCategory(
-      name: 'Favorites',
-      icon: 'favorite',
-      channels: favChannels,
-    );
-
-    return [favCategory, ..._categories];
-  }
 
   void _openPlayer(Channel ch) {
     if (ch.streamUrl.isEmpty) return;
@@ -92,8 +73,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _launchInMxPlayer(Channel ch) async {
+    // Resolve redirect/token URLs before launching in MX Player
+    final resolvedUrl = await UrlResolverService.resolveStreamUrl(ch.streamUrl);
+    if (!mounted) return;
+
     final launched = await MxPlayerService.launchInMxPlayer(
-      streamUrl: ch.streamUrl,
+      streamUrl: resolvedUrl,
       title: ch.name,
     );
     if (!launched && mounted) {
@@ -167,11 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'movie': return Icons.movie;
       case 'music_note': return Icons.music_note;
       case 'news': return Icons.newspaper;
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-      case 'favorite': return Icons.favorite;
-=======
       case 'favorite': return Icons.favorite_rounded;
->>>>>>> main
       default: return Icons.live_tv;
     }
   }
@@ -230,16 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
         else if (_dataError != null)
           _buildError(c)
         else
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-          Builder(builder: (_) {
-            final displayCats = _buildDisplayCategories(prov);
-            return Row(children: [
-              _buildSidebar(prov, c, displayCats),
-              Container(width: 1, color: Colors.white.withOpacity(0.04)),
-              Expanded(child: _buildChannelGrid(prov, c, displayCats)),
-            ]);
-          }),
-=======
           Row(children: [
             // Left sidebar - category list
             _buildSidebar(prov, c, displayCats),
@@ -248,7 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
             // Right content - channel grid
             Expanded(child: _buildChannelGrid(prov, c, displayCats)),
           ]),
->>>>>>> main
       ]),
       ),
     );
@@ -299,11 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: ListView.builder(
             controller: _sidebarScrollCtrl,
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-            padding: const EdgeInsets.symmetric(vertical: 10),
-=======
             padding: const EdgeInsets.symmetric(vertical: 8),
->>>>>>> main
             itemCount: displayCats.length,
             itemBuilder: (_, i) {
               final cat = displayCats[i];
@@ -323,38 +289,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                     gradient: (isSelected || focused)
                         ? LinearGradient(colors: [
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                            AppTheme.accent.withOpacity(focused ? 0.22 : 0.10),
-                            AppTheme.accent.withOpacity(focused ? 0.12 : 0.04),
-=======
                             (isFav ? AppTheme.live : AppTheme.accent).withOpacity(focused ? 0.25 : 0.12),
                             (isFav ? AppTheme.live : AppTheme.accent).withOpacity(focused ? 0.15 : 0.06),
->>>>>>> main
                           ])
                         : null,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: focused
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                          ? AppTheme.accent.withOpacity(0.7)
-                          : Colors.transparent,
-                      width: focused ? 1.5 : 0),
-                    boxShadow: focused
-                        ? [
-                            BoxShadow(
-                              color: AppTheme.accent.withOpacity(0.15),
-                              blurRadius: 12,
-                              spreadRadius: -2,
-                            ),
-                          ]
-                        : [],
-=======
                           ? (isFav ? AppTheme.live : AppTheme.accent).withOpacity(0.8)
                           : isSelected
                               ? (isFav ? AppTheme.live : AppTheme.accent).withOpacity(0.3)
                               : Colors.transparent,
                       width: focused ? 2 : 1),
->>>>>>> main
                   ),
                   child: Row(children: [
                     // Left green indicator for selected category
@@ -378,13 +324,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: (isSelected || focused) ? FontWeight.w700 : FontWeight.w500,
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                        color: (isSelected || focused) ? Colors.white : c.textDim),
-=======
                         color: (isSelected || focused)
                             ? (isFav ? AppTheme.live : AppTheme.accent)
                             : c.text),
->>>>>>> main
                       maxLines: 1, overflow: TextOverflow.ellipsis)),
                     Text('${cat.channels.length}',
                       style: TextStyle(fontSize: 11,
@@ -403,17 +345,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildChannelGrid(AppProvider prov, TC c, List<ChannelCategory> displayCats) {
     if (displayCats.isEmpty) return const SizedBox.shrink();
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-    final safeIndex = _selectedCatIndex.clamp(0, displayCats.length - 1);
-    final cat = displayCats[safeIndex];
-=======
     if (_selectedCatIndex >= displayCats.length) {
       _selectedCatIndex = 0;
     }
     final cat = displayCats[_selectedCatIndex];
     final isFav = cat.name == 'Favorites';
     final accentColor = isFav ? AppTheme.live : AppTheme.accent;
->>>>>>> main
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -430,11 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                color: AppTheme.accent.withOpacity(0.12),
-=======
                 color: accentColor.withOpacity(0.15),
->>>>>>> main
                 borderRadius: BorderRadius.circular(10)),
               child: Text('${cat.channels.length} channels',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
@@ -462,12 +395,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 channel: ch,
                 provider: prov,
                 onSelect: () => _openPlayer(ch),
-<<<<<<< devin/1774617507-fix-player-favorites-navigation
-                onLongPress: () => _toggleFavorite(ch, prov),
-=======
                 onLongPress: () => _toggleFavorite(ch),
                 isFavorite: prov.favoriteIds.contains(ch.id),
->>>>>>> main
               );
             },
           ),
