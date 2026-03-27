@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,12 +13,19 @@ class TVChannelCard extends StatefulWidget {
   final Channel channel;
   final AppProvider provider;
   final VoidCallback onSelect;
+  final VoidCallback? onLongPress;
+  final bool isFavorite;
 
   const TVChannelCard({
     super.key,
     required this.channel,
     required this.provider,
     required this.onSelect,
+    this.onLongPress,
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
+=======
+    this.isFavorite = false,
+>>>>>>> main
   });
 
   @override
@@ -26,6 +34,16 @@ class TVChannelCard extends StatefulWidget {
 
 class _TVChannelCardState extends State<TVChannelCard> {
   bool _focused = false;
+  DateTime? _keyDownTime;
+  bool _longPressTriggered = false;
+  static const _longPressDuration = Duration(milliseconds: 600);
+  Timer? _longPressTimer;
+
+  @override
+  void dispose() {
+    _longPressTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,17 +53,40 @@ class _TVChannelCardState extends State<TVChannelCard> {
     return Focus(
       onFocusChange: (f) => setState(() => _focused = f),
       onKeyEvent: (node, event) {
+        final isOkKey = event.logicalKey == LogicalKeyboardKey.select ||
+            event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.gameButtonA;
+
+        if (!isOkKey) return KeyEventResult.ignored;
+
+        if (event is KeyDownEvent) {
+          if (_keyDownTime == null) {
+            _keyDownTime = DateTime.now();
+            _longPressTriggered = false;
+            _longPressTimer?.cancel();
+            _longPressTimer = Timer(_longPressDuration, () {
+              if (_keyDownTime != null && !_longPressTriggered) {
+                _longPressTriggered = true;
+                if (widget.onLongPress != null) {
+                  widget.onLongPress!();
+                }
+              }
+            });
+          }
+          return KeyEventResult.handled;
+        }
+        // Long-press simulation: menu button or gamepad Y for favorites
         if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.select ||
-             event.logicalKey == LogicalKeyboardKey.enter ||
-             event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
-          widget.onSelect();
+            (event.logicalKey == LogicalKeyboardKey.contextMenu ||
+             event.logicalKey == LogicalKeyboardKey.gameButtonY)) {
+          widget.onLongPress?.call();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
       child: GestureDetector(
         onTap: widget.onSelect,
+        onLongPress: widget.onLongPress,
         child: AnimatedScale(
           scale: _focused ? 1.07 : 1.0,
           duration: const Duration(milliseconds: 200),
@@ -82,7 +123,16 @@ class _TVChannelCardState extends State<TVChannelCard> {
                     ]
                   : [],
             ),
-            child: Column(
+            child: Stack(
+              children: [
+                // Favorite indicator
+                if (widget.isFavorite)
+                  Positioned(
+                    top: 6, right: 6,
+                    child: Icon(Icons.favorite_rounded,
+                      color: AppTheme.live, size: 16),
+                  ),
+                Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -135,6 +185,8 @@ class _TVChannelCardState extends State<TVChannelCard> {
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
                       color: _focused ? Colors.white : c.textDim, letterSpacing: 0.5)),
                 ),
+              ],
+            ),
               ],
             ),
           ),

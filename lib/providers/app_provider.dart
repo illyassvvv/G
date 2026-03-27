@@ -19,7 +19,7 @@ class AppProvider extends ChangeNotifier {
   static const _keyLastChCat   = 'last_ch_cat';
   static const _keyVolume      = 'volume_level';
   static const _keyDataSaver   = 'data_saver';
-  static const _keyFavorites   = 'favorites';
+  static const _keyFavorites   = 'favorite_ids';
 
   // ── Theme ───────────────────────────────────────────────────
   ThemeMode _themeMode = ThemeMode.system;
@@ -46,7 +46,11 @@ class AppProvider extends ChangeNotifier {
   // ── Data saver mode ─────────────────────────────────────────
   bool _dataSaverEnabled = false;
 
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
   // ── Favorites ─────────────────────────────────────────────
+=======
+  // ── Favorites ─────────────────────────────────────────────────
+>>>>>>> main
   Set<int> _favoriteIds = {};
 
   // ── Getters ─────────────────────────────────────────────────
@@ -63,7 +67,11 @@ class AppProvider extends ChangeNotifier {
   String? get lastChannelCat  => _lastChannelCat;
   double get volumeLevel     => _volumeLevel;
   bool get dataSaverEnabled  => _dataSaverEnabled;
+<<<<<<< devin/1774617507-fix-player-favorites-navigation
   Set<int> get favoriteIds   => _favoriteIds;
+=======
+  Set<int> get favoriteIds     => _favoriteIds;
+>>>>>>> main
 
   TC get colors => TC(_isDark);
 
@@ -215,6 +223,21 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_keyVolume, volume);
+  }
+
+  // ── Favorites ────────────────────────────────────────────────
+  Future<void> toggleFavorite(int channelId) async {
+    if (_favoriteIds.contains(channelId)) {
+      _favoriteIds.remove(channelId);
+    } else {
+      _favoriteIds.add(channelId);
+    }
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _keyFavorites,
+      _favoriteIds.map((id) => id.toString()).toList(),
+    );
   }
 
   // ── Data saver mode ─────────────────────────────────────────
