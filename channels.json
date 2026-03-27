@@ -223,6 +223,13 @@
           "number": "4",
           "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774612298.png",
           "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-4/24f134f1cd63db9346439e96b86ca6ed/index.m3u8"
+        },
+        {
+          "id": 123,
+          "name": "Mbc 5",
+          "number": "5",
+          "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774611631.png",
+          "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-5/ee6b000cee0629411b666ab26cb13e9b/index.m3u8"
         }
       ]
     }
