@@ -34,6 +34,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   final FocusNode _playerFocus = FocusNode();
   bool _isPopping = false;
   bool _disposed = false;
+  DateTime? _lastBackPress;
 
   @override
   void initState() {
@@ -176,18 +177,30 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   }
 
   void _safeGoBack() {
-    if (_isPopping || !mounted) return;
+    if (_isPopping || _disposed || !mounted) return;
+
+    // Debounce: ignore rapid back presses within 500ms
+    final now = DateTime.now();
+    if (_lastBackPress != null &&
+        now.difference(_lastBackPress!) < const Duration(milliseconds: 500)) {
+      return;
+    }
+    _lastBackPress = now;
     _isPopping = true;
     _cancelLoadingTimeout();
 
     if (_ctrl != null) {
-      _ctrl!.removeListener(_playerListener);
-      _ctrl!.pause();
-      _ctrl!.dispose();
+      try {
+        _ctrl!.removeListener(_playerListener);
+        _ctrl!.pause();
+        _ctrl!.dispose();
+      } catch (_) {}
       _ctrl = null;
     }
 
-    Navigator.of(context).pop();
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   void _nextChannel() {
