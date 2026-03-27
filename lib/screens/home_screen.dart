@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/channel.dart';
 import '../models/theme.dart';
@@ -76,6 +77,94 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
+  /// Show a popup menu on OK press with Watch / Add to Favorite options
+  void _showChannelMenu(Channel ch, AppProvider prov) {
+    final isFav = prov.isFavorite(ch.id);
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (ctx) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 260,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.accent.withOpacity(0.3),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.6),
+                    blurRadius: 30,
+                    spreadRadius: 5,
+                  ),
+                  BoxShadow(
+                    color: AppTheme.accent.withOpacity(0.08),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Channel name header
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.white.withOpacity(0.06),
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      ch.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Watch option
+                  _PopupMenuItem(
+                    icon: Icons.play_circle_outline_rounded,
+                    label: 'Watch',
+                    autofocus: true,
+                    onSelect: () {
+                      Navigator.of(ctx).pop();
+                      _openPlayer(ch);
+                    },
+                  ),
+                  // Favorite option
+                  _PopupMenuItem(
+                    icon: isFav
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    label: isFav ? 'Remove from Favorites' : 'Add to Favorites',
+                    iconColor: isFav ? AppTheme.live : null,
+                    onSelect: () {
+                      prov.toggleFavorite(ch.id);
+                      Navigator.of(ctx).pop();
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   IconData _catIcon(String name) {
     switch (name) {
       case 'sports_soccer': return Icons.sports_soccer;
@@ -95,13 +184,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final c = prov.colors;
 
     return Scaffold(
-      backgroundColor: c.bg,
-      body: Stack(children: [
+      backgroundColor: const Color(0xFF0D0D0D),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0D0D0D), Color(0xFF1A1A1A)],
+          ),
+        ),
+        child: Stack(children: [
         // Ambient glows
         Positioned(top: -120, right: -80,
-          child: _glow(AppTheme.accent, 350, prov.isDark ? 0.06 : 0.03)),
+          child: _glow(AppTheme.accent, 350, prov.isDark ? 0.05 : 0.03)),
         Positioned(bottom: -150, left: -50,
-          child: _glow(AppTheme.primaryDark, 300, prov.isDark ? 0.04 : 0.02)),
+          child: _glow(AppTheme.primaryDark, 300, prov.isDark ? 0.03 : 0.02)),
 
         // No internet banner
         if (!prov.hasInternet)
@@ -137,51 +234,62 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(children: [
             // Left sidebar - category list
             _buildSidebar(prov, c),
-            // Vertical divider
-            Container(width: 1, color: c.border),
+            // Vertical divider - softer
+            Container(width: 1, color: Colors.white.withOpacity(0.04)),
             // Right content - channel grid
             Expanded(child: _buildChannelGrid(prov, c)),
           ]),
       ]),
+      ),
     );
   }
 
   Widget _buildSidebar(AppProvider prov, TC c) {
     return Container(
       width: 220,
-      color: c.surface.withOpacity(0.5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111).withOpacity(0.7),
+      ),
       child: Column(children: [
-        // App title
+        // App title - Premium VargasTV header
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
+          padding: const EdgeInsets.fromLTRB(20, 24, 16, 20),
           child: Row(children: [
-            Container(width: 36, height: 36,
-              decoration: BoxDecoration(
-                gradient: AppTheme.buttonGradient,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(color: AppTheme.accent.withOpacity(0.3),
-                    blurRadius: 12, spreadRadius: -2),
-                ]),
-              child: const Icon(Icons.live_tv_rounded,
-                color: Colors.white, size: 18)),
-            const SizedBox(width: 10),
             RichText(text: TextSpan(
-              style: TextStyle(fontFamily: 'Inter', fontSize: 20,
-                fontWeight: FontWeight.w800, color: c.text,
-                letterSpacing: -0.5),
-              children: const [
-                TextSpan(text: 'VarGas'),
-                TextSpan(text: 'Tv',
-                  style: TextStyle(color: AppTheme.accent)),
-              ])),
+              children: [
+                TextSpan(
+                  text: 'Vargas',
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                TextSpan(
+                  text: 'TV',
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.accent,
+                    letterSpacing: -0.5,
+                    shadows: [
+                      Shadow(
+                        color: AppTheme.accent.withOpacity(0.35),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )),
           ])),
-        Divider(height: 1, color: c.border),
+        Container(height: 1, color: Colors.white.withOpacity(0.04)),
         // Category list
         Expanded(
           child: ListView.builder(
             controller: _sidebarScrollCtrl,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 10),
             itemCount: _categories.length,
             itemBuilder: (_, i) {
               final cat = _categories[i];
@@ -194,25 +302,44 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 builder: (focused) => AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  curve: Curves.easeOutCubic,
+                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: (isSelected || focused)
                         ? LinearGradient(colors: [
-                            AppTheme.accent.withOpacity(focused ? 0.25 : 0.12),
-                            AppTheme.accent.withOpacity(focused ? 0.15 : 0.06),
+                            AppTheme.accent.withOpacity(focused ? 0.22 : 0.10),
+                            AppTheme.accent.withOpacity(focused ? 0.12 : 0.04),
                           ])
                         : null,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: focused
-                          ? AppTheme.accent.withOpacity(0.8)
-                          : isSelected
-                              ? AppTheme.accent.withOpacity(0.3)
-                              : Colors.transparent,
-                      width: focused ? 2 : 1),
+                          ? AppTheme.accent.withOpacity(0.7)
+                          : Colors.transparent,
+                      width: focused ? 1.5 : 0),
+                    boxShadow: focused
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.accent.withOpacity(0.15),
+                              blurRadius: 12,
+                              spreadRadius: -2,
+                            ),
+                          ]
+                        : [],
                   ),
                   child: Row(children: [
+                    // Left green indicator for selected category
+                    if (isSelected && !focused)
+                      Container(
+                        width: 3,
+                        height: 20,
+                        margin: const EdgeInsets.only(right: 10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accent,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     Icon(_catIcon(cat.icon),
                       color: (isSelected || focused) ? AppTheme.accent : c.textDim,
                       size: 20),
@@ -221,10 +348,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: (isSelected || focused) ? FontWeight.w700 : FontWeight.w500,
-                        color: (isSelected || focused) ? AppTheme.accent : c.text),
+                        color: (isSelected || focused) ? Colors.white : c.textDim),
                       maxLines: 1, overflow: TextOverflow.ellipsis)),
                     Text('${cat.channels.length}',
-                      style: TextStyle(fontSize: 11, color: c.textDim,
+                      style: TextStyle(fontSize: 11,
+                        color: (isSelected || focused)
+                            ? AppTheme.accent.withOpacity(0.7)
+                            : c.textDim.withOpacity(0.5),
                         fontWeight: FontWeight.w600)),
                   ]),
                 ),
@@ -254,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.accent.withOpacity(0.15),
+                color: AppTheme.accent.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10)),
               child: Text('${cat.channels.length} channels',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
@@ -277,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return TVChannelCard(
                 channel: ch,
                 provider: prov,
-                onSelect: () => _openPlayer(ch),
+                onSelect: () => _showChannelMenu(ch, prov),
               );
             },
           ),
@@ -366,6 +496,77 @@ class _TVFocusableItemState extends State<_TVFocusableItem> {
       child: GestureDetector(
         onTap: widget.onSelect,
         child: widget.builder(_focused),
+      ),
+    );
+  }
+}
+
+/// Popup menu item for channel actions (Watch / Favorite)
+class _PopupMenuItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final Color? iconColor;
+  final bool autofocus;
+  final VoidCallback onSelect;
+
+  const _PopupMenuItem({
+    required this.icon,
+    required this.label,
+    this.iconColor,
+    this.autofocus = false,
+    required this.onSelect,
+  });
+
+  @override
+  State<_PopupMenuItem> createState() => _PopupMenuItemState();
+}
+
+class _PopupMenuItemState extends State<_PopupMenuItem> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      autofocus: widget.autofocus,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.select ||
+             event.logicalKey == LogicalKeyboardKey.enter ||
+             event.logicalKey == LogicalKeyboardKey.gameButtonA)) {
+          widget.onSelect();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: GestureDetector(
+        onTap: widget.onSelect,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: _focused
+                ? AppTheme.accent.withOpacity(0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(children: [
+            Icon(widget.icon,
+              color: _focused
+                  ? (widget.iconColor ?? AppTheme.accent)
+                  : (widget.iconColor ?? Colors.white70),
+              size: 20),
+            const SizedBox(width: 12),
+            Text(widget.label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: _focused ? FontWeight.w600 : FontWeight.w500,
+                color: _focused ? Colors.white : Colors.white70,
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }

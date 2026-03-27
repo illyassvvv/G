@@ -19,6 +19,7 @@ class AppProvider extends ChangeNotifier {
   static const _keyLastChCat   = 'last_ch_cat';
   static const _keyVolume      = 'volume_level';
   static const _keyDataSaver   = 'data_saver';
+  static const _keyFavorites   = 'favorites';
 
   // ── Theme ───────────────────────────────────────────────────
   ThemeMode _themeMode = ThemeMode.system;
@@ -45,6 +46,9 @@ class AppProvider extends ChangeNotifier {
   // ── Data saver mode ─────────────────────────────────────────
   bool _dataSaverEnabled = false;
 
+  // ── Favorites ─────────────────────────────────────────────
+  Set<int> _favoriteIds = {};
+
   // ── Getters ─────────────────────────────────────────────────
   ThemeMode get themeMode    => _themeMode;
   bool get isDark            => _isDark;
@@ -59,6 +63,7 @@ class AppProvider extends ChangeNotifier {
   String? get lastChannelCat  => _lastChannelCat;
   double get volumeLevel     => _volumeLevel;
   bool get dataSaverEnabled  => _dataSaverEnabled;
+  Set<int> get favoriteIds   => _favoriteIds;
 
   TC get colors => TC(_isDark);
 
@@ -95,6 +100,10 @@ class AppProvider extends ChangeNotifier {
 
     // Data saver
     _dataSaverEnabled = prefs.getBool(_keyDataSaver) ?? false;
+
+    // Favorites
+    final favList = prefs.getStringList(_keyFavorites) ?? [];
+    _favoriteIds = favList.map((s) => int.tryParse(s) ?? 0).where((id) => id > 0).toSet();
 
     _applySystemUI();
     notifyListeners();
@@ -214,6 +223,23 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyDataSaver, _dataSaverEnabled);
+  }
+
+  // ── Favorites ──────────────────────────────────────────────
+  bool isFavorite(int channelId) => _favoriteIds.contains(channelId);
+
+  Future<void> toggleFavorite(int channelId) async {
+    if (_favoriteIds.contains(channelId)) {
+      _favoriteIds.remove(channelId);
+    } else {
+      _favoriteIds.add(channelId);
+    }
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _keyFavorites,
+      _favoriteIds.map((id) => id.toString()).toList(),
+    );
   }
 
   /// Fully close the player and reset all state
