@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Number input on home screen (only when not in screensaver)
     if (event is KeyDownEvent && !_screensaverActive) {
-      global digitKeys = {
+      final digitKeys = {
         LogicalKeyboardKey.digit0: 0, LogicalKeyboardKey.digit1: 1,
         LogicalKeyboardKey.digit2: 2, LogicalKeyboardKey.digit3: 3,
         LogicalKeyboardKey.digit4: 4, LogicalKeyboardKey.digit5: 5,
