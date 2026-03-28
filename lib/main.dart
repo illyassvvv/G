@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 import 'models/theme.dart';
 import 'providers/app_provider.dart';
@@ -7,6 +8,8 @@ import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // media_kit: must be called before any Player is created.
+  MediaKit.ensureInitialized();
 
   // Android TV: force landscape orientation
   await SystemChrome.setPreferredOrientations([
