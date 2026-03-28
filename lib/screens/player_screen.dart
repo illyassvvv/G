@@ -126,12 +126,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     // ── Player configuration ─────────────────────────────────────────────
     // • logLevel.error: suppress warn/info logs — each log line is a
     //   Dart isolate message that contends with the UI thread.
-    // • bufferSize 32 MB: larger buffer = fewer rebuffering events on IPTV
     //   streams with variable bitrate. Trade-off: slightly more RAM usage.
     _player = Player(
       configuration: const PlayerConfiguration(
-        logLevel:   MPVLogLevel.error,
-        bufferSize: 32 * 1024 * 1024,
+        logLevel: MPVLogLevel.error,
       ),
     );
 
@@ -265,6 +263,14 @@ class _PlayerScreenState extends State<PlayerScreen>
         Media(resolved.url, httpHeaders: headers),
         play: true,
       );
+
+      if (_disposed || !mounted) return;
+
+      // Force correct playback rate and reset HLS timestamp sync.
+      // Without these two calls libmpv can misread the stream's PTS
+      // and play at fractional speed (slow-motion effect on live HLS).
+      await _player.setRate(1.0);
+      await _player.seek(Duration.zero);
 
       if (_disposed || !mounted) return;
       _startLoadingTimeout();
