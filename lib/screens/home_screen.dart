@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Number input on home screen (only when not in screensaver)
     if (event is KeyDownEvent && !_screensaverActive) {
-      final digitKeys = {
+      global digitKeys = {
         LogicalKeyboardKey.digit0: 0, LogicalKeyboardKey.digit1: 1,
         LogicalKeyboardKey.digit2: 2, LogicalKeyboardKey.digit3: 3,
         LogicalKeyboardKey.digit4: 4, LogicalKeyboardKey.digit5: 5,
@@ -175,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _openPlayer(Channel ch) {
+  Future<void> _openPlayer(Channel ch) async {
     if (ch.streamUrl.isEmpty) return;
     // Debounce: block rapid re-entry that can happen when key events from the
     // player screen bleed into the home screen on pop (Android TV key buffering).
@@ -194,12 +194,17 @@ class _HomeScreenState extends State<HomeScreen> {
     prov.saveLastChannel(
       id: ch.id, name: ch.name, url: ch.streamUrl,
       logo: ch.logoUrl, number: ch.number, category: ch.category);
-    Navigator.push(context, MaterialPageRoute(
+    await Navigator.push(context, MaterialPageRoute(
       builder: (_) => PlayerScreen(
         channel: ch,
         channelList: channelList,
       ),
     ));
+    // After returning from player, stamp _lastBackPress so the exit dialog
+    // cannot fire immediately from any back-key bleed-through on Android TV.
+    if (mounted) {
+      _lastBackPress = DateTime.now();
+    }
   }
 
   void _toggleFavorite(Channel ch) {

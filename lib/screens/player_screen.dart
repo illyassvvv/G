@@ -145,6 +145,15 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     if (_disposed || !mounted || _ctrl == null) return;
     final value = _ctrl!.value;
 
+    // ── Fast path: video playing normally — do nothing. ──────────────────
+    // This guard is critical: VideoPlayerController calls its listeners on
+    // every position tick. Without it every tick could trigger a setState
+    // that re-composites the video texture and drops frames on TV hardware.
+    if (value.isInitialized && value.isPlaying &&
+        !value.isBuffering && !value.hasError && !_loading) {
+      return;
+    }
+
     if (value.hasError) {
       debugPrint('[VargasTV] Playback error: ${value.errorDescription}');
       if (!_hasError) {
@@ -158,11 +167,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       _cancelLoadingTimeout();
       setState(() { _loading = false; _hasError = false; _retryCount = 0; });
     } else if (value.isBuffering && !_loading && !_hasError) {
-      // Debounce short buffering blips (< 300ms) — avoids unnecessary
+      // Debounce short buffering blips (< 500ms) — avoids unnecessary
       // widget rebuilds that cause the video texture to re-composite
       // and drop frames on weaker TV hardware.
       _bufferDebounce?.cancel();
-      _bufferDebounce = Timer(const Duration(milliseconds: 300), () {
+      _bufferDebounce = Timer(const Duration(milliseconds: 500), () {
         if (!_disposed && mounted && _ctrl != null && _ctrl!.value.isBuffering) {
           setState(() { _loading = true; });
         }
