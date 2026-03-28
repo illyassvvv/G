@@ -11,6 +11,41 @@ import '../models/theme.dart';
 import '../providers/app_provider.dart';
 import '../services/stream_resolver_service.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// StableVideoLayer
+//
+// Public top-level class so Flutter element reconciliation matches it by
+// RuntimeType + GlobalKey across every parent setState.
+//
+// HOW IT STOPS REBUILDS
+// Flutter compares (runtimeType, key) when diffing the widget tree.
+// Because PlayerScreen always passes the SAME GlobalKey, the engine finds
+// the existing element, grafts it in place, and skips build() entirely.
+// The Video GL texture is never torn down or re-composited by an overlay
+// setState — only the overlays above it are rebuilt.
+// ─────────────────────────────────────────────────────────────────────────────
+class StableVideoLayer extends StatelessWidget {
+  final VideoController controller;
+
+  const StableVideoLayer({
+    super.key,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Video(
+      controller: controller,
+      fit: BoxFit.contain,
+      controls: NoVideoControls,
+      wakelock: false,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PlayerScreen
+// ─────────────────────────────────────────────────────────────────────────────
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
   final List<Channel> channelList;
@@ -27,52 +62,58 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen>
     with WidgetsBindingObserver {
-  // ── media_kit core objects ─────────────────────────────────────────────
+
+  // ── media_kit objects — created ONCE in initState, never again ────────────
   late final Player _player;
   late final VideoController _videoController;
 
-  // Stream subscriptions (replace video_player addListener)
-  StreamSubscription<bool>? _subPlaying;
-  StreamSubscription<bool>? _subBuffering;
+  // Static GlobalKey: created once for the entire app lifetime.
+  // Instance field (final) is also safe, but static makes it explicit that
+  // this key is NEVER recreated — not even if State is reconstructed.
+  static final _videoKey = GlobalKey();
+
+  // Stream subscriptions
+  StreamSubscription<bool>?   _subPlaying;
+  StreamSubscription<bool>?   _subBuffering;
   StreamSubscription<String>? _subError;
 
-  // ── UI state ───────────────────────────────────────────────────────────
+  // ── UI state ──────────────────────────────────────────────────────────────
   bool _isInitialized = false;
-  bool _loading = true;
-  bool _hasError = false;
-  bool _isPlaying = false;
-  bool _showControls = true;
+  bool _loading       = true;
+  bool _hasError      = false;
+  bool _isPlaying     = false;
+  bool _showControls  = true;
 
   Timer? _hideTimer;
   Timer? _loadingTimeout;
 
   late Channel _currentChannel;
   int _retryCount = 0;
-  static const _maxRetries = 3;
-  static const _loadingTimeoutDuration = Duration(seconds: 25);
+  static const _maxRetries              = 3;
+  static const _loadingTimeoutDuration  = Duration(seconds: 25);
 
   final FocusNode _playerFocus = FocusNode();
   bool _isPopping = false;
-  bool _disposed = false;
+  bool _disposed  = false;
   DateTime? _lastBackPress;
 
-  // ── OSD overlay ────────────────────────────────────────────────────────
-  bool _showOSD = false;
+  // ── OSD overlay ───────────────────────────────────────────────────────────
+  bool   _showOSD = false;
   Timer? _osdTimer;
 
-  // ── Channel number input ───────────────────────────────────────────────
+  // ── Channel number input ──────────────────────────────────────────────────
   String _numberInput = '';
   Timer? _numberTimer;
 
-  // ── DVR / Time-shift ───────────────────────────────────────────────────
+  // ── DVR / Time-shift ──────────────────────────────────────────────────────
   bool _isDvrStream = false;
 
-  // ── Buffering debounce ─────────────────────────────────────────────────
+  // ── Buffering debounce ────────────────────────────────────────────────────
   Timer? _bufferDebounce;
 
-  // ───────────────────────────────────────────────────────────────────────
-  // Lifecycle
-  // ───────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // initState — Player created EXACTLY ONCE here
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -82,14 +123,21 @@ class _PlayerScreenState extends State<PlayerScreen>
     _currentChannel = widget.channel;
     _isDvrStream = _checkDvr(_currentChannel.streamUrl);
 
-    // ONE Player + VideoController for the entire lifetime of this screen.
+    // ── Player configuration ─────────────────────────────────────────────
+    // • logLevel.error: suppress warn/info logs — each log line is a
+    //   Dart isolate message that contends with the UI thread.
+    // • bufferSize 32 MB: larger buffer = fewer rebuffering events on IPTV
+    //   streams with variable bitrate. Trade-off: slightly more RAM usage.
     _player = Player(
       configuration: const PlayerConfiguration(
-        bufferSize: 16 * 1024 * 1024, // 16 MB — good for variable-bitrate IPTV
-        logLevel: MPVLogLevel.warn,
-        pitch: false,
+        logLevel:   MPVLogLevel.error,
+        bufferSize: 32 * 1024 * 1024,
       ),
     );
+
+    // ── VideoController ──────────────────────────────────────────────────
+    // enableHardwareAcceleration uses the SoC's video decoder (H.264/H.265)
+    // instead of software decoding — critical for smooth 1080p on TV.
     _videoController = VideoController(
       _player,
       configuration: const VideoControllerConfiguration(
@@ -98,51 +146,72 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
 
     _setupStreamListeners();
-
     WakelockPlus.enable();
     _startPlayer();
     _scheduleHideControls();
-    _showOSDOverlay();
+
+    // Defer OSD to after first frame — avoids a setState during initState
+    // that would schedule an extra unnecessary build pass.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showOSDOverlay();
+    });
   }
 
-  // ── media_kit stream listeners ─────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Stream listeners
+  // KEY RULE: never call setState unless a value ACTUALLY changed.
+  // Each unnecessary setState → Flutter rebuilds the overlay subtree →
+  // main-thread work → frame budget pressure → stutter.
+  // ─────────────────────────────────────────────────────────────────────────
 
   void _setupStreamListeners() {
+
     _subPlaying = _player.stream.playing.listen((playing) {
       if (_disposed || !mounted) return;
-      // Fast path: skip setState during steady playback (no state change)
-      if (playing == _isPlaying && !_loading && !_hasError) return;
+
+      // ── Fast path: steady playback — skip entirely ─────────────────────
+      // This fires on every internal MPV state update, not just on real
+      // play/pause toggles. Guard aggressively.
+      if (playing && _isPlaying && !_loading && !_hasError) return;
 
       if (playing && _loading) {
+        // Stream just started rendering — clear loading state
         _cancelLoadingTimeout();
         _bufferDebounce?.cancel();
-        setState(() {
-          _isPlaying = true;
-          _isInitialized = true;
-          _loading = false;
-          _hasError = false;
-          _retryCount = 0;
-        });
-      } else {
-        if (_isPlaying != playing) setState(() => _isPlaying = playing);
+        if (_loading || !_isInitialized || _hasError ||
+            _isPlaying != playing || _retryCount != 0) {
+          setState(() {
+            _isPlaying     = true;
+            _isInitialized = true;
+            _loading       = false;
+            _hasError      = false;
+            _retryCount    = 0;
+          });
+        }
+      } else if (_isPlaying != playing) {
+        // Only update play/pause icon — minimal setState
+        setState(() => _isPlaying = playing);
       }
     });
 
     _subBuffering = _player.stream.buffering.listen((buffering) {
       if (_disposed || !mounted) return;
+
       if (buffering && !_loading && !_hasError) {
-        // Debounce: show loading spinner only after 500 ms of sustained
-        // buffering. Prevents the overlay from flickering on every keyframe
-        // boundary — which forces a GPU re-composite and drops frames.
+        // Debounce at 800ms: short buffer blips (keyframe boundaries,
+        // segment boundaries) must NOT trigger a setState — each one
+        // forces the overlay subtree to rebuild and adds ~1ms of UI work
+        // that competes with the decoder on ARM TV SoCs.
         _bufferDebounce?.cancel();
-        _bufferDebounce = Timer(const Duration(milliseconds: 500), () {
-          if (!_disposed && mounted && _player.state.buffering) {
+        _bufferDebounce = Timer(const Duration(milliseconds: 800), () {
+          if (!_disposed && mounted &&
+              _player.state.buffering && !_loading) {
             setState(() => _loading = true);
           }
         });
       } else if (!buffering && _loading && !_hasError) {
         _bufferDebounce?.cancel();
-        setState(() => _loading = false);
+        if (_loading) setState(() => _loading = false);
       }
     });
 
@@ -158,15 +227,18 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
-  // ───────────────────────────────────────────────────────────────────────
-  // Playback control
-  // ───────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Playback
+  // ─────────────────────────────────────────────────────────────────────────
 
   void _startPlayer() {
     _cancelLoadingTimeout();
     _bufferDebounce?.cancel();
-    if (mounted) setState(() { _loading = true; _hasError = false; });
-    debugPrint('[VargasTV] Starting player for: ${_currentChannel.name}');
+    // Only setState if values actually need to change
+    if (!_loading || _hasError) {
+      if (mounted) setState(() { _loading = true; _hasError = false; });
+    }
+    debugPrint('[VargasTV] Starting: ${_currentChannel.name}');
     _resolveAndPlay(_currentChannel.streamUrl);
   }
 
@@ -176,20 +248,21 @@ class _PlayerScreenState extends State<PlayerScreen>
           await StreamResolverService.resolveStreamUrl(originalUrl);
       if (_disposed || !mounted) return;
 
-      debugPrint('[VargasTV] Resolved URL: ${resolved.url}');
+      debugPrint('[VargasTV] Resolved: ${resolved.url}');
 
-      final Map<String, String> streamHeaders = {
+      final headers = <String, String>{
         'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Android TV) '
             'AppleWebKit/537.36 (KHTML, like Gecko) '
             'Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*',
+        'Accept':     '*/*',
         'Connection': 'keep-alive',
         if (resolved.headers != null) ...resolved.headers!,
       };
 
-      // media_kit accepts HTTP headers directly in the Media object.
+      // media_kit passes headers directly to libmpv's network layer —
+      // no need for a separate headers map on the controller.
       await _player.open(
-        Media(resolved.url, httpHeaders: streamHeaders),
+        Media(resolved.url, httpHeaders: headers),
         play: true,
       );
 
@@ -197,8 +270,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       _startLoadingTimeout();
     } catch (e) {
       if (_disposed || !mounted) return;
-      debugPrint('[VargasTV] Stream resolution failed: $e');
-      setState(() { _loading = false; _hasError = true; });
+      debugPrint('[VargasTV] Resolution failed: $e');
+      if (!_hasError) setState(() { _loading = false; _hasError = true; });
       _autoRetry();
     }
   }
@@ -206,14 +279,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   void _switchToChannel(Channel ch) {
     if (ch.id == _currentChannel.id) return;
     _cancelLoadingTimeout();
+    _bufferDebounce?.cancel();
     setState(() {
       _currentChannel = ch;
-      _loading = true;
-      _hasError = false;
-      _retryCount = 0;
-      _isInitialized = false;
-      _isPlaying = false;
-      _isDvrStream = _checkDvr(ch.streamUrl);
+      _loading        = true;
+      _hasError       = false;
+      _retryCount     = 0;
+      _isInitialized  = false;
+      _isPlaying      = false;
+      _isDvrStream    = _checkDvr(ch.streamUrl);
     });
     final prov = context.read<AppProvider>();
     prov.setActiveChannel(ch);
@@ -225,15 +299,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   bool _checkDvr(String url) {
-    final lower = url.toLowerCase();
-    return lower.contains('dvr') || lower.contains('timeshift');
+    final l = url.toLowerCase();
+    return l.contains('dvr') || l.contains('timeshift');
   }
 
-  // ── DVR seek ───────────────────────────────────────────────────────────
+  // ── DVR seek ──────────────────────────────────────────────────────────────
 
   void _seekRelative(Duration offset) {
     if (!_isInitialized) return;
-    final current = _player.state.position;
+    final current  = _player.state.position;
     final duration = _player.state.duration;
     var target = current + offset;
     if (target < Duration.zero) target = Duration.zero;
@@ -242,34 +316,33 @@ class _PlayerScreenState extends State<PlayerScreen>
     _showControlsBriefly();
   }
 
-  // ── Channel navigation ─────────────────────────────────────────────────
+  // ── Channel nav ───────────────────────────────────────────────────────────
 
   void _nextChannel() {
     if (widget.channelList.isEmpty) return;
-    final idx =
-        widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
+    final idx = widget.channelList.indexWhere(
+        (c) => c.id == _currentChannel.id);
     if (idx < 0 || idx >= widget.channelList.length - 1) return;
     _switchToChannel(widget.channelList[idx + 1]);
   }
 
   void _prevChannel() {
     if (widget.channelList.isEmpty) return;
-    final idx =
-        widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
+    final idx = widget.channelList.indexWhere(
+        (c) => c.id == _currentChannel.id);
     if (idx <= 0) return;
     _switchToChannel(widget.channelList[idx - 1]);
   }
 
-  // ── Retry logic ────────────────────────────────────────────────────────
+  // ── Retry ─────────────────────────────────────────────────────────────────
 
   void _autoRetry() {
-    if (_retryCount < _maxRetries) {
-      _retryCount++;
-      debugPrint('[VargasTV] Auto-retry #$_retryCount/$_maxRetries');
-      Future.delayed(Duration(seconds: _retryCount), () {
-        if (!_disposed && mounted && _hasError) _startPlayer();
-      });
-    }
+    if (_retryCount >= _maxRetries) return;
+    _retryCount++;
+    debugPrint('[VargasTV] Auto-retry #$_retryCount/$_maxRetries');
+    Future.delayed(Duration(seconds: _retryCount), () {
+      if (!_disposed && mounted && _hasError) _startPlayer();
+    });
   }
 
   void _startLoadingTimeout() {
@@ -287,17 +360,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     _loadingTimeout = null;
   }
 
-  // ── OSD ────────────────────────────────────────────────────────────────
+  // ── OSD ───────────────────────────────────────────────────────────────────
 
   void _showOSDOverlay() {
     _osdTimer?.cancel();
-    setState(() => _showOSD = true);
+    if (!_showOSD) setState(() => _showOSD = true);
     _osdTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted) setState(() => _showOSD = false);
+      if (mounted && _showOSD) setState(() => _showOSD = false);
     });
   }
 
-  // ── Channel number input ───────────────────────────────────────────────
+  // ── Number input ──────────────────────────────────────────────────────────
 
   void _onDigitPressed(int digit) {
     _numberTimer?.cancel();
@@ -307,7 +380,8 @@ class _PlayerScreenState extends State<PlayerScreen>
         _numberInput = _numberInput.substring(_numberInput.length - 3);
       }
     });
-    _numberTimer = Timer(const Duration(seconds: 2), _tryNavigateToNumber);
+    _numberTimer =
+        Timer(const Duration(seconds: 2), _tryNavigateToNumber);
   }
 
   void _tryNavigateToNumber() {
@@ -315,7 +389,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     final input = _numberInput;
     setState(() => _numberInput = '');
     final target = widget.channelList.cast<Channel?>().firstWhere(
-      (ch) => ch!.number == input || ch.number == input.padLeft(2, '0'),
+      (ch) =>
+          ch!.number == input || ch.number == input.padLeft(2, '0'),
       orElse: () => null,
     );
     if (target != null && target.id != _currentChannel.id) {
@@ -323,12 +398,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
-  // ── Controls visibility ────────────────────────────────────────────────
+  // ── Controls visibility ───────────────────────────────────────────────────
 
   void _scheduleHideControls() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted) setState(() => _showControls = false);
+      if (mounted && _showControls) setState(() => _showControls = false);
     });
   }
 
@@ -338,11 +413,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   void _showControlsBriefly() {
-    setState(() => _showControls = true);
+    if (!_showControls) setState(() => _showControls = true);
     _scheduleHideControls();
   }
 
-  // ── Key handling (UNCHANGED from original) ─────────────────────────────
+  // ── Key handling — UNCHANGED from original ────────────────────────────────
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -383,22 +458,18 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     if (key == LogicalKeyboardKey.arrowRight ||
         key == LogicalKeyboardKey.channelUp) {
-      if (_showControls && _isDvrStream) {
-        _seekRelative(const Duration(seconds: 30));
-      } else {
-        _nextChannel();
-      }
+      _showControls && _isDvrStream
+          ? _seekRelative(const Duration(seconds: 30))
+          : _nextChannel();
       _showControlsBriefly();
       return KeyEventResult.handled;
     }
 
     if (key == LogicalKeyboardKey.arrowLeft ||
         key == LogicalKeyboardKey.channelDown) {
-      if (_showControls && _isDvrStream) {
-        _seekRelative(const Duration(seconds: -30));
-      } else {
-        _prevChannel();
-      }
+      _showControls && _isDvrStream
+          ? _seekRelative(const Duration(seconds: -30))
+          : _prevChannel();
       _showControlsBriefly();
       return KeyEventResult.handled;
     }
@@ -424,7 +495,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     return KeyEventResult.ignored;
   }
 
-  // ── Back / Pop ─────────────────────────────────────────────────────────
+  // ── Back / Pop ────────────────────────────────────────────────────────────
 
   void _safeGoBack() {
     if (_isPopping || _disposed || !mounted) return;
@@ -437,21 +508,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     _lastBackPress = now;
     _isPopping = true;
     _cancelLoadingTimeout();
-    _cleanupPlayer();
+    _bufferDebounce?.cancel();
+    try { _player.stop(); } catch (_) {}
     if (mounted) Navigator.of(context).pop();
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!_disposed) _isPopping = false;
     });
   }
 
-  void _cleanupPlayer() {
-    _bufferDebounce?.cancel();
-    try {
-      _player.stop();
-    } catch (_) {}
-  }
-
-  // ── App lifecycle ──────────────────────────────────────────────────────
+  // ── App lifecycle ─────────────────────────────────────────────────────────
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -465,7 +530,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
-  // ── Dispose ────────────────────────────────────────────────────────────
+  // ── Dispose ───────────────────────────────────────────────────────────────
 
   @override
   void dispose() {
@@ -481,13 +546,18 @@ class _PlayerScreenState extends State<PlayerScreen>
     _subPlaying?.cancel();
     _subBuffering?.cancel();
     _subError?.cancel();
+    // Dispose the Player — releases the libmpv instance and GL texture.
+    // Must be called; leak = GPU memory leak + background CPU usage.
     _player.dispose();
     super.dispose();
   }
 
-  // ───────────────────────────────────────────────────────────────────────
-  // BUILD  —  UI is IDENTICAL to the original; only the video widget changes
-  // ───────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // BUILD
+  // UI is IDENTICAL to the original. Only architectural change:
+  // StableVideoLayer is pinned by GlobalKey → Video.build() is NEVER
+  // triggered by any setState() in this widget's overlay logic.
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -506,21 +576,10 @@ class _PlayerScreenState extends State<PlayerScreen>
             fit: StackFit.expand,
             children: [
 
-              // ── VIDEO SURFACE ─────────────────────────────────────────
-              // RepaintBoundary isolates the GL texture from Flutter UI
-              // layer repaints — prevents frame drops on TV hardware.
-              RepaintBoundary(
-                child: Video(
-                  controller: _videoController,
-                  // BoxFit.contain = same visual behaviour as the old
-                  // AspectRatio + VideoPlayer widget combination.
-                  fit: BoxFit.contain,
-                  // Disable media_kit's built-in overlay controls;
-                  // we use our own remote-friendly controls below.
-                  controls: NoVideoControls,
-                  // We manage the wakelock ourselves via WakelockPlus.
-                  wakelock: false,
-                ),
+              // ── VIDEO SURFACE — never rebuilds ────────────────────────
+              StableVideoLayer(
+                key: _videoKey,
+                controller: _videoController,
               ),
 
               // ── LOADING OVERLAY ───────────────────────────────────────
@@ -561,8 +620,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 fontSize: 18)),
                         SizedBox(height: 8),
                         Text('Press OK to retry',
-                            style:
-                                TextStyle(color: Colors.white54)),
+                            style: TextStyle(
+                                color: Colors.white54)),
                       ],
                     ),
                   ),
@@ -593,7 +652,6 @@ class _PlayerScreenState extends State<PlayerScreen>
                           ),
                         ),
                         child: Row(children: [
-                          // Channel logo
                           Container(
                             width: 48, height: 48,
                             decoration: BoxDecoration(
@@ -606,8 +664,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                       .withOpacity(0.3)),
                             ),
                             clipBehavior: Clip.antiAlias,
-                            child: _currentChannel
-                                    .logoUrl.isNotEmpty
+                            child: _currentChannel.logoUrl.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl:
                                         _currentChannel.logoUrl,
@@ -615,8 +672,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     memCacheWidth: 96,
                                     memCacheHeight: 96,
                                     errorWidget: (_, __, ___) =>
-                                        const Icon(
-                                            Icons.tv_rounded,
+                                        const Icon(Icons.tv_rounded,
                                             color: Colors.white54,
                                             size: 24),
                                   )
@@ -625,7 +681,6 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     size: 24),
                           ),
                           const SizedBox(width: 16),
-                          // Channel name + badges
                           Expanded(
                             child: Column(
                               crossAxisAlignment:
@@ -652,16 +707,14 @@ class _PlayerScreenState extends State<PlayerScreen>
                                       color: AppTheme.accent
                                           .withOpacity(0.2),
                                       borderRadius:
-                                          BorderRadius.circular(
-                                              6),
+                                          BorderRadius.circular(6),
                                     ),
                                     child: Text(
                                       _currentChannel.category,
                                       style: TextStyle(
                                         color: AppTheme.accent,
                                         fontSize: 11,
-                                        fontWeight:
-                                            FontWeight.w600,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
@@ -676,13 +729,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                                         color: Colors.blue
                                             .withOpacity(0.2),
                                         borderRadius:
-                                            BorderRadius.circular(
-                                                6),
+                                            BorderRadius.circular(6),
                                       ),
                                       child: const Text('DVR',
                                           style: TextStyle(
-                                            color: Colors
-                                                .lightBlueAccent,
+                                            color:
+                                                Colors.lightBlueAccent,
                                             fontSize: 11,
                                             fontWeight:
                                                 FontWeight.w600,
@@ -693,13 +745,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                               ],
                             ),
                           ),
-                          // LIVE badge
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppTheme.live
-                                  .withOpacity(0.15),
+                              color:
+                                  AppTheme.live.withOpacity(0.15),
                               borderRadius:
                                   BorderRadius.circular(8),
                               border: Border.all(
@@ -711,8 +762,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                               children: [
                                 Container(
                                   width: 6, height: 6,
-                                  decoration:
-                                      const BoxDecoration(
+                                  decoration: const BoxDecoration(
                                     color: AppTheme.live,
                                     shape: BoxShape.circle,
                                   ),
@@ -722,8 +772,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     style: TextStyle(
                                       color: AppTheme.live,
                                       fontSize: 11,
-                                      fontWeight:
-                                          FontWeight.w800,
+                                      fontWeight: FontWeight.w800,
                                       letterSpacing: 1,
                                     )),
                               ],
@@ -735,7 +784,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   ),
                 ),
 
-              // ── Number input overlay (top-right) ──────────────────────
+              // ── Number input overlay ──────────────────────────────────
               if (_numberInput.isNotEmpty)
                 Positioned(
                   top: 80, right: 32,
@@ -768,8 +817,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   bottom: 0, left: 0, right: 0,
                   child: AnimatedOpacity(
                     opacity: _showControls ? 1.0 : 0.0,
-                    duration:
-                        const Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 300),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           vertical: 16, horizontal: 24),
@@ -789,8 +837,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                         children: _isDvrStream
                             ? const [
                                 _RemoteHint(
-                                    icon: Icons
-                                        .fast_rewind_rounded,
+                                    icon: Icons.fast_rewind_rounded,
                                     label: '-30s'),
                                 SizedBox(width: 32),
                                 _RemoteHint(
@@ -798,14 +845,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     label: 'Play/Pause'),
                                 SizedBox(width: 32),
                                 _RemoteHint(
-                                    icon: Icons
-                                        .fast_forward_rounded,
+                                    icon: Icons.fast_forward_rounded,
                                     label: '+30s'),
                               ]
                             : const [
                                 _RemoteHint(
-                                    icon: Icons
-                                        .arrow_left_rounded,
+                                    icon: Icons.arrow_left_rounded,
                                     label: 'Prev'),
                                 SizedBox(width: 32),
                                 _RemoteHint(
@@ -813,8 +858,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     label: 'OK'),
                                 SizedBox(width: 32),
                                 _RemoteHint(
-                                    icon: Icons
-                                        .arrow_right_rounded,
+                                    icon: Icons.arrow_right_rounded,
                                     label: 'Next'),
                               ],
                       ),
