@@ -1,11 +1,13 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/channel.dart';
 import '../models/theme.dart';
+import '../providers/app_provider.dart';
 import '../services/stream_resolver_service.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -50,12 +52,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   // ── DVR / Time-shift ───────────────────────────────
   bool _isDvrStream = false;
 
+  // ── Buffering debounce (reduces unnecessary rebuilds for smoother FPS) ──
+  Timer? _bufferDebounce;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _currentChannel = widget.channel;
     _isDvrStream = _checkDvr(_currentChannel.streamUrl);
+    // Keep screen awake while the player is open (prevents TV sleep)
+    WakelockPlus.enable();
     _startPlayer();
     _scheduleHideControls();
     _showOSDOverlay();
@@ -99,6 +106,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       final controller = VideoPlayerController.networkUrl(
         Uri.parse(resolved.url),
         httpHeaders: streamHeaders,
+        formatHint: _detectFormatHint(resolved.url),
         videoPlayerOptions: VideoPlayerOptions(
           mixWithOthers: false,
           allowBackgroundPlayback: false,
@@ -140,16 +148,27 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     if (value.hasError) {
       debugPrint('[VargasTV] Playback error: ${value.errorDescription}');
       if (!_hasError) {
+        _bufferDebounce?.cancel();
         _cancelLoadingTimeout();
         setState(() { _loading = false; _hasError = true; });
         _autoRetry();
       }
     } else if (value.isPlaying && _loading) {
+      _bufferDebounce?.cancel();
       _cancelLoadingTimeout();
       setState(() { _loading = false; _hasError = false; _retryCount = 0; });
     } else if (value.isBuffering && !_loading && !_hasError) {
-      setState(() { _loading = true; });
+      // Debounce short buffering blips (< 300ms) — avoids unnecessary
+      // widget rebuilds that cause the video texture to re-composite
+      // and drop frames on weaker TV hardware.
+      _bufferDebounce?.cancel();
+      _bufferDebounce = Timer(const Duration(milliseconds: 300), () {
+        if (!_disposed && mounted && _ctrl != null && _ctrl!.value.isBuffering) {
+          setState(() { _loading = true; });
+        }
+      });
     } else if (!value.isBuffering && _loading && !_hasError && value.isInitialized) {
+      _bufferDebounce?.cancel();
       setState(() { _loading = false; });
     }
   }
@@ -164,6 +183,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       _retryCount = 0;
       _isDvrStream = _checkDvr(ch.streamUrl);
     });
+    // Save the new channel as last watched so Resume works correctly
+    final prov = context.read<AppProvider>();
+    prov.setActiveChannel(ch);
+    prov.saveLastChannel(
+      id: ch.id, name: ch.name, url: ch.streamUrl,
+      logo: ch.logoUrl, number: ch.number, category: ch.category);
     _showOSDOverlay();
     _startPlayer();
   }
@@ -171,6 +196,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
   bool _checkDvr(String url) {
     final lower = url.toLowerCase();
     return lower.contains('dvr') || lower.contains('timeshift');
+  }
+
+  /// Detects the stream format from the URL so ExoPlayer picks the right
+  /// demuxer immediately instead of guessing — reduces initial lag.
+  VideoFormat _detectFormatHint(String url) {
+    final lower = url.toLowerCase().split('?').first;
+    if (lower.endsWith('.m3u8') || url.toLowerCase().contains('.m3u8')) {
+      return VideoFormat.hls;
+    }
+    if (lower.endsWith('.mpd') || url.toLowerCase().contains('.mpd')) {
+      return VideoFormat.dash;
+    }
+    if (lower.endsWith('.ism') || lower.endsWith('.isml')) {
+      return VideoFormat.ss;
+    }
+    // Default: let ExoPlayer decide, but for IPTV most streams are HLS
+    return VideoFormat.other;
   }
 
   // ── OSD Overlay ───────────────────────────────────────
@@ -236,7 +278,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     }
 
     // ── Number keys for direct channel input ──────────────
-    final digitKeys = {
+    const digitKeys = {
       LogicalKeyboardKey.digit0: 0, LogicalKeyboardKey.digit1: 1,
       LogicalKeyboardKey.digit2: 2, LogicalKeyboardKey.digit3: 3,
       LogicalKeyboardKey.digit4: 4, LogicalKeyboardKey.digit5: 5,
@@ -367,7 +409,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
       _retryCount++;
       debugPrint('[VargasTV] Auto-retry #$_retryCount/$_maxRetries');
       Future.delayed(Duration(seconds: _retryCount), () {
-        if (mounted && _hasError) _startPlayer();
+        if (!_disposed && mounted && _hasError) _startPlayer();
       });
     }
   }
@@ -409,18 +451,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
     if (_ctrl == null || !_ctrl!.value.isInitialized) return;
     if (state == AppLifecycleState.paused) {
       _ctrl!.pause();
+      WakelockPlus.disable();
     } else if (state == AppLifecycleState.resumed) {
       _ctrl!.play();
+      WakelockPlus.enable();
     }
   }
 
   @override
   void dispose() {
     _disposed = true;
+    // Release wake lock when leaving the player
+    WakelockPlus.disable();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _osdTimer?.cancel();
     _numberTimer?.cancel();
+    _bufferDebounce?.cancel();
     _cancelLoadingTimeout();
     _playerFocus.dispose();
     _cleanupPlayer();
@@ -445,11 +492,15 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
           body: Stack(
             fit: StackFit.expand,
             children: [
+              // RepaintBoundary isolates the video texture from UI overlay
+              // repaints — prevents frame drops on Android TV hardware.
               if (_ctrl != null && _ctrl!.value.isInitialized)
-                Center(
-                  child: AspectRatio(
-                    aspectRatio: _ctrl!.value.aspectRatio,
-                    child: VideoPlayer(_ctrl!),
+                RepaintBoundary(
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: _ctrl!.value.aspectRatio,
+                      child: VideoPlayer(_ctrl!),
+                    ),
                   ),
                 ),
 
@@ -489,12 +540,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                 ),
 
               // ── OSD: channel info bar ──────────────────────
-              Positioned(
-                top: 0, left: 0, right: 0,
-                child: AnimatedOpacity(
-                  opacity: (_showControls || _showOSD) ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: Container(
+              // IgnorePointer + Visibility avoid compositing hidden
+              // overlays on top of the video texture (saves GPU).
+              if (_showControls || _showOSD)
+                Positioned(
+                  top: 0, left: 0, right: 0,
+                  child: IgnorePointer(
+                    ignoring: !(_showControls || _showOSD),
+                    child: AnimatedOpacity(
+                      opacity: (_showControls || _showOSD) ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Container(
                     padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -580,6 +636,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                       ),
                     ]),
                   ),
+                  ),
                 ),
               ),
 
@@ -602,12 +659,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                 ),
 
               // ── Bottom controls bar ─────────────────────────
-              Positioned(
-                bottom: 0, left: 0, right: 0,
-                child: AnimatedOpacity(
-                  opacity: _showControls ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: Container(
+              if (_showControls)
+                Positioned(
+                  bottom: 0, left: 0, right: 0,
+                  child: AnimatedOpacity(
+                    opacity: _showControls ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 300),
+                    child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -636,7 +694,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver
                     ),
                   ),
                 ),
-              ),
+                ),
             ],
           ),
         ),
