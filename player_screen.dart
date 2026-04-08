@@ -193,7 +193,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     _hideTimer?.cancel();
-    // Do NOT dispose controller if it was passed in (reused from mini player)
     if (!_resumed) _ctrl?.dispose();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -221,14 +220,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(children: [
-          // Video
           if (_ctrl != null)
             Center(child: AspectRatio(
               aspectRatio: 16 / 9,
               child: BetterPlayer(key: _pipKey, controller: _ctrl!),
             )),
 
-          // Loading
           if (_loading && !_resumed)
             Container(color: Colors.black, child: Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -241,7 +238,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
               ]))),
 
-          // Error
           if (_hasError)
             Container(color: Colors.black, child: Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -267,7 +263,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)))),
               ]))),
 
-          // Transparent touch overlay for toggling controls + swipe gestures
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -291,7 +286,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
           ),
 
-          // Top bar with controls (shown/hidden on tap)
           AnimatedOpacity(
             opacity: _showControls ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 250),
@@ -308,13 +302,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Back button
                         _TopBtn(
                           icon: Icons.arrow_back_rounded,
                           onTap: () => Navigator.pop(context),
                         ),
                         const SizedBox(width: 12),
-                        // Channel info + LIVE badge
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -341,7 +333,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             ])),
                         ),
                         const SizedBox(width: 12),
-                        // Action buttons
                         Row(children: [
                           _TopBtn(icon: Icons.picture_in_picture_alt_rounded,
                             onTap: () {
@@ -354,7 +345,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ]),
                       ])))))),
 
-          // Bottom gradient
           Positioned(
             bottom: 0, left: 0, right: 0,
             child: AnimatedOpacity(
