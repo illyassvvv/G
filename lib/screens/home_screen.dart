@@ -1426,5 +1426,3 @@ class _AppBarBtn extends StatelessWidget {
         child: Icon(icon, key: ValueKey(icon),
           color: color, size: 20))));
 }
-
-}
