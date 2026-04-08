@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
 import 'package:better_player_plus/better_player_plus.dart';
+
 import 'package:provider/provider.dart';
 import '../models/channel.dart';
 import '../models/theme.dart';
@@ -239,11 +241,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         BetterPlayerDataSourceType.network, ch.streamUrl,
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
-        // ─── SPOOFED HEADERS ADDED HERE ───────────────────────
-        headers: const {
+        // --- FIXED: Removed 'const' from headers ---
+        headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
           "Referer": "https://x.com/",
         },
+        // --- FIXED: Removed 'const' from configuration ---
         bufferingConfiguration: BetterPlayerBufferingConfiguration(
           minBufferMs: dataSaver ? 1000 : 2000,
           maxBufferMs: dataSaver ? 6000 : 12000,
@@ -1422,4 +1425,6 @@ class _AppBarBtn extends StatelessWidget {
           child: FadeTransition(opacity: anim, child: child)),
         child: Icon(icon, key: ValueKey(icon),
           color: color, size: 20))));
+}
+
 }
