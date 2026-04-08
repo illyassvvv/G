@@ -2,10 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// --- SWITCHED BACK TO STANDARD BETTER PLAYER ---
-import 'package:better_player/better_player.dart';
-// (If your app specifically uses the 'plus' version, change this back to: 
-// import 'package:better_player_plus/better_player_plus.dart';)
+import 'package:better_player_plus/better_player_plus.dart';
 
 import '../models/channel.dart';
 import '../models/theme.dart';

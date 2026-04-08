@@ -5,10 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-// --- SWITCHED BACK TO STANDARD BETTER PLAYER ---
-import 'package:better_player/better_player.dart';
-// (If your app specifically uses the 'plus' version, change this back to: 
-// import 'package:better_player_plus/better_player_plus.dart';)
+import 'package:better_player_plus/better_player_plus.dart';
 
 import 'package:provider/provider.dart';
 import '../models/channel.dart';
