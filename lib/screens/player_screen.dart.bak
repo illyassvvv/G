@@ -1,8 +1,3 @@
-// FIXED: Three bugs resolved:
-// 1. Black screen with sound on switch → _resumed flag blocked loading overlay.
-// 2. "!" error on working channel after broken one → stale event listener
-//    from disposed controller still called setState(_hasError=true).
-// 3. setupDataSource on broken controller inherited bad state.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -37,7 +32,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   BetterPlayerController? _ctrl;
   bool _loading = true;
   bool _hasError = false;
-  // _resumed: true ONLY while still on the original PiP controller (no switch yet).
   bool _resumed = false;
   bool _showControls = true;
   Timer? _hideTimer;
@@ -45,12 +39,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late Channel _currentChannel;
   int _retryCount = 0;
   static const _maxRetries = 3;
-
-  // Generation counter — bumped every time _startPlayer() runs.
-  // Each event listener closure captures its own generation value; if
-  // _playerGeneration has advanced the closure returns early, so a stale
-  // (already-disposed) controller can never touch state.
-  int _playerGeneration = 0;
 
   @override
   void initState() {
@@ -74,29 +62,40 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _scheduleHideControls();
   }
 
-  // ─── Channel switching ────────────────────────────────────────────────────
-
   void _switchToChannel(Channel ch) {
     if (ch.id == _currentChannel.id) return;
-
     setState(() {
       _currentChannel = ch;
       _loading = true;
       _hasError = false;
       _retryCount = 0;
     });
-
     widget.onChannelChanged?.call(ch);
-
-    // Always create a fresh controller on every channel switch.
-    //
-    // The old code called setupDataSource() on the existing controller when
-    // _resumed was true.  That caused two problems:
-    //   • _resumed stayed true → loading overlay (gated on !_resumed) never
-    //     showed → black frame + audio = "black screen with sound" bug.
-    //   • If the old channel had errored, setupDataSource inherited bad state
-    //     and the new channel would also fail immediately.
-    _startPlayer();
+    if (_resumed && _ctrl != null) {
+      try {
+        _ctrl!.videoPlayerController?.setVolume(0);
+        _ctrl!.pause();
+      } catch (_) {}
+      
+      final dataSource = BetterPlayerDataSource(
+        BetterPlayerDataSourceType.network, ch.streamUrl,
+        liveStream: true,
+        videoFormat: BetterPlayerVideoFormat.hls,
+        // --- FIXED: Removed 'const' from headers ---
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "Referer": "https://x.com/",
+        },
+        // --- FIXED: Removed 'const' from configuration ---
+        bufferingConfiguration: BetterPlayerBufferingConfiguration(
+          minBufferMs: 2000, maxBufferMs: 10000,
+          bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000),
+      );
+      _ctrl!.setupDataSource(dataSource);
+    } else {
+      _resumed = false;
+      _startPlayer();
+    }
   }
 
   void _nextChannel() {
@@ -115,24 +114,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _switchToChannel(widget.channelList[idx - 1]);
   }
 
-  // ─── Player lifecycle ─────────────────────────────────────────────────────
+  void _autoRetry() {
+    if (_retryCount < _maxRetries) {
+      _retryCount++;
+      Future.delayed(Duration(seconds: _retryCount), () {
+        if (mounted && _hasError) _startPlayer();
+      });
+    }
+  }
 
   void _startPlayer() {
-    // Dispose previous controller only if we own it.
-    // (_resumed is true only when still on the original PiP controller.)
     if (!_resumed) _ctrl?.dispose();
     _ctrl = null;
-
-    // After the first switch we always own the controller.
-    _resumed = false;
-
-    // Bump generation so any pending events from the old controller are
-    // ignored.  This is the fix for the "!" bleeding onto good channels:
-    // the old errored controller's exception callback fires after dispose
-    // and would call setState(_hasError=true) on the new channel's state.
-    _playerGeneration++;
-    final myGeneration = _playerGeneration;
-
     if (mounted) setState(() { _loading = true; _hasError = false; });
 
     _ctrl = BetterPlayerController(
@@ -167,16 +160,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
         eventListener: (event) {
           if (!mounted) return;
-          // Drop events from any previous (disposed) controller generation.
-          if (myGeneration != _playerGeneration) return;
-
           switch (event.betterPlayerEventType) {
             case BetterPlayerEventType.initialized:
               setState(() { _loading = false; _retryCount = 0; });
               break;
             case BetterPlayerEventType.exception:
               setState(() { _loading = false; _hasError = true; });
-              _autoRetry(myGeneration);
+              _autoRetry();
               break;
             default:
               break;
@@ -188,33 +178,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _currentChannel.streamUrl,
         liveStream: true,
         videoFormat: BetterPlayerVideoFormat.hls,
+        // --- FIXED: Removed 'const' from headers ---
         headers: {
-          "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
           "Referer": "https://x.com/",
         },
-        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000,
-          maxBufferMs: 10000,
-          bufferForPlaybackMs: 1500,
-          bufferForPlaybackAfterRebufferMs: 3000,
+        // --- FIXED: Removed 'const' from configuration ---
+        bufferingConfiguration: BetterPlayerBufferingConfiguration(
+          minBufferMs: 2000, maxBufferMs: 10000,
+          bufferForPlaybackMs: 1500, bufferForPlaybackAfterRebufferMs: 3000,
         ),
       ),
     );
-
     if (mounted) setState(() {});
-  }
-
-  void _autoRetry(int generation) {
-    if (_retryCount >= _maxRetries) return;
-    _retryCount++;
-    Future.delayed(Duration(seconds: _retryCount), () {
-      // Only retry if: widget mounted, still in error state, AND this is
-      // still the active generation (user hasn't switched channel away).
-      if (mounted && _hasError && generation == _playerGeneration) {
-        _startPlayer();
-      }
-    });
   }
 
   @override
@@ -225,8 +201,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
-
-  // ─── UI helpers ───────────────────────────────────────────────────────────
 
   void _scheduleHideControls() {
     _hideTimer?.cancel();
@@ -244,8 +218,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
-  // ─── Build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -257,11 +229,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               child: BetterPlayer(key: _pipKey, controller: _ctrl!),
             )),
 
-          // Loading overlay — was gated on (_loading && !_resumed).
-          // That kept it hidden during channel switches because _resumed stayed
-          // true, exposing the black frame + audio bug. Now it shows whenever
-          // _loading is true.
-          if (_loading)
+          if (_loading && !_resumed)
             Container(color: Colors.black, child: Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 SizedBox(width: 42, height: 42,
