@@ -171,6 +171,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _activeIdNotifier.value = ch.id;
 
+    // FIX: Collapse the expanded panel when switching channels from the main grid.
+    // Without this, _isExpanded stays true while the new channel loads,
+    // showing a loading spinner inside the expanded view with stale channel info.
+    if (_isExpanded) {
+      _isExpanded = false;
+      _expandAnimCtrl.reverse();
+    }
+
     setState(() {
       _activeChannel = ch;
       _miniLoading = true;
@@ -178,7 +186,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _miniPlayerVisible = true;
     });
 
-    _miniPlayerAnimCtrl.forward();
+    // Only animate slide-up if mini player wasn't already visible.
+    if (!_miniPlayerVisible) _miniPlayerAnimCtrl.forward();
 
     final prov = context.read<AppProvider>();
     prov.setActiveChannel(ch);
@@ -231,97 +240,89 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _switchChannel(Channel ch) async {
+  // FIX Bug 1 & 4: Always create a fresh controller — never call setupDataSource
+  // on an existing one. The old approach reused a controller whose event listener
+  // had NO generation guard, so exception events from a failed channel would bleed
+  // onto the next channel (setting _miniError=true on a perfectly good stream).
+  // By always creating fresh and capturing `gen` in the listener closure, stale
+  // events from disposed controllers are silently dropped.
+  void _switchChannel(Channel ch) {
     final gen = ++_switchGen;
     _retryCount = 0;
     final prov = context.read<AppProvider>();
     final dataSaver = prov.dataSaverEnabled;
-    try {
-      final dataSource = BetterPlayerDataSource(
-        BetterPlayerDataSourceType.network, ch.streamUrl,
-        liveStream: true,
-        videoFormat: BetterPlayerVideoFormat.hls,
-        // --- FIXED: Removed 'const' from headers ---
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
-          "Referer": "https://x.com/",
-        },
-        // --- FIXED: Removed 'const' from configuration ---
-        bufferingConfiguration: BetterPlayerBufferingConfiguration(
-          minBufferMs: dataSaver ? 1000 : 2000,
-          maxBufferMs: dataSaver ? 6000 : 12000,
-          bufferForPlaybackMs: dataSaver ? 1000 : 1500,
-          bufferForPlaybackAfterRebufferMs: dataSaver ? 2000 : 3000));
 
-      if (_miniCtrl != null) {
-        setState(() { _miniLoading = true; _miniError = false; });
-        try {
-          _miniCtrl!.videoPlayerController?.setVolume(0);
-          await _miniCtrl!.pause();
-        } catch (_) {}
-        await Future.delayed(const Duration(milliseconds: 80));
-        if (!mounted || gen != _switchGen) return;
-        _miniCtrl!.setupDataSource(dataSource);
-        Future.delayed(const Duration(seconds: 10), () {
-          if (mounted && _miniLoading && gen == _switchGen) {
+    // Dispose the old controller before creating a new one.
+    _disposeController();
+
+    if (mounted) setState(() { _miniLoading = true; _miniError = false; });
+
+    final dataSource = BetterPlayerDataSource(
+      BetterPlayerDataSourceType.network, ch.streamUrl,
+      liveStream: true,
+      // FIX: Auto-detect video format instead of forcing HLS.
+      // Streams that are MPEG-TS or other formats play at lower quality when forced.
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+        "Referer": "https://x.com/",
+      },
+      bufferingConfiguration: BetterPlayerBufferingConfiguration(
+        minBufferMs: dataSaver ? 1000 : 3000,
+        maxBufferMs: dataSaver ? 6000 : 15000,
+        bufferForPlaybackMs: dataSaver ? 1000 : 2000,
+        bufferForPlaybackAfterRebufferMs: dataSaver ? 2000 : 4000,
+      ),
+    );
+
+    _miniCtrl = BetterPlayerController(
+      BetterPlayerConfiguration(
+        autoPlay: true,
+        aspectRatio: 16 / 9,
+        fit: BoxFit.contain,
+        handleLifecycle: true,
+        autoDispose: false,
+        controlsConfiguration: BetterPlayerControlsConfiguration(
+          showControls: false,
+          loadingWidget: const SizedBox.shrink()),
+        eventListener: (event) {
+          if (!mounted) return;
+          // FIX Bug 1: Drop events from previous (disposed) generations.
+          if (gen != _switchGen) return;
+          if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
+            setState(() { _miniLoading = false; _isBuffering = false; _retryCount = 0; });
+            final vol = context.read<AppProvider>().volumeLevel;
+            try {
+              _miniCtrl?.videoPlayerController?.setVolume(vol);
+              _miniCtrl?.play();
+            } catch (_) {}
+          } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
             setState(() { _miniLoading = false; _miniError = true; });
+            _autoRetryStream(gen);
+          } else if (event.betterPlayerEventType == BetterPlayerEventType.bufferingStart) {
+            setState(() => _isBuffering = true);
+          } else if (event.betterPlayerEventType == BetterPlayerEventType.bufferingEnd) {
+            setState(() => _isBuffering = false);
           }
-        });
-      } else {
-        _miniCtrl = BetterPlayerController(
-          BetterPlayerConfiguration(
-            autoPlay: true,
-            aspectRatio: 16 / 9,
-            fit: BoxFit.contain,
-            handleLifecycle: true,
-            autoDispose: false,
-            controlsConfiguration: BetterPlayerControlsConfiguration(
-              showControls: false,
-              loadingWidget: const SizedBox.shrink()),
-            eventListener: (event) {
-              if (!mounted) return;
-              if (event.betterPlayerEventType ==
-                  BetterPlayerEventType.initialized) {
-                if (mounted) {
-                  setState(() { _miniLoading = false; _isBuffering = false; _retryCount = 0; });
-                  final vol = context.read<AppProvider>().volumeLevel;
-                  try {
-                    _miniCtrl?.videoPlayerController?.setVolume(vol);
-                    _miniCtrl?.play();
-                  } catch (_) {}
-                }
-              } else if (event.betterPlayerEventType ==
-                  BetterPlayerEventType.exception) {
-                setState(() { _miniLoading = false; _miniError = true; });
-                _autoRetryStream();
-              } else if (event.betterPlayerEventType ==
-                  BetterPlayerEventType.bufferingStart) {
-                if (mounted) setState(() => _isBuffering = true);
-              } else if (event.betterPlayerEventType ==
-                  BetterPlayerEventType.bufferingEnd) {
-                if (mounted) setState(() => _isBuffering = false);
-              }
-            }),
-          betterPlayerDataSource: dataSource);
-      }
-      if (mounted) setState(() {});
-    } catch (_) {
-      if (mounted) {
-        setState(() { _miniLoading = false; _miniError = true; });
-        _autoRetryStream();
-      }
-    }
+        },
+      ),
+      betterPlayerDataSource: dataSource,
+    );
+
+    if (mounted) setState(() {});
   }
 
-  void _autoRetryStream() {
-    if (_retryCount < _maxRetries && _activeChannel != null) {
-      _retryCount++;
-      Future.delayed(Duration(seconds: _retryCount), () {
-        if (mounted && _miniError && _activeChannel != null) {
-          _switchChannel(_activeChannel!);
-        }
-      });
-    }
+  // FIX Bug 4: Pass generation so delayed retries from a failed channel
+  // are discarded if the user has already switched to another channel.
+  // Without this, a retry from channel A could fire _switchChannel when
+  // the user is already watching channel B.
+  void _autoRetryStream(int gen) {
+    if (_retryCount >= _maxRetries || _activeChannel == null) return;
+    _retryCount++;
+    Future.delayed(Duration(seconds: _retryCount), () {
+      if (mounted && _miniError && gen == _switchGen && _activeChannel != null) {
+        _switchChannel(_activeChannel!);
+      }
+    });
   }
 
   List<Channel> _getChannelListForCategory(String category) {
@@ -365,17 +366,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           FadeTransition(opacity: anim, child: child),
       transitionDuration: const Duration(milliseconds: 250),
     )).then((_) {
-      if (mounted) {
-        setState(() => _isInFullscreen = false);
-        if (_activeChannel != null && _miniCtrl != null) {
-          try { _miniCtrl!.play(); } catch (_) {}
-          if (_pipRequested) {
-            _pipRequested = false;
-            Future.delayed(const Duration(milliseconds: 200), () {
-              _miniCtrl?.enablePictureInPicture(_miniPlayerKey);
-            });
-          }
-        }
+      if (!mounted) return;
+      setState(() => _isInFullscreen = false);
+      if (_activeChannel == null) return;
+
+      // FIX Bug 2: If the user switched channels while in fullscreen,
+      // _activeChannel was updated by onChannelChanged but _miniCtrl still
+      // streams the OLD channel (PlayerScreen created its own new controller).
+      // We must start a fresh mini stream for the new channel.
+      // If the channel is unchanged, just resume the existing controller.
+      if (_activeChannel!.id != ch.id) {
+        _switchChannel(_activeChannel!);
+      } else if (_miniCtrl != null) {
+        try { _miniCtrl!.play(); } catch (_) {}
+      }
+
+      if (_pipRequested) {
+        _pipRequested = false;
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _miniCtrl?.enablePictureInPicture(_miniPlayerKey);
+        });
       }
     });
   }
@@ -1291,10 +1301,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             color: Colors.white, size: 18))),
                       const SizedBox(width: 6),
                       GestureDetector(
+                        // FIX Bug 3: _closeMini() also calls _expandAnimCtrl.reverse()
+                        // when _isExpanded=true, causing a double-reverse animation glitch.
+                        // Set _isExpanded=false first so _closeMini's guard bails out.
                         onTap: () {
-                          _expandAnimCtrl.reverse().then((_) {
-                            if (mounted) setState(() => _isExpanded = false);
-                          });
+                          setState(() => _isExpanded = false);
                           _closeMini();
                         },
                         child: Container(

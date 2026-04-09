@@ -141,9 +141,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
         looping: false,
         fullScreenByDefault: false,
         allowedScreenSleep: false,
-        autoDetectFullscreenAspectRatio: true,
-        aspectRatio: 16 / 9,
-        fit: BoxFit.contain,
+        // FIX: fill instead of contain → no black bars on wide-screen phones.
+        // autoDetectFullscreenAspectRatio removed (we manage our own fullscreen).
+        fit: BoxFit.fill,
         controlsConfiguration: BetterPlayerControlsConfiguration(
           enableFullscreen: false,
           enablePlayPause: true,
@@ -187,17 +187,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
         BetterPlayerDataSourceType.network,
         _currentChannel.streamUrl,
         liveStream: true,
-        videoFormat: BetterPlayerVideoFormat.hls,
+        // FIX: Removed forced videoFormat: hls.
+        // If a stream is MPEG-TS or another format, forcing HLS degrades quality.
+        // BetterPlayer now auto-detects from the URL extension / response headers.
         headers: {
           "User-Agent":
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
           "Referer": "https://x.com/",
         },
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
-          minBufferMs: 2000,
-          maxBufferMs: 10000,
-          bufferForPlaybackMs: 1500,
-          bufferForPlaybackAfterRebufferMs: 3000,
+          minBufferMs: 3000,
+          maxBufferMs: 15000,
+          bufferForPlaybackMs: 2000,
+          bufferForPlaybackAfterRebufferMs: 4000,
         ),
       ),
     );
@@ -250,12 +252,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      // FIX: extendBody prevents Scaffold from adding bottom padding
+      // on devices where the system nav bar briefly flashes before
+      // immersiveSticky kicks in, which would push the video up.
+      extendBody: true,
       body: Stack(children: [
+          // FIX: Removed Center+AspectRatio(16/9) wrapper.
+          // Forcing 16:9 on a 20:9 screen leaves black bars on sides.
+          // Positioned.fill lets BetterPlayer occupy the entire screen;
+          // fit: BoxFit.fill (set in configuration) fills edge-to-edge.
           if (_ctrl != null)
-            Center(child: AspectRatio(
-              aspectRatio: 16 / 9,
+            Positioned.fill(
               child: BetterPlayer(key: _pipKey, controller: _ctrl!),
-            )),
+            ),
 
           // Loading overlay — was gated on (_loading && !_resumed).
           // That kept it hidden during channel switches because _resumed stayed
