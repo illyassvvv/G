@@ -171,13 +171,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _activeIdNotifier.value = ch.id;
 
-    // FIX: Collapse the expanded panel when switching channels from the main grid.
-    // Without this, _isExpanded stays true while the new channel loads,
-    // showing a loading spinner inside the expanded view with stale channel info.
+    // Collapse expanded panel when switching to a new channel from the main grid.
     if (_isExpanded) {
       _isExpanded = false;
       _expandAnimCtrl.reverse();
     }
+
+    // Capture visibility BEFORE setState so the animation check below is correct.
+    // If we read _miniPlayerVisible after setState it's always true → animation
+    // never fires → mini player invisible on first tap (the bug introduced earlier).
+    final wasVisible = _miniPlayerVisible;
 
     setState(() {
       _activeChannel = ch;
@@ -186,8 +189,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _miniPlayerVisible = true;
     });
 
-    // Only animate slide-up if mini player wasn't already visible.
-    if (!_miniPlayerVisible) _miniPlayerAnimCtrl.forward();
+    // Slide-up animation only needed the first time the mini player appears.
+    if (!wasVisible) _miniPlayerAnimCtrl.forward();
 
     final prov = context.read<AppProvider>();
     prov.setActiveChannel(ch);
