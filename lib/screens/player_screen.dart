@@ -369,7 +369,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           _TopBtn(icon: Icons.close_rounded, size: 22,
                             onTap: () => Navigator.pop(context)),
                         ]),
-                      ]))))),
+                      ])))))),
 
           // ── Bottom gradient ───────────────────────────────────────────────
           Positioned(bottom: 0, left: 0, right: 0,
