@@ -374,7 +374,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             icon: Icons.close_rounded, size: 22,
                             onTap: () => Navigator.pop(context)),
                         ]),
-                      ]))))),
+                      ])))))),
 
           // ── Bottom gradient ────────────────────────────────────────────────
           Positioned(
