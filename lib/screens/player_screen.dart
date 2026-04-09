@@ -98,11 +98,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (!_resumed) _ctrl?.dispose();
     _ctrl = null;
     _resumed = false;
-
     _playerGeneration++;
     final myGeneration = _playerGeneration;
 
     if (mounted) setState(() { _loading = true; _hasError = false; });
+
+    // ── Aspect ratio ──────────────────────────────────────────────────────
+    // Use the device's PHYSICAL screen size to compute the true landscape
+    // ratio. This is reliable in initState because it reads from the OS
+    // directly, not from MediaQuery (which depends on orientation state).
+    // We always use max(w,h)/min(w,h) to guarantee a landscape ratio ≥ 1.0.
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final phys = view.physicalSize;
+    final dpr  = view.devicePixelRatio;
+    final pw   = phys.width  / dpr;
+    final ph   = phys.height / dpr;
+    final landscapeRatio = (pw > ph ? pw : ph) / (pw > ph ? ph : pw);
 
     _ctrl = BetterPlayerController(
       BetterPlayerConfiguration(
@@ -110,24 +121,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
         looping: false,
         fullScreenByDefault: false,
         allowedScreenSleep: false,
-        // We do NOT set aspectRatio here.
-        // The ratio is applied dynamically in build() via setOverriddenAspectRatio,
-        // reading MediaQuery AFTER the device has actually rotated to landscape.
-        // Setting it here (in initState) risks reading portrait dimensions.
+        // ── aspectRatio set to the exact landscape ratio of the screen ──
+        // This tells BetterPlayer's internal AspectRatio widget to size the
+        // video exactly as wide as the screen. Combined with fit=fill the
+        // video texture is stretched to cover edge-to-edge with no bars.
+        aspectRatio: landscapeRatio,
         fit: BoxFit.fill,
+        // Fully disable all built-in controls & their gesture detectors.
         controlsConfiguration: const BetterPlayerControlsConfiguration(
-          // Disable EVERY built-in control widget.
-          // BetterPlayer still attaches internal GestureDetectors even when
-          // showControls=false. We use IgnorePointer on the BetterPlayer widget
-          // to block ALL of its touch handlers; our outer GestureDetector wins.
-          showControls: false,
-          enablePlayPause: false,
-          enableMute: false,
-          enableFullscreen: false,
-          enableSkips: false,
+          showControls:      false,
+          enablePlayPause:   false,
+          enableMute:        false,
+          enableFullscreen:  false,
+          enableSkips:       false,
           enableOverflowMenu: false,
-          enableQualities: false,
-          enableSubtitles: false,
+          enableQualities:   false,
+          enableSubtitles:   false,
           enableAudioTracks: false,
         ),
         eventListener: (event) {
@@ -135,6 +144,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
           if (myGeneration != _playerGeneration) return;
           switch (event.betterPlayerEventType) {
             case BetterPlayerEventType.initialized:
+              // Re-assert the ratio after BetterPlayer finishes init, because
+              // it sometimes resets aspectRatio to the video's encoded ratio.
+              try { _ctrl?.setOverriddenAspectRatio(landscapeRatio); } catch (_) {}
               setState(() { _loading = false; _retryCount = 0; });
               break;
             case BetterPlayerEventType.exception:
@@ -152,7 +164,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         liveStream: true,
         headers: {
           "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
           "Referer": "https://x.com/",
         },
         bufferingConfiguration: const BetterPlayerBufferingConfiguration(
@@ -186,8 +199,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
-  // ─── UI helpers ───────────────────────────────────────────────────────────
-
   void _scheduleHideControls() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
@@ -197,136 +208,162 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
-    if (_showControls) {
-      _scheduleHideControls();
-    } else {
-      _hideTimer?.cancel();
-    }
+    if (_showControls) _scheduleHideControls();
+    else _hideTimer?.cancel();
   }
 
   // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    // ── Aspect ratio: computed HERE in build, not in initState ──────────────
-    //
-    // Problem: setPreferredOrientations() is async. When _startPlayer() is
-    // called during initState, the device has NOT rotated yet — MediaQuery
-    // still returns portrait dimensions (e.g. 390×844 on iPhone 15 Pro).
-    // Computing aspectRatio = width/height then gives ~0.46, which makes
-    // BetterPlayer render a tiny portrait-shaped box on a landscape screen.
-    //
-    // Fix: Read MediaQuery inside build(). By the time Flutter calls build
-    // after orientation settles, MediaQuery returns the correct landscape
-    // dimensions. We then push the ratio to the controller immediately.
-    //
-    // We always use max(w,h)/min(w,h) so the ratio is always landscape
-    // regardless of what orientation the OS reports at this exact moment.
-    final mqSize = MediaQuery.of(context).size;
-    final lsW = mqSize.width > mqSize.height ? mqSize.width : mqSize.height;
-    final lsH = mqSize.width < mqSize.height ? mqSize.width : mqSize.height;
-    final landscapeRatio = lsW / lsH;
-
-    // Push ratio to controller every build. setOverriddenAspectRatio is
-    // idempotent — calling it with the same value is a no-op internally.
+    // Reapply the ratio on every build (e.g. after channel switch or init).
+    // Wrapped in try-catch in case the method doesn't exist in this package version.
     if (_ctrl != null) {
-      _ctrl!.setOverriddenAspectRatio(landscapeRatio);
+      final view  = WidgetsBinding.instance.platformDispatcher.views.first;
+      final phys  = view.physicalSize;
+      final dpr   = view.devicePixelRatio;
+      final pw    = phys.width  / dpr;
+      final ph    = phys.height / dpr;
+      final ratio = (pw > ph ? pw : ph) / (pw > ph ? ph : pw);
+      try { _ctrl!.setOverriddenAspectRatio(ratio); } catch (_) {}
     }
 
     return Scaffold(
       backgroundColor: Colors.black,
       extendBody: true,
-      // ── Gesture layer: wraps EVERYTHING ───────────────────────────────────
-      //
-      // GestureDetector must be the outermost widget so it covers the full
-      // screen. The BetterPlayer widget below is wrapped in IgnorePointer
-      // which prevents its internal GestureDetectors from ever receiving
-      // touch events — our outer GD wins every gesture arena, guaranteed.
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _toggleControls,
-        onVerticalDragEnd: (d) {
-          if ((d.primaryVelocity ?? 0) > 300) Navigator.pop(context);
-        },
-        onHorizontalDragEnd: (d) {
-          if (widget.channelList.isEmpty) return;
-          final v = d.primaryVelocity ?? 0;
-          if (v < -300) _nextChannel();
-          else if (v > 300) _prevChannel();
-        },
-        child: Stack(children: [
+      body: Stack(children: [
 
-          // ── Video (IgnorePointer blocks BetterPlayer's internal touches) ──
-          if (_ctrl != null)
-            Positioned.fill(
-              child: IgnorePointer(
-                // IgnorePointer makes BetterPlayer invisible to the gesture
-                // system. Its internal onTap / drag detectors can never fire.
-                // Our outer GestureDetector is now the sole touch handler.
+        // ── Layer 1 — Video ─────────────────────────────────────────────────
+        // FittedBox(fill) is the critical piece:
+        //   • BetterPlayer has an internal AspectRatio widget that sizes itself
+        //     to fit the video's ratio inside its parent's constraints.
+        //     Even with Positioned.fill, the internal AspectRatio makes the
+        //     video smaller than the available area (black bars).
+        //   • FittedBox measures BetterPlayer at its "natural" size (whatever
+        //     the internal AspectRatio decides), then SCALES it to fill the
+        //     parent perfectly. No black bars, no clipping.
+        //   • BoxFit.fill stretches both axes — a 16:9 video on a 20:9 screen
+        //     is stretched ~11% horizontally, which is barely perceptible.
+        //     Use BoxFit.cover instead if you prefer uniform scaling with crop.
+        if (_ctrl != null)
+          Positioned.fill(
+            child: FittedBox(
+              fit: BoxFit.fill,
+              child: SizedBox(
+                // Give BetterPlayer a fixed "natural" 16:9 canvas.
+                // FittedBox scales this to fill the Positioned.fill parent.
+                width:  1920,
+                height: 1080,
                 child: BetterPlayer(key: _pipKey, controller: _ctrl!),
               ),
             ),
+          ),
 
-          // ── Loading ───────────────────────────────────────────────────────
-          if (_loading)
-            Container(
-              color: Colors.black,
-              child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(width: 42, height: 42,
-                  child: CircularProgressIndicator(
-                    color: AppTheme.accent, strokeWidth: 2.5,
-                    backgroundColor: AppTheme.accent.withOpacity(0.15))),
-                const SizedBox(height: 16),
-                Text('Loading ${_currentChannel.name}...',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-              ]))),
+        // ── Layer 2 — Touch interceptor ─────────────────────────────────────
+        //
+        // WHY a separate layer instead of IgnorePointer on the video:
+        //
+        // VideoPlayer on iOS renders via a native UIView (platform view).
+        // IgnorePointer removes the widget from Flutter's hit-test tree, but
+        // the native UIView still registers UIKit touch events independently —
+        // they never reach Flutter's gesture arena. So IgnorePointer can't
+        // stop the native player from eating swipes/taps.
+        //
+        // Solution: a transparent GestureDetector layer placed AFTER (visually
+        // above) BetterPlayer in the Stack. Flutter's hit-test visits Stack
+        // children in reverse order (last = highest z). Our GestureDetector is
+        // found FIRST, handles the gesture, and the native UIView below it
+        // never sees the touch event. This is the correct pattern for
+        // intercepting touches over Flutter platform views.
+        //
+        // HitTestBehavior.opaque: this GD claims the hit even on transparent
+        // areas (like the empty black edges).
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleControls,
+            onVerticalDragEnd: (d) {
+              if ((d.primaryVelocity ?? 0) > 300) Navigator.pop(context);
+            },
+            onHorizontalDragEnd: (d) {
+              if (widget.channelList.isEmpty) return;
+              final v = d.primaryVelocity ?? 0;
+              if (v < -300) _nextChannel();
+              else if (v > 300) _prevChannel();
+            },
+            child: const SizedBox.expand(),
+          ),
+        ),
 
-          // ── Error ─────────────────────────────────────────────────────────
-          if (_hasError)
-            Container(
-              color: Colors.black,
-              child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 64, height: 64,
+        // ── Layer 3 — Loading ────────────────────────────────────────────────
+        if (_loading)
+          Container(color: Colors.black,
+            child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              SizedBox(width: 42, height: 42,
+                child: CircularProgressIndicator(
+                  color: AppTheme.accent, strokeWidth: 2.5,
+                  backgroundColor: AppTheme.accent.withOpacity(0.15))),
+              const SizedBox(height: 16),
+              Text('Loading ${_currentChannel.name}...',
+                style: const TextStyle(color: Colors.white70, fontSize: 13,
+                  fontWeight: FontWeight.w600)),
+            ]))),
+
+        // ── Layer 4 — Error ──────────────────────────────────────────────────
+        if (_hasError)
+          Container(color: Colors.black,
+            child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 64, height: 64,
+                decoration: BoxDecoration(
+                  color: AppTheme.live.withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.wifi_off_rounded,
+                  color: AppTheme.live, size: 32)),
+              const SizedBox(height: 16),
+              const Text('Failed to load channel',
+                style: TextStyle(color: Colors.white, fontSize: 17,
+                  fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              const Text('Check your internet connection',
+                style: TextStyle(color: Colors.white54, fontSize: 13)),
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: _startPlayer,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.live.withOpacity(0.1), shape: BoxShape.circle),
-                  child: const Icon(Icons.wifi_off_rounded, color: AppTheme.live, size: 32)),
-                const SizedBox(height: 16),
-                const Text('Failed to load channel',
-                  style: TextStyle(color: Colors.white, fontSize: 17,
-                    fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                const Text('Check your internet connection',
-                  style: TextStyle(color: Colors.white54, fontSize: 13)),
-                const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: _startPlayer,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.buttonGradient,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [BoxShadow(
-                        color: AppTheme.accent.withOpacity(0.3), blurRadius: 12)]),
-                    child: const Text('Retry',
-                      style: TextStyle(color: Colors.white,
-                        fontWeight: FontWeight.w800, fontSize: 14)))),
-              ]))),
+                    gradient: AppTheme.buttonGradient,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [BoxShadow(
+                      color: AppTheme.accent.withOpacity(0.3), blurRadius: 12)]),
+                  child: const Text('Retry',
+                    style: TextStyle(color: Colors.white,
+                      fontWeight: FontWeight.w800, fontSize: 14)))),
+            ]))),
 
-          // ── Top controls ──────────────────────────────────────────────────
-          AnimatedOpacity(
-            opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 250),
-            child: IgnorePointer(
-              ignoring: !_showControls,
-              child: Container(
+        // ── Layer 5 — Controls (top bar + bottom gradient) ──────────────────
+        // IgnorePointer(ignoring: !_showControls) lets the touch interceptor
+        // layer below handle taps when controls are hidden. When controls ARE
+        // shown, IgnorePointer is disabled so buttons receive taps normally.
+        // Buttons are at a higher z-order than Layer 2 → they win in the
+        // gesture arena for their own tap area.
+        AnimatedOpacity(
+          opacity: _showControls ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 250),
+          child: IgnorePointer(
+            ignoring: !_showControls,
+            child: Column(children: [
+              // Top gradient + controls
+              Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.black.withOpacity(0.7), Colors.transparent],
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+                    colors: [Colors.black.withOpacity(0.75), Colors.transparent],
+                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                    stops: const [0.0, 1.0])),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -335,11 +372,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.black.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.white.withOpacity(0.1))),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.1))),
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
                               PulseDot(color: AppTheme.live, size: 8),
                               const SizedBox(width: 8),
@@ -350,17 +389,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                   maxLines: 1, overflow: TextOverflow.ellipsis)),
                               const SizedBox(width: 10),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: AppTheme.live.withOpacity(0.9),
                                   borderRadius: BorderRadius.circular(6)),
                                 child: const Text('LIVE',
-                                  style: TextStyle(color: Colors.white, fontSize: 10,
-                                    fontWeight: FontWeight.w800, letterSpacing: 1))),
+                                  style: TextStyle(color: Colors.white,
+                                    fontSize: 10, fontWeight: FontWeight.w800,
+                                    letterSpacing: 1))),
                             ]))),
                         const SizedBox(width: 12),
                         Row(children: [
-                          _TopBtn(icon: Icons.picture_in_picture_alt_rounded,
+                          _TopBtn(
+                            icon: Icons.picture_in_picture_alt_rounded,
                             onTap: () {
                               widget.onPipRequested?.call();
                               Navigator.pop(context);
@@ -369,23 +411,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           _TopBtn(icon: Icons.close_rounded, size: 22,
                             onTap: () => Navigator.pop(context)),
                         ]),
-                      ])))))),
-
-          // ── Bottom gradient ───────────────────────────────────────────────
-          Positioned(bottom: 0, left: 0, right: 0,
-            child: AnimatedOpacity(
-              opacity: _showControls ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 250),
-              child: IgnorePointer(
-                ignoring: !_showControls,
-                child: Container(height: 80,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
-                      begin: Alignment.topCenter, end: Alignment.bottomCenter)))))),
-
-        ]),
-      ),
+                      ])))),
+              // Spacer — lets the touch interceptor handle taps in the middle
+              const Spacer(),
+              // Bottom gradient
+              Container(height: 80,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+                    begin: Alignment.topCenter, end: Alignment.bottomCenter))),
+            ]))),
+      ]),
     );
   }
 }
