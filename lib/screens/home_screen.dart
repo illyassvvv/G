@@ -281,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       BetterPlayerConfiguration(
         autoPlay: true,
         aspectRatio: 16 / 9,
-        fit: BoxFit.contain,
+        fit: BoxFit.fill,
         handleLifecycle: true,
         autoDispose: false,
         controlsConfiguration: BetterPlayerControlsConfiguration(
@@ -398,6 +398,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _expandAnimCtrl.reverse();
     }
     _miniPlayerAnimCtrl.reverse().then((_) {
+      _expandAnimCtrl.reset(); // Reset so next expand has animation
       _zapTimer?.cancel();
       _disposeController();
       _activeIdNotifier.value = null;
@@ -1304,13 +1305,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             color: Colors.white, size: 18))),
                       const SizedBox(width: 6),
                       GestureDetector(
-                        // FIX Bug 3: _closeMini() also calls _expandAnimCtrl.reverse()
-                        // when _isExpanded=true, causing a double-reverse animation glitch.
-                        // Set _isExpanded=false first so _closeMini's guard bails out.
-                        onTap: () {
-                          setState(() => _isExpanded = false);
-                          _closeMini();
-                        },
+                        // _closeMini() checks _isExpanded and reverses the expand
+                        // animation itself. Pre-setting _isExpanded=false bypassed
+                        // that animation and left _expandAnimCtrl stuck at 1.0,
+                        // causing the next expand to appear with no animation.
+                        onTap: _closeMini,
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(

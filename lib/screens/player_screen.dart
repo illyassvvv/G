@@ -40,6 +40,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   int _retryCount = 0;
   static const _maxRetries = 3;
   int _playerGeneration = 0;
+  double _landscapeRatio = 16 / 9; // updated in _startPlayer() to actual screen ratio
 
   @override
   void initState() {
@@ -114,6 +115,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final pw   = phys.width  / dpr;
     final ph   = phys.height / dpr;
     final landscapeRatio = (pw > ph ? pw : ph) / (pw > ph ? ph : pw);
+    _landscapeRatio = landscapeRatio; // persist so build() uses the same ratio
 
     _ctrl = BetterPlayerController(
       BetterPlayerConfiguration(
@@ -231,7 +233,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       extendBody: true,
-      body: Stack(children: [
+      extendBodyBehindAppBar: true,
+      body: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        removeBottom: true,
+        removeLeft: true,
+        removeRight: true,
+        child: Stack(children: [
 
         // ── Layer 1 — Video ─────────────────────────────────────────────────
         // FittedBox(fill) is the critical piece:
@@ -250,10 +259,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
             child: FittedBox(
               fit: BoxFit.fill,
               child: SizedBox(
-                // Give BetterPlayer a fixed "natural" 16:9 canvas.
-                // FittedBox scales this to fill the Positioned.fill parent.
+                // SizedBox MUST match _landscapeRatio so BetterPlayer's internal
+                // AspectRatio fills it exactly — no black bars inside SizedBox.
+                // Old hardcoded height=1080 (16:9) caused visible black edges
+                // on 20:9 / 19.5:9 phones because BetterPlayer rendered a
+                // smaller 16:9-safe area inside the 1920×1080 box, and
+                // FittedBox scaled those bars to screen size.
                 width:  1920,
-                height: 1080,
+                height: 1920 / _landscapeRatio,
                 child: BetterPlayer(key: _pipKey, controller: _ctrl!),
               ),
             ),
@@ -422,6 +435,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     begin: Alignment.topCenter, end: Alignment.bottomCenter))),
             ]))),
       ]),
+      ),
     );
   }
 }
