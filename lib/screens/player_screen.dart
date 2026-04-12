@@ -96,7 +96,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // ─── Player lifecycle ─────────────────────────────────────────────────────
 
   void _startPlayer() {
-    if (!_resumed) _ctrl?.dispose();
+    if (_resumed) {
+      // existingController (passed from home's mini player) — do NOT dispose it
+      // (home screen still owns it), but silence it immediately so its audio
+      // doesn't bleed into the new channel's playback.
+      try {
+        _ctrl?.videoPlayerController?.setVolume(0);
+        _ctrl?.pause();
+      } catch (_) {}
+    } else {
+      _ctrl?.dispose();
+    }
     _ctrl = null;
     _resumed = false;
     _playerGeneration++;
@@ -227,6 +237,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
       final pw    = phys.width  / dpr;
       final ph    = phys.height / dpr;
       final ratio = (pw > ph ? pw : ph) / (pw > ph ? ph : pw);
+      // Keep _landscapeRatio in sync so SizedBox uses the same ratio as
+      // setOverriddenAspectRatio. Critical for the existingController path
+      // (mini→fullscreen tap) where _startPlayer() is never called and
+      // _landscapeRatio stays at the 16/9 default → pillarboxing.
+      _landscapeRatio = ratio;
       try { _ctrl!.setOverriddenAspectRatio(ratio); } catch (_) {}
     }
 
