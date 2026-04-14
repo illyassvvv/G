@@ -1,23 +1,26 @@
-name: vargastv
-description: VarGasTv - Live Sports Streaming
+name: streamgo_tv
+description: StreamGo IPTV Player App
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+1
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  better_player_plus: ^1.1.5
-  cached_network_image: ^3.3.1
-  google_fonts: ^6.1.0
-  flutter_animate: ^4.3.0
-  shimmer: ^3.0.0
-  http: ^1.2.1
-  shared_preferences: ^2.2.3
-  connectivity_plus: ^6.0.3
-  provider: ^6.1.2
+
+  # Networking
+  http: ^1.2.0
+
+  # Persistent storage (favorites + settings)
+  shared_preferences: ^2.2.2
+
+  # Video player core
+  video_player: ^2.8.3
+
+  # Full-featured player UI (controls, fullscreen, etc.)
+  chewie: ^1.7.4
 
 dev_dependencies:
   flutter_test:
