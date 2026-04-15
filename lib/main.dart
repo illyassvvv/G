@@ -1,61 +1,31 @@
-/// ============================================================
-/// main.dart — Checkers (Draughts)
-/// Flutter / Cupertino — single file, zero external dependencies
-/// ============================================================
-///
-/// Layers
-///   Models    : Pos, Move, MoveResult           (pure data)
-///   GameLogic : rules, AI, state management
-///   UI        : CheckersApp → GameScreen        (Cupertino)
-///
-/// "Sound": HapticFeedback (no audio package required)
-/// ============================================================
-
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart'; // Required for kDebugMode
-
-// ─────────────────────────────────────────────────────────────
-// ENTRY POINT
-// ─────────────────────────────────────────────────────────────
+import 'package:flutter/foundation.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const CheckersApp());
 }
 
-// ─────────────────────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────────────────────
+const int kN = 8;
 
-const int kN = 8; // board size
-
-// Board palette (classic chess.com green)
 const Color cDark  = Color(0xFF769656);
 const Color cLight = Color(0xFFEEEED2);
-const Color cSel   = Color(0xFFBDE051); // selected square
-const Color cHint  = Color(0xCC82CAFF); // move-target overlay
+const Color cSel   = Color(0xFFBDE051);
+const Color cHint  = Color(0xCC82CAFF);
 
-// Piece palette
 const Color cRedBase = Color(0xFFCC2929);
 const Color cRedHi   = Color(0xFFFF7070);
 const Color cBlkBase = Color(0xFF1E1E1E);
 const Color cBlkHi   = Color(0xFF5C5C5C);
-const Color cGold    = Color(0xFFFFD700); // king marker
-
-// ─────────────────────────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────────────────────────
+const Color cGold    = Color(0xFFFFD700);
 
 enum Player   { red, black }
 enum Phase    { playing, redWins, blackWins }
 enum GameMode { twoPlayer, vsAI }
-
-// ─────────────────────────────────────────────────────────────
-// PIECE TYPE
-// ─────────────────────────────────────────────────────────────
+enum Difficulty { easy, medium, hard }
 
 enum PieceType { empty, red, black, redKing, blackKing }
 
@@ -66,17 +36,11 @@ extension PT on PieceType {
   bool get isKing  => this == PieceType.redKing || this == PieceType.blackKing;
   bool belongs(Player p) => p == Player.red ? isRed : isBlack;
 
-  /// Return the promoted variant (red→redKing, black→blackKing, kings unchanged)
   PieceType get promoted =>
       this == PieceType.red   ? PieceType.redKing  :
       this == PieceType.black ? PieceType.blackKing : this;
 }
 
-// ─────────────────────────────────────────────────────────────
-// MODELS
-// ─────────────────────────────────────────────────────────────
-
-/// Board coordinate — row 0 = top edge, col 0 = left edge
 class Pos {
   final int r, c;
   const Pos(this.r, this.c);
@@ -88,10 +52,6 @@ class Pos {
   @override String toString() => '($r,$c)';
 }
 
-/// One complete move — may represent a multi-jump chain.
-/// [from] is always the piece's original square.
-/// [to] is the final landing square.
-/// [captured] lists every square captured along the chain.
 class Move {
   final Pos        from, to;
   final List<Pos>  captured;
@@ -103,7 +63,6 @@ class Move {
   bool get isCapture => captured.isNotEmpty;
 }
 
-/// Returned by [GameLogic] after a move is applied
 class MoveResult {
   final bool  isCapture, isPromotion;
   final Phase phase;
@@ -114,37 +73,29 @@ class MoveResult {
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// GAME LOGIC
-// ─────────────────────────────────────────────────────────────
-
 class GameLogic {
-  // ── State ────────────────────────────────────────────────
-  late List<List<PieceType>> _b;   // 8×8 grid
+  late List<List<PieceType>> _b;
   late Player                currentPlayer;
   late Phase                 phase;
   int redScore = 0, blackScore = 0;
 
   Pos?       selectedPos;
   List<Move> availableMoves = [];
-  List<Move> mandatoryMoves = []; // capture moves for current player
+  List<Move> mandatoryMoves = [];
 
   GameLogic() { _init(); }
 
-  // ── Board setup ──────────────────────────────────────────
-
   void _init() {
-    // Build empty board then place pieces on dark (odd-sum) squares
     _b = List.generate(kN, (_) => List.filled(kN, PieceType.empty));
     for (int r = 0; r < kN; r++) {
       for (int c = 0; c < kN; c++) {
         if ((r + c).isOdd) {
-          if (r < 3)      _b[r][c] = PieceType.black; // black at top
-          else if (r > 4) _b[r][c] = PieceType.red;   // red at bottom
+          if (r < 3)      _b[r][c] = PieceType.black;
+          else if (r > 4) _b[r][c] = PieceType.red;
         }
       }
     }
-    currentPlayer  = Player.black; // black moves first
+    currentPlayer  = Player.black;
     phase          = Phase.playing;
     selectedPos    = null;
     availableMoves = [];
@@ -159,14 +110,7 @@ class GameLogic {
     _init(); 
   }
 
-  // ── Board access ─────────────────────────────────────────
-
-  /// Safe read — returns empty for out-of-bounds positions
   PieceType at(Pos p) => p.ok ? _b[p.r][p.c] : PieceType.empty;
-
-  // ── Movement directions ──────────────────────────────────
-  // Red moves UP (row decreases), Black moves DOWN (row increases).
-  // Kings move in all four diagonals.
 
   static const List<List<int>> _allDirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
 
@@ -180,8 +124,6 @@ class GameLogic {
       (piece == PieceType.red   && to.r == 0)      ||
       (piece == PieceType.black && to.r == kN - 1);
 
-  // ── Regular (non-capture) moves ─────────────────────────
-
   List<Move> _regular(Pos pos, PieceType piece) {
     final out = <Move>[];
     for (final d in _dirs(piece)) {
@@ -192,16 +134,6 @@ class GameLogic {
     }
     return out;
   }
-
-  // ── Recursive jump-chain generator ──────────────────────
-  //
-  //  startPos : the piece's original square (for Move.from)
-  //  curPos   : current position in the chain
-  //  piece    : piece type (unchanged — promotion stops the chain)
-  //  board    : simulated board state for this branch
-  //  captured : positions already captured in this chain
-  //
-  //  Returns all terminal moves reachable from the current position.
 
   List<Move> _jumps(
     Pos startPos, Pos curPos, PieceType piece,
@@ -215,33 +147,30 @@ class GameLogic {
       if (!to.ok) continue;
 
       final op = board[over.r][over.c];
-      if (op.isEmpty)            continue; // nothing to jump over
-      if (captured.contains(over)) continue; // already captured in chain
-      assert(!captured.contains(over), 'Piece captured twice in chain'); // Extra safeguard
-      if (!(piece.isRed ? op.isBlack : op.isRed)) continue; // not an enemy
-      if (board[to.r][to.c] != PieceType.empty)   continue; // landing blocked
+      if (op.isEmpty)            continue;
+      if (captured.contains(over)) continue;
+      assert(!captured.contains(over), 'Piece captured twice in chain');
+      if (!(piece.isRed ? op.isBlack : op.isRed)) continue;
+      if (board[to.r][to.c] != PieceType.empty)   continue;
 
       final newCap  = [...captured, over];
       final promotes = _promotes(to, piece);
 
       if (promotes) {
-        // Promotion stops the chain (standard draughts rule)
         out.add(Move(from: startPos, to: to, captured: newCap, becomesKing: true));
       } else {
-        // Simulate this jump and recurse for further captures
         final nb     = _sim(board, curPos, over, to, piece);
         final chains = _jumps(startPos, to, piece, nb, newCap);
         if (chains.isEmpty) {
           out.add(Move(from: startPos, to: to, captured: newCap));
         } else {
-          out.addAll(chains); // return full chains, not intermediate hops
+          out.addAll(chains);
         }
       }
     }
     return out;
   }
 
-  /// Immutable board snapshot: apply one jump without changing [_b]
   List<List<PieceType>> _sim(
     List<List<PieceType>> b,
     Pos from, Pos over, Pos to, PieceType piece,
@@ -253,20 +182,14 @@ class GameLogic {
     return nb;
   }
 
-  // ── Public move interface ────────────────────────────────
-
-  /// All legal moves for the piece at [pos].
-  /// Enforces mandatory-capture rule: if any capture exists, only captures
-  /// are returned.
   List<Move> movesFor(Pos pos) {
     final piece = at(pos);
     if (piece.isEmpty || !piece.belongs(currentPlayer)) return [];
     final jumps = _jumps(pos, pos, piece, _b, []);
-    if (mandatoryMoves.isNotEmpty) return jumps; // MUST capture
+    if (mandatoryMoves.isNotEmpty) return jumps;
     return jumps.isNotEmpty ? jumps : _regular(pos, piece);
   }
 
-  /// Recompute which capture moves exist for the current player
   void _calcMandatory() {
     mandatoryMoves = [];
     for (int r = 0; r < kN; r++) {
@@ -279,8 +202,6 @@ class GameLogic {
     }
   }
 
-  // ── Selection API ────────────────────────────────────────
-
   bool select(Pos pos) {
     if (phase != Phase.playing) return false;
     final moves = movesFor(pos);
@@ -292,10 +213,7 @@ class GameLogic {
 
   void clearSelect() { selectedPos = null; availableMoves = []; }
 
-  /// The set of squares the selected piece can legally move to
   Set<Pos> get targets => availableMoves.map((m) => m.to).toSet();
-
-  // ── Move execution ───────────────────────────────────────
 
   MoveResult? moveTo(Pos to) {
     if (selectedPos == null) return null;
@@ -308,7 +226,6 @@ class GameLogic {
   MoveResult _apply(Move m) {
     final piece = at(m.from);
 
-    // Move piece, remove captured, place (possibly promoted) at destination
     _b[m.from.r][m.from.c] = PieceType.empty;
     for (final cap in m.captured) _b[cap.r][cap.c] = PieceType.empty;
     _b[m.to.r][m.to.c] = m.becomesKing ? piece.promoted : piece;
@@ -318,8 +235,7 @@ class GameLogic {
 
     if (phase == Phase.playing) {
       currentPlayer = currentPlayer == Player.red ? Player.black : Player.red;
-      _calcMandatory(); // Always refresh before returning
-      // If the new player has no legal moves, the previous player wins
+      _calcMandatory();
       if (!_anyMoves(currentPlayer)) {
         _setWinner(currentPlayer == Player.red ? Player.black : Player.red);
       }
@@ -330,8 +246,6 @@ class GameLogic {
       phase:       phase,
     );
   }
-
-  // ── Win detection ────────────────────────────────────────
 
   void _checkWin() {
     int reds = 0, blks = 0;
@@ -363,38 +277,128 @@ class GameLogic {
     if (w == Player.red) redScore++; else blackScore++;
   }
 
-  // ── AI (plays as Red) ────────────────────────────────────
-  //
-  //  Strategy (simple but effective):
-  //    Priority 1 – most captures in a single chain
-  //    Priority 2 – promotion to king
-  //    Priority 3 – random among equally-scored moves
+  int _evaluateBoard(List<List<PieceType>> board) {
+    int score = 0;
+    for (int r = 0; r < kN; r++) {
+      for (int c = 0; c < kN; c++) {
+        final p = board[r][c];
+        if (p.isEmpty) continue;
+        int val = p.isKing ? 10 : 5;
+        if (p.isRed) score += val;
+        else score -= val;
+      }
+    }
+    return score;
+  }
 
-  Move? aiMove() {
-    if (phase != Phase.playing) return null;
-    final all = <Move>[];
+  List<Move> _getRegularSim(Pos pos, PieceType piece, List<List<PieceType>> board) {
+    final out = <Move>[];
+    for (final d in _dirs(piece)) {
+      final to = Pos(pos.r + d[0], pos.c + d[1]);
+      if (to.ok && board[to.r][to.c] == PieceType.empty) {
+        out.add(Move(from: pos, to: to, becomesKing: _promotes(to, piece)));
+      }
+    }
+    return out;
+  }
+
+  List<Move> _getAllSim(List<List<PieceType>> board, Player p) {
+    final jumps = <Move>[];
+    final regulars = <Move>[];
     for (int r = 0; r < kN; r++) {
       for (int c = 0; c < kN; c++) {
         final pos = Pos(r, c);
-        if (!at(pos).belongs(currentPlayer)) continue;
-        all.addAll(movesFor(pos));
+        final piece = board[r][c];
+        if (!piece.isEmpty && piece.belongs(p)) {
+          jumps.addAll(_jumps(pos, pos, piece, board, []));
+        }
       }
     }
-    if (all.isEmpty) return null;
-
-    int score(Move m) {
-      int s = 0;
-      if (m.isCapture)   s += 10 + m.captured.length * 5;
-      if (m.becomesKing) s += 8;
-      return s;
+    if (jumps.isNotEmpty) return jumps;
+    
+    for (int r = 0; r < kN; r++) {
+      for (int c = 0; c < kN; c++) {
+        final pos = Pos(r, c);
+        final piece = board[r][c];
+        if (!piece.isEmpty && piece.belongs(p)) {
+          regulars.addAll(_getRegularSim(pos, piece, board));
+        }
+      }
     }
-    all.sort((a, b) => score(b) - score(a));
-    final best = score(all.first);
-    final top  = all.where((m) => score(m) == best).toList();
-    return top[Random().nextInt(top.length)];
+    return regulars;
   }
 
-  /// Apply an AI-chosen move directly (bypasses UI selection state)
+  List<List<PieceType>> _simMove(List<List<PieceType>> board, Move m) {
+    final nb = board.map((r) => List<PieceType>.from(r)).toList();
+    final piece = nb[m.from.r][m.from.c];
+    nb[m.from.r][m.from.c] = PieceType.empty;
+    for (final cap in m.captured) nb[cap.r][cap.c] = PieceType.empty;
+    nb[m.to.r][m.to.c] = m.becomesKing ? piece.promoted : piece;
+    return nb;
+  }
+
+  int _minimax(List<List<PieceType>> board, int depth, bool isMax) {
+    if (depth == 0) return _evaluateBoard(board);
+    final player = isMax ? Player.red : Player.black;
+    final moves = _getAllSim(board, player);
+    if (moves.isEmpty) return isMax ? -999 : 999;
+
+    if (isMax) {
+      int maxE = -9999;
+      for (final m in moves) {
+        int eval = _minimax(_simMove(board, m), depth - 1, false);
+        if (eval > maxE) maxE = eval;
+      }
+      return maxE;
+    } else {
+      int minE = 9999;
+      for (final m in moves) {
+        int eval = _minimax(_simMove(board, m), depth - 1, true);
+        if (eval < minE) minE = eval;
+      }
+      return minE;
+    }
+  }
+
+  Move? aiMove(Difficulty diff) {
+    if (phase != Phase.playing) return null;
+    final moves = _getAllSim(_b, currentPlayer);
+    if (moves.isEmpty) return null;
+
+    if (diff == Difficulty.easy) {
+      return moves[Random().nextInt(moves.length)];
+    }
+
+    if (diff == Difficulty.medium) {
+      int score(Move m) {
+        int s = 0;
+        if (m.isCapture) s += 10 + m.captured.length * 5;
+        if (m.becomesKing) s += 8;
+        return s;
+      }
+      moves.sort((a, b) => score(b) - score(a));
+      final best = score(moves.first);
+      final top = moves.where((m) => score(m) == best).toList();
+      return top[Random().nextInt(top.length)];
+    }
+
+    moves.shuffle(); 
+    Move? bestMove;
+    int bestVal = -9999;
+    
+    for (final m in moves) {
+      final nb = _simMove(_b, m);
+      int moveVal = _minimax(nb, 2, false); 
+      if (m.isCapture) moveVal += 3;
+      
+      if (moveVal > bestVal) {
+        bestVal = moveVal;
+        bestMove = m;
+      }
+    }
+    return bestMove ?? moves.first;
+  }
+
   MoveResult? applyAI(Move m) {
     selectedPos    = m.from;
     availableMoves = [m];
@@ -402,13 +406,6 @@ class GameLogic {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// HAPTIC "SOUND" SYSTEM
-// ─────────────────────────────────────────────────────────────
-
-/// Haptic feedback as a sound substitute.
-/// No audio package, no assets — works out of the box.
-/// Added kDebugMode checks to handle simulator silent failures.
 class Sounds {
   static void _play(Future<void> Function() hapticCall) {
     hapticCall().catchError((e) {
@@ -422,10 +419,6 @@ class Sounds {
   static void tap()     => _play(HapticFeedback.lightImpact);
 }
 
-// ─────────────────────────────────────────────────────────────
-// APP ROOT
-// ─────────────────────────────────────────────────────────────
-
 class CheckersApp extends StatelessWidget {
   const CheckersApp({super.key});
 
@@ -438,10 +431,6 @@ class CheckersApp extends StatelessWidget {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// GAME SCREEN
-// ─────────────────────────────────────────────────────────────
-
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
   @override State<GameScreen> createState() => _GameScreenState();
@@ -450,9 +439,10 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   final _g = GameLogic();
   GameMode _mode   = GameMode.twoPlayer;
+  Difficulty _difficulty = Difficulty.medium;
   bool     _aiTurn = false;
   Timer?   _aiTimer;
-  bool     _winDialogShown = false; // Prevents dialog from showing twice
+  bool     _winDialogShown = false; 
 
   @override
   void dispose() { 
@@ -460,23 +450,18 @@ class _GameScreenState extends State<GameScreen> {
     super.dispose(); 
   }
 
-  // ── Input ─────────────────────────────────────────────────
-
   void _onTap(Pos pos) {
     if (_g.phase != Phase.playing) return;
     if (_aiTurn)  return;
-    // Block human input on AI's turn
     if (_mode == GameMode.vsAI && _g.currentPlayer == Player.red) return;
 
     setState(() {
       if (_g.targets.contains(pos)) {
-        // Execute the highlighted move
         final res = _g.moveTo(pos);
         if (res != null) _afterMove(res);
       } else {
         final piece = _g.at(pos);
         if (!piece.isEmpty && piece.belongs(_g.currentPlayer)) {
-          // Select or toggle selection
           if (_g.selectedPos == pos) {
             _g.clearSelect();
           } else {
@@ -484,7 +469,7 @@ class _GameScreenState extends State<GameScreen> {
             Sounds.tap();
           }
         } else {
-          _g.clearSelect(); // tap elsewhere → deselect
+          _g.clearSelect(); 
         }
       }
     });
@@ -494,7 +479,6 @@ class _GameScreenState extends State<GameScreen> {
     if (res.isCapture) Sounds.capture(); else Sounds.move();
     if (res.phase != Phase.playing) {
       Sounds.win();
-      // Show dialog after the current build cycle
       WidgetsBinding.instance.addPostFrameCallback((_) => _showWin(res.phase));
       return;
     }
@@ -503,14 +487,12 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  // ── AI timer ─────────────────────────────────────────────
-
   void _scheduleAI() {
     setState(() => _aiTurn = true);
     _aiTimer?.cancel();
     _aiTimer = Timer(const Duration(milliseconds: 700), () {
       if (!mounted) return;
-      final move = _g.aiMove();
+      final move = _g.aiMove(_difficulty); 
       setState(() {
         _aiTurn = false;
         if (move == null) return;
@@ -519,8 +501,6 @@ class _GameScreenState extends State<GameScreen> {
       });
     });
   }
-
-  // ── Win dialog ────────────────────────────────────────────
 
   void _showWin(Phase phase) {
     if (_winDialogShown) return;
@@ -560,8 +540,6 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  // ── Controls ──────────────────────────────────────────────
-
   void _restart() {
     _aiTimer?.cancel();
     setState(() { 
@@ -571,15 +549,13 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _toggleMode() {
-    _aiTimer?.cancel(); // Must be first before restarting
+    _aiTimer?.cancel(); 
     setState(() {
       _mode = _mode == GameMode.twoPlayer ? GameMode.vsAI : GameMode.twoPlayer;
       _g.restart();
       _aiTurn = false;
     });
   }
-
-  // ── Build ─────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -609,8 +585,6 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  // ── Score banner ─────────────────────────────────────────
-
   Widget _buildScoreBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -620,7 +594,6 @@ class _GameScreenState extends State<GameScreen> {
           _scoreChip('🔴 Red',   _g.redScore,   cRedBase),
           GestureDetector(
             onLongPress: () {
-              // Long press "SCORE" text to fully reset scores
               setState(() => _g.fullReset());
               Sounds.tap();
             },
@@ -649,8 +622,6 @@ class _GameScreenState extends State<GameScreen> {
       ]),
     );
   }
-
-  // ── Turn badge ───────────────────────────────────────────
 
   Widget _buildTurnBadge() {
     final isRed = _g.currentPlayer == Player.red;
@@ -681,8 +652,6 @@ class _GameScreenState extends State<GameScreen> {
       ]),
     );
   }
-
-  // ── Board ─────────────────────────────────────────────────
 
   Widget _buildBoard() {
     return Center(
@@ -716,8 +685,6 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  // ── Cell ──────────────────────────────────────────────────
-
   Widget _buildCell(int row, int col) {
     final pos      = Pos(row, col);
     final isDark   = (row + col).isOdd;
@@ -725,7 +692,6 @@ class _GameScreenState extends State<GameScreen> {
     final isSel    = _g.selectedPos == pos;
     final isTarget = _g.targets.contains(pos);
 
-    // Compute background — only dark squares are interactive
     final bg = isSel                ? cSel
              : (isTarget && isDark) ? cHint
              : isDark               ? cDark
@@ -738,7 +704,6 @@ class _GameScreenState extends State<GameScreen> {
         color: bg,
         child: isDark
           ? Stack(alignment: Alignment.center, children: [
-              // Dot hint when target square is empty
               if (isTarget && piece.isEmpty)
                 Container(
                   width: 12, height: 12,
@@ -746,15 +711,12 @@ class _GameScreenState extends State<GameScreen> {
                     color: cHint, shape: BoxShape.circle,
                   ),
                 ),
-              // Piece (rendered on top of any hint)
               if (!piece.isEmpty) _buildPiece(piece, isSel),
             ])
-          : null, // light squares are purely decorative
+          : null, 
       ),
     );
   }
-
-  // ── Piece ─────────────────────────────────────────────────
 
   Widget _buildPiece(PieceType piece, bool selected) {
     final isRed  = piece.isRed;
@@ -767,7 +729,6 @@ class _GameScreenState extends State<GameScreen> {
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          // Radial gradient gives the piece a 3-D look
           gradient: RadialGradient(
             center: const Alignment(-0.35, -0.40),
             colors: [
@@ -804,24 +765,41 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  // ── Bottom bar ───────────────────────────────────────────
-
   Widget _buildBottomBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 22),
-      child: Row(children: [
-        Expanded(child: _btn(
-          label: _mode == GameMode.twoPlayer ? '👥  2 Players' : '🤖  vs AI',
-          onTap: _toggleMode,
-          primary: false,
-        )),
-        const SizedBox(width: 12),
-        Expanded(child: _btn(
-          label: '↺  New Game',
-          onTap: _restart,
-          primary: true,
-        )),
-      ]),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_mode == GameMode.vsAI) ...[
+          CupertinoSlidingSegmentedControl<Difficulty>(
+            groupValue: _difficulty,
+            children: const {
+              Difficulty.easy: Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Easy', style: TextStyle(fontSize: 13))),
+              Difficulty.medium: Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Medium', style: TextStyle(fontSize: 13))),
+              Difficulty.hard: Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Hard', style: TextStyle(fontSize: 13))),
+            },
+            onValueChanged: (val) {
+              if (val != null && !_aiTurn) setState(() => _difficulty = val);
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
+          child: Row(children: [
+            Expanded(child: _btn(
+              label: _mode == GameMode.twoPlayer ? '👥  2 Players' : '🤖  vs AI',
+              onTap: _toggleMode,
+              primary: false,
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: _btn(
+              label: '↺  New Game',
+              onTap: _restart,
+              primary: true,
+            )),
+          ]),
+        ),
+      ],
     );
   }
 
