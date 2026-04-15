@@ -32,6 +32,8 @@ void main() async {
     statusBarColor: Colors.transparent,
     statusBarBrightness: Brightness.dark,
     statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
   ));
   runApp(const StreamGoApp());
 }
@@ -41,11 +43,11 @@ void main() async {
 // ═══════════════════════════════════════════════════════════════
 abstract class T {
   static const ink    = Color(0xFF000000);
-  static const void_ = Color(0xFF050506);
-  static const s1    = Color(0xFF0C0C0E);
-  static const s2    = Color(0xFF141416);
-  static const s3    = Color(0xFF1C1C1F);
-  static const s4    = Color(0xFF2C2C2F);
+  static const void_ = Color(0xFF030303);
+  static const s1    = Color(0xFF0A0A0C);
+  static const s2    = Color(0xFF111113);
+  static const s3    = Color(0xFF1A1A1D);
+  static const s4    = Color(0xFF252528);
   static const sep   = Color(0xFF2A2A2D);
   static const lbl   = Color(0xFFFFFFFF);
   static const lbl2  = Color(0xFF8E8E95);
@@ -59,10 +61,13 @@ abstract class T {
 
   static const r4   =  4.0;
   static const r8   =  8.0;
+  static const r10  = 10.0;
   static const r12  = 12.0;
+  static const r14  = 14.0;
   static const r16  = 16.0;
   static const r20  = 20.0;
   static const r24  = 24.0;
+  static const r28  = 28.0;
   static const rFull = 999.0;
 
   static const p4  =  4.0;
@@ -79,9 +84,9 @@ abstract class T {
   static const p40 = 40.0;
   static const p48 = 48.0;
 
-  static TextStyle get display  => const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -1.0, height: 1.1, color: lbl);
-  static TextStyle get title1   => const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.6, height: 1.15, color: lbl);
-  static TextStyle get title2   => const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4, height: 1.2,  color: lbl);
+  static TextStyle get display  => const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -1.2, height: 1.1, color: lbl);
+  static TextStyle get title1   => const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8, height: 1.15, color: lbl);
+  static TextStyle get title2   => const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5, height: 1.2,  color: lbl);
   static TextStyle get title3   => const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3, height: 1.3,  color: lbl);
   static TextStyle get headline => const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2, height: 1.4,  color: lbl);
   static TextStyle get body     => const TextStyle(fontSize: 15, fontWeight: FontWeight.w400, letterSpacing: -0.1, height: 1.5,  color: lbl);
@@ -152,33 +157,33 @@ class Match {
 // ═══════════════════════════════════════════════════════════════
 final List<AppCategory> _mock = [
   AppCategory(name: 'رياضة', icon: CupertinoIcons.sportscourt_fill, channels: [
-    Channel(id: 1,  name: 'beIN Sports 1',    number: '101', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/BeIN_Sports_logo.svg/200px-BeIN_Sports_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 2,  name: 'beIN Sports 2',    number: '102', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/BeIN_Sports_logo.svg/200px-BeIN_Sports_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 3,  name: 'SSC 1',            number: '103', logo: 'https://upload.wikimedia.org/wikipedia/ar/a/a7/SSC_Sports_Logo.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 4,  name: 'SSC 2',            number: '104', logo: 'https://upload.wikimedia.org/wikipedia/ar/a/a7/SSC_Sports_Logo.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 5,  name: 'MBC Sport',        number: '105', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/MBC_Sports_logo.svg/200px-MBC_Sports_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 6,  name: 'Abu Dhabi Sports', number: '106', logo: 'https://upload.wikimedia.org/wikipedia/ar/a/a3/AbuDhabiSports1.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 1,  name: 'beIN Sports 1',    number: '01', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/BeIN_Sports_logo.svg/200px-BeIN_Sports_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 2,  name: 'beIN Sports 2',    number: '02', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/BeIN_Sports_logo.svg/200px-BeIN_Sports_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 3,  name: 'beIN Sports 3',    number: '03', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/BeIN_Sports_logo.svg/200px-BeIN_Sports_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 4,  name: 'SSC 1',            number: '04', logo: 'https://upload.wikimedia.org/wikipedia/ar/a/a7/SSC_Sports_Logo.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 5,  name: 'MBC Sport',        number: '05', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/MBC_Sports_logo.svg/200px-MBC_Sports_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 6,  name: 'Abu Dhabi Sports', number: '06', logo: 'https://upload.wikimedia.org/wikipedia/ar/a/a3/AbuDhabiSports1.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
   ]),
   AppCategory(name: 'أخبار', icon: CupertinoIcons.news_solid, channels: [
-    Channel(id: 7,  name: 'Al Jazeera',       number: '201', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b2/Al_Jazeera_Logo_2006.svg/200px-Al_Jazeera_Logo_2006.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 8,  name: 'Sky News Arabia',  number: '202', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sky_News_Arabia_logo.svg/200px-Sky_News_Arabia_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 9,  name: 'العربية',          number: '203', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Al_Arabiya_logo.svg/200px-Al_Arabiya_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 7,  name: 'Al Jazeera',       number: '07', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b2/Al_Jazeera_Logo_2006.svg/200px-Al_Jazeera_Logo_2006.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 8,  name: 'Sky News Arabia',  number: '08', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sky_News_Arabia_logo.svg/200px-Sky_News_Arabia_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 9,  name: 'العربية',          number: '09', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Al_Arabiya_logo.svg/200px-Al_Arabiya_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
   ]),
   AppCategory(name: 'ترفيه', icon: CupertinoIcons.tv_fill, channels: [
-    Channel(id: 10, name: 'MBC 1',            number: '301', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 11, name: 'MBC 2',            number: '302', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 12, name: 'MBC Drama',        number: '303', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
-    Channel(id: 13, name: 'Rotana Cinema',    number: '304', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Rotana_logo.svg/200px-Rotana_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 10, name: 'MBC 1',            number: '10', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 11, name: 'MBC 2',            number: '11', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 12, name: 'MBC Drama',        number: '12', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
+    Channel(id: 13, name: 'Rotana Cinema',    number: '13', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Rotana_logo.svg/200px-Rotana_logo.svg.png', streamUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8'),
   ]),
 ];
 
 final List<Match> _mockMatches = [
-  Match(id:'1', league:'دوري أبطال أوروبا',   home:'ريال مدريد',         homeEn:'Real Madrid', homeLogo:'real_madrid.png', away:'مانشستر سيتي',    awayEn:'Man City',   awayLogo:'man_city.png',  score:'2 - 1', time:'21:00', date: DateTime.now(),                           isLive:true,  hasChannels:true),
-  Match(id:'2', league:'الدوري الإنجليزي',    home:'ليفربول',             homeEn:'Liverpool',   homeLogo:'liverpool.png',   away:'أرسنال',           awayEn:'Arsenal',    awayLogo:'arsenal.png',   score:'1 - 1', time:'22:45', date: DateTime.now(),                           isLive:true,  hasChannels:true),
-  Match(id:'3', league:'الدوري الإسباني',     home:'برشلونة',             homeEn:'Barcelona',   homeLogo:'barca.png',       away:'أتلتيكو مدريد',   awayEn:'Atletico',   awayLogo:'atletico.png',  score:'',      time:'23:00', date: DateTime.now(),                           isLive:false, hasChannels:true),
-  Match(id:'4', league:'الدوري الألماني',     home:'بايرن ميونيخ',        homeEn:'Bayern',      homeLogo:'bayern.png',       away:'دورتموند',         awayEn:'Dortmund',   awayLogo:'dortmund.png',  score:'',      time:'20:30', date: DateTime.now().add(const Duration(days:1)), isLive:false, hasChannels:false),
-  Match(id:'5', league:'الدوري الفرنسي',     home:'باريس سان جيرمان',    homeEn:'PSG',         homeLogo:'psg.png',          away:'مارسيليا',         awayEn:'Marseille',  awayLogo:'marseille.png', score:'',      time:'21:45', date: DateTime.now().add(const Duration(days:1)), isLive:false, hasChannels:false),
-  Match(id:'6', league:'دوري أبطال أوروبا',  home:'يوفنتوس',             homeEn:'Juventus',    homeLogo:'juve.png',         away:'إنتر ميلان',      awayEn:'Inter',      awayLogo:'inter.png',     score:'',      time:'22:00', date: DateTime.now().add(const Duration(days:2)), isLive:false, hasChannels:false),
+  Match(id:'1', league:'دوري أبطال أوروبا',   home:'ريال مدريد',       homeEn:'Real Madrid', homeLogo:'real_madrid.png', away:'مانشستر سيتي',  awayEn:'Man City',   awayLogo:'man_city.png',  score:'2 - 1', time:'21:00', date: DateTime.now(),                               isLive:true,  hasChannels:true),
+  Match(id:'2', league:'الدوري الإنجليزي',    home:'ليفربول',           homeEn:'Liverpool',   homeLogo:'liverpool.png',   away:'أرسنال',         awayEn:'Arsenal',    awayLogo:'arsenal.png',   score:'1 - 1', time:'22:45', date: DateTime.now(),                               isLive:true,  hasChannels:true),
+  Match(id:'3', league:'الدوري الإسباني',     home:'برشلونة',           homeEn:'Barcelona',   homeLogo:'barca.png',       away:'أتلتيكو مدريد', awayEn:'Atletico',   awayLogo:'atletico.png',  score:'',      time:'23:00', date: DateTime.now(),                               isLive:false, hasChannels:true),
+  Match(id:'4', league:'الدوري الألماني',     home:'بايرن ميونيخ',      homeEn:'Bayern',      homeLogo:'bayern.png',       away:'دورتموند',       awayEn:'Dortmund',   awayLogo:'dortmund.png',  score:'',      time:'20:30', date: DateTime.now().add(const Duration(days:1)),   isLive:false, hasChannels:false),
+  Match(id:'5', league:'الدوري الفرنسي',     home:'باريس سان جيرمان',  homeEn:'PSG',         homeLogo:'psg.png',          away:'مارسيليا',       awayEn:'Marseille',  awayLogo:'marseille.png', score:'',      time:'21:45', date: DateTime.now().add(const Duration(days:1)),   isLive:false, hasChannels:false),
+  Match(id:'6', league:'دوري أبطال أوروبا',  home:'يوفنتوس',           homeEn:'Juventus',    homeLogo:'juve.png',         away:'إنتر ميلان',    awayEn:'Inter',      awayLogo:'inter.png',     score:'',      time:'22:00', date: DateTime.now().add(const Duration(days:2)),   isLive:false, hasChannels:false),
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -225,9 +230,10 @@ class StreamGoApp extends StatelessWidget {
       scaffoldBackgroundColor: T.void_,
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
+      splashFactory: NoSplash.splashFactory,
       colorScheme: const ColorScheme.dark(primary: T.accent, surface: T.s1),
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS:     CupertinoPageTransitionsBuilder(),
         TargetPlatform.android: CupertinoPageTransitionsBuilder(),
       }),
     ),
@@ -344,9 +350,9 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: T.void_,
     body: Stack(children: [
-      // Pages
+      // Pages (fade transition between tabs)
       AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 260),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
@@ -361,11 +367,12 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
           ][_tab],
         ),
       ),
-      // Tab Bar
+      // Floating Tab Bar
       Positioned(
         bottom: 0, left: 0, right: 0,
         child: SlideTransition(
-          position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: _tabBarSlide, curve: Curves.easeOutCubic)),
+          position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
+            CurvedAnimation(parent: _tabBarSlide, curve: Curves.easeOutCubic)),
           child: _TabBar(selected: _tab, onTap: (i) { HapticFeedback.selectionClick(); setState(() => _tab = i); }),
         ),
       ),
@@ -374,7 +381,7 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TAB BAR
+// FLOATING iOS-STYLE TAB BAR  ← The #1 most impactful change
 // ═══════════════════════════════════════════════════════════════
 class _TabBar extends StatelessWidget {
   final int selected;
@@ -382,44 +389,81 @@ class _TabBar extends StatelessWidget {
   const _TabBar({required this.selected, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => ClipRect(
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.76),
-          border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.5)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 50,
+  Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(22, 0, 22, math.max(bottomPad, 6) + 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(34),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 48, sigmaY: 48),
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              // Layered glass: semi-opaque dark + subtle tint
+              color: const Color(0xFF1C1C1E).withValues(alpha: 0.86),
+              borderRadius: BorderRadius.circular(34),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.10),
+                width: 0.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.50),
+                  blurRadius: 44,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: T.accent.withValues(alpha: 0.06),
+                  blurRadius: 20,
+                  offset: Offset.zero,
+                ),
+              ],
+            ),
             child: Row(children: [
-              _item(0, CupertinoIcons.house_fill,      CupertinoIcons.house,      'الرئيسية'),
-              _item(1, CupertinoIcons.tv_fill,         CupertinoIcons.tv,         'القنوات'),
-              _item(2, CupertinoIcons.heart_fill,      CupertinoIcons.heart,      'المفضلة'),
-              _item(3, CupertinoIcons.sportscourt_fill,CupertinoIcons.sportscourt,'المباريات'),
-              _item(4, CupertinoIcons.gear_alt_fill,   CupertinoIcons.gear_alt,   'الإعدادات'),
+              _item(context, 0, CupertinoIcons.house_fill,       CupertinoIcons.house,       'الرئيسية'),
+              _item(context, 1, CupertinoIcons.tv_fill,          CupertinoIcons.tv,          'القنوات'),
+              _item(context, 2, CupertinoIcons.heart_fill,       CupertinoIcons.heart,       'المفضلة'),
+              _item(context, 3, CupertinoIcons.sportscourt_fill, CupertinoIcons.sportscourt, 'المباريات'),
+              _item(context, 4, CupertinoIcons.gear_alt_fill,    CupertinoIcons.gear_alt,    'الإعدادات'),
             ]),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _item(int i, IconData on, IconData off, String label) {
+  Widget _item(BuildContext context, int i, IconData on, IconData off, String label) {
     final active = selected == i;
     return Expanded(
       child: _Tap(
         onTap: () => onTap(i),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            transitionBuilder: (c, a) => ScaleTransition(scale: a, child: FadeTransition(opacity: a, child: c)),
-            child: Icon(active ? on : off, key: ValueKey(active), size: 22, color: active ? T.accent : T.lbl3),
+            duration: const Duration(milliseconds: 220),
+            transitionBuilder: (c, a) => ScaleTransition(
+              scale: Tween(begin: 0.7, end: 1.0).animate(CurvedAnimation(parent: a, curve: Curves.easeOutBack)),
+              child: FadeTransition(opacity: a, child: c),
+            ),
+            child: Icon(
+              active ? on : off,
+              key: ValueKey(active),
+              size: 22,
+              color: active ? T.accent : T.lbl3,
+            ),
           ),
           const SizedBox(height: 3),
-          Text(label, style: TextStyle(fontSize: 10, fontWeight: active ? FontWeight.w600 : FontWeight.w400, color: active ? T.accent : T.lbl3, letterSpacing: -0.1)),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 220),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+              color: active ? T.accent : T.lbl3,
+              letterSpacing: -0.1,
+            ),
+            child: Text(label),
+          ),
         ]),
       ),
     );
@@ -456,52 +500,67 @@ class _HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
-    return RefreshIndicator(
-      color: T.accent, backgroundColor: T.s3,
-      onRefresh: onRefresh,
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: top + T.p16)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p24),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(_greeting(), style: T.caption.copyWith(color: T.lbl2)),
-                  const SizedBox(height: 2),
-                  Text('StreamGo', style: T.display),
-                ]),
-                Container(
-                  width: 40, height: 40,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [T.accent, Color(0xFF30A2FF)])),
-                  child: const Icon(CupertinoIcons.person_fill, size: 20, color: Colors.white),
-                ),
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        // iOS-native pull-to-refresh (no Material spinner)
+        CupertinoSliverRefreshControl(onRefresh: onRefresh),
+        SliverToBoxAdapter(child: SizedBox(height: top + T.p8)),
+        // Header
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p24),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_greeting(), style: T.caption.copyWith(color: T.lbl2, fontSize: 13)),
+                const SizedBox(height: 2),
+                Text('StreamGo', style: T.display),
               ]),
-            ),
+              // Avatar button - glass style
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [Color(0xFF1C6EF2), Color(0xFF0A50C8)],
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [BoxShadow(color: T.accent.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 4))],
+                    ),
+                    child: const Icon(CupertinoIcons.person_fill, size: 20, color: Colors.white),
+                  ),
+                ),
+              ),
+            ]),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(T.p16, 0, T.p16, T.p32),
-              child: _HeroCard(matches: matches, onGoMatches: onGoMatches),
-            ),
+        ),
+        // Hero match card
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(T.p16, 0, T.p16, T.p32),
+            child: _HeroCard(matches: matches, onGoMatches: onGoMatches),
           ),
-          if (catsLoading)
-            const SliverToBoxAdapter(child: _Shimmer())
-          else
-            ...categories.map((cat) => SliverToBoxAdapter(child: _CatRow(
-              category: cat, favIds: favIds,
-              onToggleFav: onToggleFav, onOpenPlayer: onOpenPlayer,
-            ))),
-          const SliverToBoxAdapter(child: SizedBox(height: 110)),
-        ],
-      ),
+        ),
+        // Channel categories
+        if (catsLoading)
+          const SliverToBoxAdapter(child: _Shimmer())
+        else
+          ...categories.map((cat) => SliverToBoxAdapter(child: _CatRow(
+            category: cat, favIds: favIds,
+            onToggleFav: onToggleFav, onOpenPlayer: onOpenPlayer,
+          ))),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+      ],
     );
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// HERO CARD
+// HERO CARD  (match spotlight with animated glow)
 // ═══════════════════════════════════════════════════════════════
 class _HeroCard extends StatefulWidget {
   final List<Match> matches;
@@ -516,7 +575,7 @@ class _HeroCardState extends State<_HeroCard> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    _glow = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat(reverse: true);
+    _glow = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))..repeat(reverse: true);
   }
   @override
   void dispose() { _glow.dispose(); super.dispose(); }
@@ -531,7 +590,7 @@ class _HeroCardState extends State<_HeroCard> with SingleTickerProviderStateMixi
       child: AnimatedBuilder(
         animation: _glow,
         builder: (_, child) => Container(
-          height: 188,
+          height: 192,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(T.r24),
             gradient: LinearGradient(
@@ -542,7 +601,10 @@ class _HeroCardState extends State<_HeroCard> with SingleTickerProviderStateMixi
                 const Color(0xFF040A14),
               ],
             ),
-            boxShadow: [BoxShadow(color: T.accent.withValues(alpha: 0.10 + 0.08 * _glow.value), blurRadius: 28, offset: const Offset(0, 8))],
+            boxShadow: [
+              BoxShadow(color: T.accent.withValues(alpha: 0.10 + 0.08 * _glow.value), blurRadius: 32, offset: const Offset(0, 10)),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 6)),
+            ],
           ),
           child: child,
         ),
@@ -550,9 +612,23 @@ class _HeroCardState extends State<_HeroCard> with SingleTickerProviderStateMixi
           borderRadius: BorderRadius.circular(T.r24),
           child: Stack(children: [
             Positioned.fill(child: CustomPaint(painter: _GridPainter())),
+            // Light reflection top-left
+            Positioned(
+              top: -30, right: -30,
+              child: Container(
+                width: 130, height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    Colors.white.withValues(alpha: 0.05),
+                    Colors.transparent,
+                  ]),
+                ),
+              ),
+            ),
             Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(T.r24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.5),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
             ))),
             Padding(
               padding: const EdgeInsets.all(T.p20),
@@ -603,7 +679,7 @@ class _MiniTeam extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     width: 78,
     child: Column(children: [
-      _NetImg(url: logoUrl, w: 42, h: 42, radius: T.rFull),
+      _NetImg(url: logoUrl, w: 44, h: 44, radius: T.rFull),
       const SizedBox(height: T.p6),
       Text(name, style: T.caption.copyWith(fontWeight: FontWeight.w500, color: T.lbl), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
     ]),
@@ -611,7 +687,7 @@ class _MiniTeam extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CATEGORY ROW (HORIZONTAL SCROLL)
+// CATEGORY ROW (horizontal channel scroll)
 // ═══════════════════════════════════════════════════════════════
 class _CatRow extends StatelessWidget {
   final AppCategory category;
@@ -625,17 +701,31 @@ class _CatRow extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: T.p28),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p12),
+        padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p14),
         child: Row(children: [
-          Icon(category.icon, size: 15, color: T.accent),
-          const SizedBox(width: T.p8),
+          // Icon badge
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [T.accent.withValues(alpha: 0.3), T.accent.withValues(alpha: 0.1)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(T.r8),
+              border: Border.all(color: T.accent.withValues(alpha: 0.25), width: 0.5),
+            ),
+            child: Icon(category.icon, size: 14, color: T.accent),
+          ),
+          const SizedBox(width: T.p10),
           Text(category.name, style: T.title3),
           const Spacer(),
-          Text('${category.channels.length} قناة', style: T.caption.copyWith(color: T.lbl2)),
+          Text('${category.channels.length} قناة', style: T.caption.copyWith(color: T.lbl3)),
+          const SizedBox(width: T.p4),
+          const Icon(CupertinoIcons.chevron_forward, size: 10, color: T.lbl3),
         ]),
       ),
       SizedBox(
-        height: 153,
+        height: 158,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
@@ -643,7 +733,12 @@ class _CatRow extends StatelessWidget {
           itemCount: category.channels.length,
           itemBuilder: (_, i) {
             final ch = category.channels[i];
-            return _ChannelCard(channel: ch, isFav: favIds.contains(ch.id), onToggleFav: () => onToggleFav(ch.id), onTap: () => onOpenPlayer(ch));
+            return _ChannelCard(
+              channel: ch,
+              isFav: favIds.contains(ch.id),
+              onToggleFav: () => onToggleFav(ch.id),
+              onTap: () => onOpenPlayer(ch),
+            );
           },
         ),
       ),
@@ -652,7 +747,7 @@ class _CatRow extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CHANNEL CARD (GRID)
+// CHANNEL CARD  (premium glass card with depth)
 // ═══════════════════════════════════════════════════════════════
 class _ChannelCard extends StatelessWidget {
   final Channel channel;
@@ -664,40 +759,81 @@ class _ChannelCard extends StatelessWidget {
   Widget build(BuildContext context) => _Tap(
     onTap: onTap,
     child: Container(
-      width: 106,
+      width: 108,
       margin: const EdgeInsets.symmetric(horizontal: T.p6),
       child: Column(children: [
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: T.s3,
+              // Rich gradient background (not flat color)
+              gradient: LinearGradient(
+                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [T.s3, T.s2],
+              ),
               borderRadius: BorderRadius.circular(T.r20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 4))],
+              border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.5),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 6)),
+                BoxShadow(color: Colors.white.withValues(alpha: 0.02), blurRadius: 1, offset: const Offset(0, -1)),
+              ],
             ),
             child: Stack(children: [
-              Padding(padding: const EdgeInsets.all(T.p16), child: Center(child: _NetImg(url: channel.logo, w: 54, h: 54))),
+              // Light reflection gradient overlay (glass shimmer)
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(T.r20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.06),
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.08),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Logo
+              Padding(padding: const EdgeInsets.all(T.p16), child: Center(child: _NetImg(url: channel.logo, w: 56, h: 56))),
+              // Favorite button
               Positioned(
                 top: T.p6, left: T.p6,
                 child: _Tap(
                   onTap: onToggleFav,
                   child: Container(
-                    width: 26, height: 26,
-                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+                    ),
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
-                      child: Icon(isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart, key: ValueKey(isFav), size: 13, color: isFav ? T.red : T.lbl3),
+                      duration: const Duration(milliseconds: 220),
+                      transitionBuilder: (c, a) => ScaleTransition(
+                        scale: Tween(begin: 0.5, end: 1.0).animate(CurvedAnimation(parent: a, curve: Curves.easeOutBack)),
+                        child: c,
+                      ),
+                      child: Icon(
+                        isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                        key: ValueKey(isFav), size: 13,
+                        color: isFav ? T.red : T.lbl3,
+                      ),
                     ),
                   ),
                 ),
               ),
+              // Channel number badge
               if (channel.number.isNotEmpty)
                 Positioned(
-                  top: T.p6, right: T.p6,
+                  top: T.p8, right: T.p8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(T.r4)),
+                    decoration: BoxDecoration(
+                      color: T.accent.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(T.r4),
+                      border: Border.all(color: T.accent.withValues(alpha: 0.30), width: 0.5),
+                    ),
                     child: Text(channel.number, style: T.micro.copyWith(color: T.accent, fontSize: 9)),
                   ),
                 ),
@@ -735,48 +871,51 @@ class _ChannelsTabState extends State<_ChannelsTab> {
     final top = MediaQuery.of(context).padding.top;
     List<Channel> all = widget.categories.expand((c) => c.channels).toList();
     if (_cat != null) {
-      final catChannels = widget.categories.where((c) => c.name == _cat).expand((c) => c.channels).toList();
-      all = catChannels;
+      all = widget.categories.where((c) => c.name == _cat).expand((c) => c.channels).toList();
     }
     final filtered = _q.isEmpty ? all : all.where((ch) => ch.name.contains(_q) || ch.number.contains(_q)).toList();
 
-    return RefreshIndicator(
-      color: T.accent, backgroundColor: T.s3,
-      onRefresh: widget.onRefresh,
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: top + T.p16)),
-          SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p20), child: Text('القنوات', style: T.display))),
-          SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(T.p16, 0, T.p16, T.p16), child: _SearchBar(onChanged: (v) => setState(() => _q = v)))),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: T.p16),
-                children: [
-                  _FilterPill(label: 'الكل', active: _cat == null, onTap: () => setState(() => _cat = null)),
-                  ...widget.categories.map((c) => _FilterPill(label: c.name, active: _cat == c.name, onTap: () => setState(() => _cat = _cat == c.name ? null : c.name))),
-                ],
-              ),
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        CupertinoSliverRefreshControl(onRefresh: widget.onRefresh),
+        SliverToBoxAdapter(child: SizedBox(height: top + T.p8)),
+        SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p20), child: Text('القنوات', style: T.display))),
+        SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(T.p16, 0, T.p16, T.p16), child: _SearchBar(onChanged: (v) => setState(() => _q = v)))),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: T.p16),
+              children: [
+                _FilterPill(label: 'الكل', active: _cat == null, onTap: () => setState(() => _cat = null)),
+                ...widget.categories.map((c) => _FilterPill(label: c.name, active: _cat == c.name, onTap: () => setState(() => _cat = _cat == c.name ? null : c.name))),
+              ],
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: T.p16)),
-          if (widget.loading)
-            const SliverToBoxAdapter(child: _Shimmer())
-          else if (filtered.isEmpty)
-            SliverToBoxAdapter(child: _EmptyState(icon: CupertinoIcons.tv, text: 'لا توجد قنوات'))
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (_, i) => _ChRow(channel: filtered[i], isFav: widget.favIds.contains(filtered[i].id), isFirst: i == 0, isLast: i == filtered.length - 1, onToggleFav: () => widget.onToggleFav(filtered[i].id), onTap: () => widget.onOpenPlayer(filtered[i])),
-                childCount: filtered.length,
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: T.p16)),
+        if (widget.loading)
+          const SliverToBoxAdapter(child: _Shimmer())
+        else if (filtered.isEmpty)
+          SliverToBoxAdapter(child: _EmptyState(icon: CupertinoIcons.tv, text: 'لا توجد قنوات'))
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => _ChRow(
+                channel: filtered[i],
+                isFav: widget.favIds.contains(filtered[i].id),
+                isFirst: i == 0,
+                isLast: i == filtered.length - 1,
+                onToggleFav: () => widget.onToggleFav(filtered[i].id),
+                onTap: () => widget.onOpenPlayer(filtered[i]),
               ),
+              childCount: filtered.length,
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 110)),
-        ],
-      ),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+      ],
     );
   }
 }
@@ -792,18 +931,23 @@ class _FilterPill extends StatelessWidget {
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic,
       margin: const EdgeInsets.only(left: T.p8),
-      padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p6),
+      padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p8),
       decoration: BoxDecoration(
-        color: active ? T.accent : T.s3,
+        gradient: active ? const LinearGradient(colors: [Color(0xFF1C6EF2), Color(0xFF0A50C8)]) : null,
+        color: active ? null : T.s3,
         borderRadius: BorderRadius.circular(T.rFull),
-        border: active ? null : Border.all(color: T.sep, width: 0.5),
+        border: Border.all(
+          color: active ? Colors.transparent : Colors.white.withValues(alpha: 0.07),
+          width: 0.5,
+        ),
+        boxShadow: active ? [BoxShadow(color: T.accent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 3))] : null,
       ),
-      child: Text(label, style: T.callout.copyWith(color: active ? Colors.white : T.lbl2, fontWeight: active ? FontWeight.w600 : FontWeight.w400)),
+      child: Text(label, style: T.callout.copyWith(color: active ? Colors.white : T.lbl2, fontWeight: active ? FontWeight.w600 : FontWeight.w400, fontSize: 13)),
     ),
   );
 }
 
-// Channel Row (List)
+// Channel List Row  —  iOS inset grouped style
 class _ChRow extends StatelessWidget {
   final Channel channel;
   final bool isFav, isFirst, isLast;
@@ -816,34 +960,55 @@ class _ChRow extends StatelessWidget {
     child: _Tap(
       onTap: onTap,
       child: Container(
-        margin: EdgeInsets.only(bottom: isLast ? 0 : 1),
+        margin: EdgeInsets.only(bottom: isLast ? 0 : 0.8),
         decoration: BoxDecoration(
           color: T.s2,
           borderRadius: BorderRadius.vertical(
             top: isFirst ? const Radius.circular(T.r16) : Radius.zero,
             bottom: isLast ? const Radius.circular(T.r16) : Radius.zero,
           ),
+          border: isFirst ? Border(
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+            left: BorderSide(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+            right: BorderSide(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+          ) : isLast ? Border(
+            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+            left: BorderSide(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+            right: BorderSide(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+          ) : Border.symmetric(vertical: BorderSide(color: Colors.white.withValues(alpha: 0.06), width: 0.5)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p12),
           child: Row(children: [
+            // Logo container with subtle gradient
             Container(
-              width: 46, height: 46,
-              decoration: BoxDecoration(color: T.s4, borderRadius: BorderRadius.circular(T.r8)),
-              child: ClipRRect(borderRadius: BorderRadius.circular(T.r8), child: _NetImg(url: channel.logo, w: 46, h: 46)),
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [T.s4, T.s3],
+                ),
+                borderRadius: BorderRadius.circular(T.r10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+              ),
+              child: ClipRRect(borderRadius: BorderRadius.circular(T.r10), child: _NetImg(url: channel.logo, w: 48, h: 48)),
             ),
             const SizedBox(width: T.p12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(channel.name, style: T.callout.copyWith(fontWeight: FontWeight.w500, color: T.lbl), maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text('قناة ${channel.number}', style: T.caption.copyWith(fontSize: 11)),
+              const SizedBox(height: 2),
+              Text('قناة ${channel.number}', style: T.caption.copyWith(fontSize: 11, color: T.lbl3)),
             ])),
             _Tap(
               onTap: onToggleFav,
               child: Padding(
                 padding: const EdgeInsets.all(T.p8),
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (c, a) => ScaleTransition(
+                    scale: Tween(begin: 0.5, end: 1.0).animate(CurvedAnimation(parent: a, curve: Curves.easeOutBack)),
+                    child: c,
+                  ),
                   child: Icon(isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart, key: ValueKey(isFav), color: isFav ? T.red : T.lbl3, size: 20),
                 ),
               ),
@@ -871,7 +1036,7 @@ class _FavoritesTab extends StatelessWidget {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
-        SliverToBoxAdapter(child: SizedBox(height: top + T.p16)),
+        SliverToBoxAdapter(child: SizedBox(height: top + T.p8)),
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p24),
           child: Row(children: [
@@ -888,7 +1053,7 @@ class _FavoritesTab extends StatelessWidget {
               childCount: channels.length,
             ),
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 110)),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],
     );
   }
@@ -916,27 +1081,24 @@ class _MatchesTab extends StatelessWidget {
     final grouped = <String, List<Match>>{};
     for (final m in matches) {
       final d = _fmt(m.date);
-      String key = d == today ? 'اليوم' : d == tomorrow ? 'غداً' : d;
+      final key = d == today ? 'اليوم' : d == tomorrow ? 'غداً' : d;
       grouped.putIfAbsent(key, () => []).add(m);
     }
 
-    return RefreshIndicator(
-      color: T.accent, backgroundColor: T.s3,
-      onRefresh: onRefresh,
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: top + T.p16)),
-          SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p24), child: Text('المباريات', style: T.display))),
-          if (loading)
-            const SliverToBoxAdapter(child: _Shimmer())
-          else if (matches.isEmpty)
-            SliverFillRemaining(child: _EmptyState(icon: CupertinoIcons.sportscourt, text: 'لا توجد مباريات اليوم'))
-          else
-            ...grouped.entries.map((e) => SliverToBoxAdapter(child: _MatchGroup(label: e.key, matches: e.value, showScores: showScores))),
-          const SliverToBoxAdapter(child: SizedBox(height: 110)),
-        ],
-      ),
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        CupertinoSliverRefreshControl(onRefresh: onRefresh),
+        SliverToBoxAdapter(child: SizedBox(height: top + T.p8)),
+        SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p24), child: Text('المباريات', style: T.display))),
+        if (loading)
+          const SliverToBoxAdapter(child: _Shimmer())
+        else if (matches.isEmpty)
+          SliverFillRemaining(child: _EmptyState(icon: CupertinoIcons.sportscourt, text: 'لا توجد مباريات اليوم'))
+        else
+          ...grouped.entries.map((e) => SliverToBoxAdapter(child: _MatchGroup(label: e.key, matches: e.value, showScores: showScores))),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+      ],
     );
   }
 }
@@ -946,18 +1108,37 @@ class _MatchGroup extends StatelessWidget {
   final List<Match> matches;
   final bool showScores;
   const _MatchGroup({required this.label, required this.matches, required this.showScores});
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(T.p16, 0, T.p16, T.p24),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Date header pill
       Padding(
-        padding: const EdgeInsets.only(right: T.p4, bottom: T.p10),
+        padding: const EdgeInsets.only(right: T.p4, bottom: T.p12),
         child: Row(children: [
           if (label == 'اليوم') ...[_PulseDot(), const SizedBox(width: T.p6)],
-          Text(label, style: T.headline.copyWith(color: label == 'اليوم' ? T.red : T.lbl2)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: T.p10, vertical: 5),
+            decoration: BoxDecoration(
+              color: label == 'اليوم' ? T.red.withValues(alpha: 0.12) : T.s3,
+              borderRadius: BorderRadius.circular(T.rFull),
+              border: Border.all(
+                color: label == 'اليوم' ? T.red.withValues(alpha: 0.28) : Colors.white.withValues(alpha: 0.06),
+                width: 0.5,
+              ),
+            ),
+            child: Text(label, style: T.caption.copyWith(
+              color: label == 'اليوم' ? T.red : T.lbl2,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            )),
+          ),
         ]),
       ),
-      _GlassCard(children: matches.asMap().entries.map((e) => _MatchRow(match: e.value, showScore: showScores, isLast: e.key == matches.length - 1)).toList()),
+      _GlassCard(children: matches.asMap().entries.map((e) =>
+        _MatchRow(match: e.value, showScore: showScores, isLast: e.key == matches.length - 1)
+      ).toList()),
     ]),
   );
 }
@@ -966,40 +1147,46 @@ class _MatchRow extends StatelessWidget {
   final Match match;
   final bool showScore, isLast;
   const _MatchRow({required this.match, required this.showScore, required this.isLast});
+
   @override
   Widget build(BuildContext context) => Column(children: [
     Padding(
-      padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p14),
-      child: Row(children: [
-        Expanded(child: Column(children: [
-          _NetImg(url: match.homeLogoUrl, w: 38, h: 38, radius: T.rFull),
-          const SizedBox(height: T.p6),
-          Text(match.home, style: T.caption.copyWith(fontWeight: FontWeight.w500, color: T.lbl), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ])),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: T.p10),
-          child: Column(children: [
-            if (match.isLive) ...[
-              Row(mainAxisSize: MainAxisSize.min, children: [_PulseDot(), const SizedBox(width: T.p4), _Pill(label: 'مباشر', color: T.red)]),
-              const SizedBox(height: T.p6),
-              if (showScore) Text(match.score, style: T.title2.copyWith(letterSpacing: 3)),
-            ] else
-              Text(match.time, style: T.headline.copyWith(color: T.lbl2, fontWeight: FontWeight.w700)),
-          ]),
-        ),
-        Expanded(child: Column(children: [
-          _NetImg(url: match.awayLogoUrl, w: 38, h: 38, radius: T.rFull),
-          const SizedBox(height: T.p6),
-          Text(match.away, style: T.caption.copyWith(fontWeight: FontWeight.w500, color: T.lbl), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ])),
+      padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p16),
+      child: Column(children: [
+        // League label
+        Text(match.league, style: T.caption.copyWith(color: T.lbl3, fontSize: 11), textAlign: TextAlign.center),
+        const SizedBox(height: T.p12),
+        Row(children: [
+          Expanded(child: Column(children: [
+            _NetImg(url: match.homeLogoUrl, w: 40, h: 40, radius: T.rFull),
+            const SizedBox(height: T.p6),
+            Text(match.home, style: T.caption.copyWith(fontWeight: FontWeight.w600, color: T.lbl), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ])),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: T.p8),
+            child: Column(children: [
+              if (match.isLive) ...[
+                Row(mainAxisSize: MainAxisSize.min, children: [_PulseDot(), const SizedBox(width: T.p4), _Pill(label: 'مباشر', color: T.red)]),
+                const SizedBox(height: T.p8),
+                if (showScore) Text(match.score, style: T.title2.copyWith(letterSpacing: 3)),
+              ] else
+                Text(match.time, style: T.headline.copyWith(color: T.lbl2, fontWeight: FontWeight.w700, letterSpacing: 1)),
+            ]),
+          ),
+          Expanded(child: Column(children: [
+            _NetImg(url: match.awayLogoUrl, w: 40, h: 40, radius: T.rFull),
+            const SizedBox(height: T.p6),
+            Text(match.away, style: T.caption.copyWith(fontWeight: FontWeight.w600, color: T.lbl), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ])),
+        ]),
       ]),
     ),
-    if (!isLast) Container(height: 0.5, color: T.sep.withValues(alpha: 0.5), margin: const EdgeInsets.only(right: T.p16)),
+    if (!isLast) Container(height: 0.5, color: Colors.white.withValues(alpha: 0.06), margin: const EdgeInsets.symmetric(horizontal: T.p16)),
   ]);
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SETTINGS TAB
+// SETTINGS TAB  — iOS grouped style
 // ═══════════════════════════════════════════════════════════════
 class _SettingsTab extends StatelessWidget {
   final Map<String, dynamic> settings;
@@ -1014,21 +1201,21 @@ class _SettingsTab extends StatelessWidget {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
-        SliverToBoxAdapter(child: SizedBox(height: top + T.p16)),
+        SliverToBoxAdapter(child: SizedBox(height: top + T.p8)),
         SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(T.p20, 0, T.p20, T.p32), child: Text('الإعدادات', style: T.display))),
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: T.p16),
           child: Column(children: [
             _SecLabel('التشغيل'),
             _GlassCard(children: [
-              _TogRow(icon: CupertinoIcons.play_circle_fill, bg: T.red,   title: 'تشغيل تلقائي',      sub: 'تشغيل البث فور اختيار القناة',          val: settings['autoPlay']  as bool? ?? true,  onChange: (v) => _update('autoPlay', v)),
-              _TogRow(icon: CupertinoIcons.sportscourt_fill, bg: T.green, title: 'نتائج المباريات',    sub: 'إظهار النتيجة على بطاقة المباراة',        val: settings['showScores'] as bool? ?? true,  onChange: (v) => _update('showScores', v)),
+              _TogRow(icon: CupertinoIcons.play_circle_fill, bg: T.red,   title: 'تشغيل تلقائي',      sub: 'تشغيل البث فور اختيار القناة',     val: settings['autoPlay']  as bool? ?? true,  onChange: (v) => _update('autoPlay', v)),
+              _TogRow(icon: CupertinoIcons.sportscourt_fill, bg: T.green, title: 'نتائج المباريات',    sub: 'إظهار النتيجة على بطاقة المباراة',  val: settings['showScores'] as bool? ?? true,  onChange: (v) => _update('showScores', v)),
             ]),
             const SizedBox(height: T.p28),
             _SecLabel('جودة البث'),
             _GlassCard(children: [
               for (final q in [('auto','تلقائي'), ('hd','عالي HD'), ('sd','عادي SD')])
-                _QRow(label: q.$2, active: (settings['quality'] as String? ?? 'auto') == q.$1, onTap: () => _update('quality', q.$1)),
+                _QRow(label: q.$2, active: (settings['quality'] as String? ?? 'auto') == q.$1, onTap: () => _update('quality', q.$1), isLast: q.$1 == 'sd'),
             ]),
             const SizedBox(height: T.p28),
             _SecLabel('حول التطبيق'),
@@ -1039,7 +1226,7 @@ class _SettingsTab extends StatelessWidget {
             ]),
           ]),
         )),
-        const SliverToBoxAdapter(child: SizedBox(height: 110)),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],
     );
   }
@@ -1050,8 +1237,8 @@ class _SecLabel extends StatelessWidget {
   const _SecLabel(this.text);
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: T.p4, bottom: T.p8),
-    child: Text(text.toUpperCase(), style: T.micro.copyWith(color: T.lbl3, letterSpacing: 0.8)),
+    padding: const EdgeInsets.only(right: T.p6, bottom: T.p8, left: T.p6),
+    child: Text(text, style: T.caption.copyWith(color: T.lbl3, fontWeight: FontWeight.w500, fontSize: 13)),
   );
 }
 
@@ -1060,13 +1247,26 @@ class _TogRow extends StatelessWidget {
   const _TogRow({required this.icon, required this.bg, required this.title, required this.sub, required this.val, required this.onChange});
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p12),
+    padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p14),
     child: Row(children: [
-      Container(width: 30, height: 30, decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(T.r8)), child: Icon(icon, color: Colors.white, size: 16)),
-      const SizedBox(width: T.p12),
+      // Icon badge with gradient
+      Container(
+        width: 32, height: 32,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [bg, Color.lerp(bg, Colors.black, 0.2)!],
+          ),
+          borderRadius: BorderRadius.circular(T.r8),
+          boxShadow: [BoxShadow(color: bg.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Icon(icon, color: Colors.white, size: 16),
+      ),
+      const SizedBox(width: T.p14),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: T.callout.copyWith(fontWeight: FontWeight.w500, color: T.lbl)),
-        Text(sub, style: T.caption.copyWith(fontSize: 11)),
+        const SizedBox(height: 2),
+        Text(sub, style: T.caption.copyWith(fontSize: 11, color: T.lbl3)),
       ])),
       CupertinoSwitch(value: val, onChanged: onChange, activeColor: T.accent),
     ]),
@@ -1074,19 +1274,22 @@ class _TogRow extends StatelessWidget {
 }
 
 class _QRow extends StatelessWidget {
-  final String label; final bool active; final VoidCallback onTap;
-  const _QRow({required this.label, required this.active, required this.onTap});
+  final String label; final bool active; final VoidCallback onTap; final bool isLast;
+  const _QRow({required this.label, required this.active, required this.onTap, this.isLast = false});
   @override
-  Widget build(BuildContext context) => _Tap(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p14),
-      child: Row(children: [
-        Expanded(child: Text(label, style: T.callout.copyWith(fontWeight: FontWeight.w500))),
-        if (active) const Icon(CupertinoIcons.checkmark, color: T.accent, size: 18),
-      ]),
+  Widget build(BuildContext context) => Column(children: [
+    _Tap(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p16),
+        child: Row(children: [
+          Expanded(child: Text(label, style: T.callout.copyWith(fontWeight: FontWeight.w500, color: active ? T.accent : T.lbl))),
+          if (active) const Icon(CupertinoIcons.checkmark, color: T.accent, size: 17),
+        ]),
+      ),
     ),
-  );
+    if (!isLast) Container(height: 0.5, color: Colors.white.withValues(alpha: 0.06), margin: const EdgeInsets.only(right: T.p16)),
+  ]);
 }
 
 class _IRow extends StatelessWidget {
@@ -1095,24 +1298,24 @@ class _IRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(children: [
     Padding(
-      padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p14),
+      padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p16),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: T.callout.copyWith(fontWeight: FontWeight.w500)),
-        Text(value, style: T.callout.copyWith(color: T.lbl2)),
+        Text(label, style: T.callout.copyWith(fontWeight: FontWeight.w500, color: T.lbl)),
+        Text(value, style: T.callout.copyWith(color: T.lbl3)),
       ]),
     ),
-    if (!isLast) Container(height: 0.5, color: T.sep.withValues(alpha: 0.5), margin: const EdgeInsets.only(right: T.p16)),
+    if (!isLast) Container(height: 0.5, color: Colors.white.withValues(alpha: 0.06), margin: const EdgeInsets.only(right: T.p16)),
   ]);
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PLAYER SCREEN  —  Premium iOS-grade overhaul
-// Architecture: Scaffold → Stack (fills screen)
-//   Layer 0 : black background
-//   Layer 1 : centered AspectRatio video
-//   Layer 2 : gradient scrims (top + bottom)
-//   Layer 3 : animated controls (SafeArea, glass, gradients)
-//   Layer 4 : portrait info panel pinned to bottom
+// PLAYER SCREEN  —  Premium iOS-grade, Stack-based architecture
+//
+// Layer 0: pure black canvas
+// Layer 1: video centered in AspectRatio
+// Layer 2: gradient scrims (top + bottom)
+// Layer 3: animated glass controls overlay
+// Layer 4: portrait info panel pinned below video
 // ═══════════════════════════════════════════════════════════════
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -1129,21 +1332,17 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen>
-    with TickerProviderStateMixin {
+class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin {
   VideoPlayerController? _vpc;
-  ChewieController?      _cc;
+  ChewieController? _cc;
   bool _loading = true, _error = false, _isFav = false, _ctrlsVisible = true;
 
-  // Controls fade+scale
   late AnimationController _ctrlsAnim;
   late Animation<double>   _ctrlsOpa, _ctrlsScl;
 
-  // Favourite spring
   late AnimationController _favAnim;
   late Animation<double>   _favScl;
 
-  // Progress ticker (drives the thin scrubber while playing)
   late AnimationController _progressTicker;
 
   static const _ua =
@@ -1151,35 +1350,23 @@ class _PlayerScreenState extends State<PlayerScreen>
       'AppleWebKit/537.36 (KHTML, like Gecko) '
       'Chrome/139.0.0.0 Safari/537.36';
 
-  // ── lifecycle ──────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _isFav = widget.isFavorite;
 
-    _ctrlsAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 320));
+    _ctrlsAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
     _ctrlsOpa = CurvedAnimation(parent: _ctrlsAnim, curve: Curves.easeOut);
-    _ctrlsScl = Tween(begin: 0.96, end: 1.0).animate(
-        CurvedAnimation(parent: _ctrlsAnim, curve: Curves.easeOutCubic));
+    _ctrlsScl = Tween(begin: 0.96, end: 1.0).animate(CurvedAnimation(parent: _ctrlsAnim, curve: Curves.easeOutCubic));
     _ctrlsAnim.forward();
 
-    _favAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+    _favAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _favScl = TweenSequence([
-      TweenSequenceItem(
-          tween: Tween(begin: 1.0, end: 1.5)
-              .chain(CurveTween(curve: Curves.easeOut)),
-          weight: 35),
-      TweenSequenceItem(
-          tween: Tween(begin: 1.5, end: 1.0)
-              .chain(CurveTween(curve: Curves.elasticOut)),
-          weight: 65),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.5).chain(CurveTween(curve: Curves.easeOut)), weight: 35),
+      TweenSequenceItem(tween: Tween(begin: 1.5, end: 1.0).chain(CurveTween(curve: Curves.elasticOut)), weight: 65),
     ]).animate(_favAnim);
 
-    _progressTicker = AnimationController(
-        vsync: this, duration: const Duration(seconds: 1))
-      ..repeat();
+    _progressTicker = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
 
     _initPlayer();
     _scheduleHide();
@@ -1195,13 +1382,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     super.dispose();
   }
 
-  // ── controls visibility ────────────────────────────────────
   void _scheduleHide() => Future.delayed(const Duration(seconds: 4), () {
-        if (mounted && _ctrlsVisible) {
-          setState(() => _ctrlsVisible = false);
-          _ctrlsAnim.reverse();
-        }
-      });
+    if (mounted && _ctrlsVisible) {
+      setState(() => _ctrlsVisible = false);
+      _ctrlsAnim.reverse();
+    }
+  });
 
   void _tapScreen() {
     HapticFeedback.selectionClick();
@@ -1211,7 +1397,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (nowVisible) _scheduleHide();
   }
 
-  // ── stream init ────────────────────────────────────────────
   Future<void> _initPlayer() async {
     if (widget.channel.streamUrl.isEmpty) {
       setState(() { _loading = false; _error = true; });
@@ -1224,9 +1409,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         'Referer': 'https://streamgo.tv/',
         'Origin': 'https://streamgo.tv',
       };
-      _vpc = VideoPlayerController.networkUrl(
-          Uri.parse(widget.channel.streamUrl),
-          httpHeaders: headers);
+      _vpc = VideoPlayerController.networkUrl(Uri.parse(widget.channel.streamUrl), httpHeaders: headers);
       await _vpc!.initialize();
       _cc = ChewieController(
         videoPlayerController: _vpc!,
@@ -1234,12 +1417,8 @@ class _PlayerScreenState extends State<PlayerScreen>
         looping: true,
         allowFullScreen: true,
         allowMuting: true,
-        // We supply our own overlay; tell Chewie NOT to draw its controls
-        // so we avoid the double-controls issue.
         showControls: false,
-        placeholder: const Center(
-            child: CupertinoActivityIndicator(
-                radius: 16, color: Colors.white)),
+        placeholder: const Center(child: CupertinoActivityIndicator(radius: 16, color: Colors.white)),
         errorBuilder: (_, __) => _PError(onRetry: _retry),
       );
       if (mounted) setState(() => _loading = false);
@@ -1249,10 +1428,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   void _retry() {
-    _cc?.dispose();
-    _vpc?.dispose();
-    _cc = null;
-    _vpc = null;
+    _cc?.dispose(); _vpc?.dispose();
+    _cc = null; _vpc = null;
     _initPlayer();
   }
 
@@ -1263,7 +1440,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     _favAnim.forward(from: 0);
   }
 
-  // ── helpers ────────────────────────────────────────────────
   Duration get _position  => _vpc?.value.position  ?? Duration.zero;
   Duration get _duration  => _vpc?.value.duration  ?? Duration.zero;
   bool     get _isPlaying => _vpc?.value.isPlaying ?? false;
@@ -1275,13 +1451,12 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   String _fmtDuration(Duration d) {
-    final h  = d.inHours;
-    final m  = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s  = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 
-  // ── build ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final mq     = MediaQuery.of(context);
@@ -1289,7 +1464,6 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     return Scaffold(
       backgroundColor: Colors.black,
-      // Force status-bar icons white over the black player
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: GestureDetector(
@@ -1301,37 +1475,25 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  // ── PORTRAIT layout ────────────────────────────────────────
   Widget _buildPortrait() => Column(
     children: [
-      // ── video zone (16:9 + full controls stack on top) ──
-      AspectRatio(
-        aspectRatio: 16 / 9,
-        child: _buildVideoStack(isLand: false),
-      ),
-      // ── info panel below video ──
+      AspectRatio(aspectRatio: 16 / 9, child: _buildVideoStack(isLand: false)),
       Expanded(child: _buildInfoPanel()),
     ],
   );
 
-  // ── LANDSCAPE layout ───────────────────────────────────────
   Widget _buildLandscape() => Stack(
     fit: StackFit.expand,
-    children: [
-      _buildVideoStack(isLand: true),
-    ],
+    children: [_buildVideoStack(isLand: true)],
   );
 
-  // ── VIDEO STACK (the centrepiece) ──────────────────────────
-  // Root is a Stack.  Video is centered in AspectRatio.
-  // Gradient scrims + glass controls float above it.
   Widget _buildVideoStack({required bool isLand}) => Stack(
     fit: StackFit.expand,
     children: [
-      // ── 0: pure black canvas ──────────────────────────────
+      // 0: pure black
       const ColoredBox(color: Colors.black),
 
-      // ── 1: video, perfectly centered ─────────────────────
+      // 1: video centered
       Center(
         child: AspectRatio(
           aspectRatio: 16 / 9,
@@ -1339,122 +1501,67 @@ class _PlayerScreenState extends State<PlayerScreen>
         ),
       ),
 
-      // ── 2a: top scrim (protects controls from bright video)
-      Positioned(
-        top: 0, left: 0, right: 0,
-        child: _GradientScrim(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          height: 140,
-        ),
-      ),
+      // 2a: top gradient scrim
+      Positioned(top: 0, left: 0, right: 0, child: _GradientScrim(begin: Alignment.topCenter, end: Alignment.bottomCenter, height: 150)),
 
-      // ── 2b: bottom scrim ──────────────────────────────────
-      Positioned(
-        bottom: 0, left: 0, right: 0,
-        child: _GradientScrim(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          height: 140,
-        ),
-      ),
+      // 2b: bottom gradient scrim
+      Positioned(bottom: 0, left: 0, right: 0, child: _GradientScrim(begin: Alignment.bottomCenter, end: Alignment.topCenter, height: 150)),
 
-      // ── 3: animated controls overlay ─────────────────────
+      // 3: animated controls overlay
       FadeTransition(
         opacity: _ctrlsOpa,
         child: ScaleTransition(
           scale: _ctrlsScl,
           child: SafeArea(
-            child: Stack(
-              children: [
-                // Top bar: back + title + fav
-                Positioned(
-                  top: 0, left: 0, right: 0,
-                  child: _buildTopBar(),
-                ),
-                // Centre play/pause
-                Center(child: _buildCentrePlayPause()),
-                // Bottom bar: progress + time
-                Positioned(
-                  bottom: 0, left: 0, right: 0,
-                  child: _buildBottomBar(),
-                ),
-              ],
-            ),
+            child: Stack(children: [
+              Positioned(top: 0, left: 0, right: 0, child: _buildTopBar()),
+              Center(child: _buildCentrePlayPause()),
+              Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomBar()),
+            ]),
           ),
         ),
       ),
     ],
   );
 
-  // ── video content (loading / error / player) ───────────────
   Widget _buildVideoContent() {
-    if (_loading) {
-      return const Center(
-          child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
-    }
-    if (_error) return _PError(onRetry: _retry);
+    if (_loading) return const Center(child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
+    if (_error)   return _PError(onRetry: _retry);
     if (_cc != null) return Chewie(controller: _cc!);
-    return const Center(
-        child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
+    return const Center(child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
   }
 
-  // ── TOP BAR ───────────────────────────────────────────────
   Widget _buildTopBar() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p12),
-    child: Row(
-      children: [
-        // Back button — always on the LEFT (leading side in LTR,
-        // but since the app is RTL we use Directionality.ltr locally)
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: _PlayerBtn(
-            icon: Icons.arrow_back_ios_new_rounded,
-            onTap: () => Navigator.of(context).pop(),
-          ),
+    child: Row(children: [
+      // Back button (LTR forced so arrow always points left)
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: _PlayerBtn(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).pop()),
+      ),
+      const SizedBox(width: T.p12),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(widget.channel.name, style: T.headline.copyWith(color: Colors.white, shadows: [const Shadow(blurRadius: 8)]), maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Row(children: [
+            _PulseDot(),
+            const SizedBox(width: T.p4),
+            Text('بث مباشر', style: T.caption.copyWith(color: Colors.white70)),
+          ]),
+        ]),
+      ),
+      ScaleTransition(
+        scale: _favScl,
+        child: _PlayerBtn(
+          icon: _isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+          iconColor: _isFav ? T.red : Colors.white,
+          onTap: _tapFav,
         ),
-        const SizedBox(width: T.p12),
-        // Channel info
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.channel.name,
-                style: T.headline.copyWith(
-                    color: Colors.white,
-                    shadows: [const Shadow(blurRadius: 8)]),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Row(children: [
-                _PulseDot(),
-                const SizedBox(width: T.p4),
-                Text('بث مباشر',
-                    style: T.caption
-                        .copyWith(color: Colors.white70)),
-              ]),
-            ],
-          ),
-        ),
-        // Favourite button
-        ScaleTransition(
-          scale: _favScl,
-          child: _PlayerBtn(
-            icon: _isFav
-                ? CupertinoIcons.heart_fill
-                : CupertinoIcons.heart,
-            iconColor: _isFav ? T.red : Colors.white,
-            onTap: _tapFav,
-          ),
-        ),
-      ],
-    ),
+      ),
+    ]),
   );
 
-  // ── CENTRE PLAY/PAUSE ─────────────────────────────────────
   Widget _buildCentrePlayPause() {
     if (_loading || _error) return const SizedBox.shrink();
     return AnimatedBuilder(
@@ -1462,11 +1569,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       builder: (_, __) {
         final playing = _isPlaying;
         return _PlayerBtn(
-          size: 56,
-          iconSize: 28,
-          icon: playing
-              ? CupertinoIcons.pause_fill
-              : CupertinoIcons.play_fill,
+          size: 58, iconSize: 28,
+          icon: playing ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
           onTap: () {
             HapticFeedback.lightImpact();
             playing ? _vpc!.pause() : _vpc!.play();
@@ -1478,43 +1582,29 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  // ── BOTTOM BAR: progress + time ────────────────────────────
   Widget _buildBottomBar() => Padding(
     padding: const EdgeInsets.fromLTRB(T.p16, 0, T.p16, T.p16),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Ultra-thin progress bar with glow
-        AnimatedBuilder(
-          animation: _progressTicker,
-          builder: (_, __) => _ThinProgressBar(progress: _progress),
-        ),
-        const SizedBox(height: T.p8),
-        // Time labels
-        AnimatedBuilder(
-          animation: _progressTicker,
-          builder: (_, __) => Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _fmtDuration(_position),
-                style: T.micro.copyWith(
-                    color: Colors.white70, fontWeight: FontWeight.w500),
-              ),
-              Text(
-                _fmtDuration(_duration),
-                style: T.micro.copyWith(color: Colors.white38),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      AnimatedBuilder(animation: _progressTicker, builder: (_, __) => _ThinProgressBar(progress: _progress)),
+      const SizedBox(height: T.p8),
+      AnimatedBuilder(
+        animation: _progressTicker,
+        builder: (_, __) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(_fmtDuration(_position), style: T.micro.copyWith(color: Colors.white70, fontWeight: FontWeight.w500)),
+          Text(_fmtDuration(_duration), style: T.micro.copyWith(color: Colors.white38)),
+        ]),
+      ),
+    ]),
   );
 
-  // ── INFO PANEL (portrait only, below video) ────────────────
+  // Info panel (portrait only — below video)
   Widget _buildInfoPanel() => Container(
-    color: T.void_,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [T.s1, T.void_],
+      ),
+    ),
     child: SafeArea(
       top: false,
       child: Padding(
@@ -1523,115 +1613,69 @@ class _PlayerScreenState extends State<PlayerScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Channel logo + name row
             Row(children: [
-              // Logo with glass border
+              // Channel logo with glass container
               Container(
-                width: 60, height: 60,
+                width: 62, height: 62,
                 decoration: BoxDecoration(
-                  color: T.s3,
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                    colors: [T.s3, T.s2],
+                  ),
                   borderRadius: BorderRadius.circular(T.r16),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4)),
-                  ],
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 14, offset: const Offset(0, 4))],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(T.r16),
-                  child: _NetImg(
-                      url: widget.channel.logo, w: 60, h: 60),
-                ),
+                child: ClipRRect(borderRadius: BorderRadius.circular(T.r16), child: _NetImg(url: widget.channel.logo, w: 62, h: 62)),
               ),
               const SizedBox(width: T.p16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(widget.channel.name,
-                        style: T.title3,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: T.p6),
-                    // Glass status pill
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(T.rFull),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                            sigmaX: 15, sigmaY: 15),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: T.p10, vertical: T.p4),
-                          decoration: BoxDecoration(
-                            color: T.red.withValues(alpha: 0.15),
-                            borderRadius:
-                                BorderRadius.circular(T.rFull),
-                            border: Border.all(
-                                color:
-                                    T.red.withValues(alpha: 0.3),
-                                width: 0.5),
-                          ),
-                          child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _PulseDot(),
-                                const SizedBox(width: T.p6),
-                                Text('بث مباشر',
-                                    style: T.caption.copyWith(
-                                        color: T.red,
-                                        fontWeight:
-                                            FontWeight.w600)),
-                              ]),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(widget.channel.name, style: T.title3, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: T.p6),
+                  // Glass live pill
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(T.rFull),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: T.p10, vertical: T.p4),
+                        decoration: BoxDecoration(
+                          color: T.red.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(T.rFull),
+                          border: Border.all(color: T.red.withValues(alpha: 0.28), width: 0.5),
                         ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          _PulseDot(),
+                          const SizedBox(width: T.p6),
+                          Text('بث مباشر', style: T.caption.copyWith(color: T.red, fontWeight: FontWeight.w600)),
+                        ]),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ]),
               ),
               const SizedBox(width: T.p12),
-              // Favourite button
+              // Fav button with glass
               _Tap(
                 onTap: _tapFav,
                 child: ScaleTransition(
                   scale: _favScl,
                   child: ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(T.rFull),
+                    borderRadius: BorderRadius.circular(T.rFull),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                          sigmaX: 15, sigmaY: 15),
+                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                       child: Container(
-                        width: 46, height: 46,
+                        width: 48, height: 48,
                         decoration: BoxDecoration(
-                          color: T.s3
-                              .withValues(alpha: 0.8),
+                          color: T.s3.withValues(alpha: 0.85),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: Colors.white
-                                  .withValues(alpha: 0.08),
-                              width: 0.5),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
                         ),
                         child: AnimatedSwitcher(
-                          duration:
-                              const Duration(milliseconds: 250),
-                          transitionBuilder: (c, a) =>
-                              ScaleTransition(
-                                  scale: a,
-                                  child: FadeTransition(
-                                      opacity: a, child: c)),
-                          child: Icon(
-                            _isFav
-                                ? CupertinoIcons.heart_fill
-                                : CupertinoIcons.heart,
-                            key: ValueKey(_isFav),
-                            color: _isFav ? T.red : T.lbl2,
-                            size: 22,
-                          ),
+                          duration: const Duration(milliseconds: 250),
+                          transitionBuilder: (c, a) => ScaleTransition(scale: a, child: FadeTransition(opacity: a, child: c)),
+                          child: Icon(_isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart, key: ValueKey(_isFav), color: _isFav ? T.red : T.lbl2, size: 22),
                         ),
                       ),
                     ),
@@ -1640,56 +1684,37 @@ class _PlayerScreenState extends State<PlayerScreen>
               ),
             ]),
             const SizedBox(height: T.p20),
-            // Glass quality/channel info strip
+            // Info + retry strip
             ClipRRect(
-              borderRadius: BorderRadius.circular(T.r12),
+              borderRadius: BorderRadius.circular(T.r14),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: T.p16, vertical: T.p12),
+                  padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p12),
                   decoration: BoxDecoration(
-                    color: T.s2.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(T.r12),
-                    border: Border.all(
-                        color:
-                            Colors.white.withValues(alpha: 0.06),
-                        width: 0.5),
+                    color: T.s2.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(T.r14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
                   ),
                   child: Row(children: [
-                    _InfoChip(
-                        icon: CupertinoIcons.tv,
-                        label: 'قناة ${widget.channel.number}'),
+                    _InfoChip(icon: CupertinoIcons.tv, label: 'قناة ${widget.channel.number}'),
                     const SizedBox(width: T.p16),
-                    _InfoChip(
-                        icon: CupertinoIcons.waveform,
-                        label: 'HLS'),
+                    _InfoChip(icon: CupertinoIcons.waveform, label: 'HLS'),
                     const Spacer(),
-                    // Retry button
                     _Tap(
                       onTap: _retry,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: T.p12, vertical: T.p6),
+                        padding: const EdgeInsets.symmetric(horizontal: T.p12, vertical: T.p6),
                         decoration: BoxDecoration(
-                          color: T.accent.withValues(alpha: 0.15),
-                          borderRadius:
-                              BorderRadius.circular(T.rFull),
-                          border: Border.all(
-                              color: T.accent.withValues(alpha: 0.3),
-                              width: 0.5),
+                          gradient: LinearGradient(colors: [T.accent.withValues(alpha: 0.22), T.accent.withValues(alpha: 0.10)]),
+                          borderRadius: BorderRadius.circular(T.rFull),
+                          border: Border.all(color: T.accent.withValues(alpha: 0.3), width: 0.5),
                         ),
-                        child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(CupertinoIcons.refresh,
-                                  size: 12, color: T.accent),
-                              const SizedBox(width: T.p4),
-                              Text('إعادة',
-                                  style: T.micro.copyWith(
-                                      color: T.accent,
-                                      fontWeight: FontWeight.w600)),
-                            ]),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(CupertinoIcons.refresh, size: 12, color: T.accent),
+                          const SizedBox(width: T.p4),
+                          Text('إعادة', style: T.micro.copyWith(color: T.accent, fontWeight: FontWeight.w600)),
+                        ]),
                       ),
                     ),
                   ]),
@@ -1712,59 +1737,33 @@ class _ThinProgressBar extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (_, constraints) {
       final w = constraints.maxWidth;
-      return GestureDetector(
-        // Intentionally no-op: scrub handled by Chewie internally
-        // This is purely a visual track element
-        child: SizedBox(
-          height: 20,
-          child: Stack(alignment: Alignment.centerLeft, children: [
-            // Track
-            Container(
-              height: 2.5,
-              width: w,
+      return SizedBox(
+        height: 20,
+        child: Stack(alignment: Alignment.centerLeft, children: [
+          // Track
+          Container(height: 2.5, width: w, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(2))),
+          // Fill with gradient + glow
+          Container(
+            height: 2.5, width: w * progress,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(2),
+              gradient: const LinearGradient(colors: [Color(0xFF0A84FF), Color(0xFF30D158)]),
+              boxShadow: [BoxShadow(color: T.accent.withValues(alpha: 0.55), blurRadius: 6, offset: Offset.zero)],
+            ),
+          ),
+          // Thumb dot
+          Positioned(
+            left: (w * progress - 5).clamp(0.0, w - 10),
+            child: Container(
+              width: 10, height: 10,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(2),
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: T.accent.withValues(alpha: 0.6), blurRadius: 8, spreadRadius: 1)],
               ),
             ),
-            // Fill
-            Container(
-              height: 2.5,
-              width: w * progress,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(2),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0A84FF), Color(0xFF30D158)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: T.accent.withValues(alpha: 0.55),
-                    blurRadius: 6,
-                    offset: Offset.zero,
-                  ),
-                ],
-              ),
-            ),
-            // Thumb dot
-            Positioned(
-              left: (w * progress - 5).clamp(0.0, w - 10),
-              child: Container(
-                width: 10, height: 10,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: T.accent.withValues(alpha: 0.6),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ]),
-        ),
+          ),
+        ]),
       );
     },
   );
@@ -1774,40 +1773,26 @@ class _ThinProgressBar extends StatelessWidget {
 class _GradientScrim extends StatelessWidget {
   final AlignmentGeometry begin, end;
   final double height;
-  const _GradientScrim({
-    required this.begin,
-    required this.end,
-    required this.height,
-  });
+  const _GradientScrim({required this.begin, required this.end, required this.height});
   @override
   Widget build(BuildContext context) => Container(
     height: height,
     decoration: BoxDecoration(
       gradient: LinearGradient(
-        begin: begin,
-        end: end,
-        colors: [
-          Colors.black.withValues(alpha: 0.72),
-          Colors.black.withValues(alpha: 0.0),
-        ],
+        begin: begin, end: end,
+        colors: [Colors.black.withValues(alpha: 0.72), Colors.black.withValues(alpha: 0.0)],
       ),
     ),
   );
 }
 
-// ── Glass player button (Back / Play / Fav) ────────────────────
+// ── Glass player button ────────────────────────────────────────
 class _PlayerBtn extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
   final VoidCallback onTap;
   final double size, iconSize;
-  const _PlayerBtn({
-    required this.icon,
-    required this.onTap,
-    this.iconColor,
-    this.size = 42,
-    this.iconSize = 20,
-  });
+  const _PlayerBtn({required this.icon, required this.onTap, this.iconColor, this.size = 42, this.iconSize = 20});
 
   @override
   Widget build(BuildContext context) => _Tap(
@@ -1821,32 +1806,26 @@ class _PlayerBtn extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.15),
             shape: BoxShape.circle,
-            border: Border.all(
-                color: Colors.white.withValues(alpha: 0.22),
-                width: 0.5),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 0.5),
           ),
-          child: Icon(icon,
-              color: iconColor ?? Colors.white, size: iconSize),
+          child: Icon(icon, color: iconColor ?? Colors.white, size: iconSize),
         ),
       ),
     ),
   );
 }
 
-// ── Small info chip inside info panel ─────────────────────────
+// ── Small info chip ────────────────────────────────────────────
 class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
   const _InfoChip({required this.icon, required this.label});
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 12, color: T.lbl3),
-      const SizedBox(width: T.p4),
-      Text(label, style: T.caption.copyWith(fontSize: 11, color: T.lbl2)),
-    ],
-  );
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, size: 12, color: T.lbl3),
+    const SizedBox(width: T.p4),
+    Text(label, style: T.caption.copyWith(fontSize: 11, color: T.lbl2)),
+  ]);
 }
 
 // ── Error overlay ──────────────────────────────────────────────
@@ -1863,22 +1842,14 @@ class _PError extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white.withValues(alpha: 0.06),
-            border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1), width: 0.5),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
           ),
-          child: const Icon(CupertinoIcons.wifi_slash,
-              size: 32, color: Colors.white38),
+          child: const Icon(CupertinoIcons.wifi_slash, size: 32, color: Colors.white38),
         ),
         const SizedBox(height: T.p20),
-        const Text('تعذّر الاتصال',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.3)),
+        const Text('تعذّر الاتصال', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3)),
         const SizedBox(height: T.p8),
-        const Text('حدث خطأ في البث',
-            style: TextStyle(color: Colors.white54, fontSize: 14)),
+        const Text('حدث خطأ في البث', style: TextStyle(color: Colors.white54, fontSize: 14)),
         const SizedBox(height: T.p28),
         _Tap(
           onTap: onRetry,
@@ -1887,26 +1858,14 @@ class _PError extends StatelessWidget {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: T.p28, vertical: T.p14),
+                padding: const EdgeInsets.symmetric(horizontal: T.p28, vertical: T.p14),
                 decoration: BoxDecoration(
-                  color: T.accent.withValues(alpha: 0.85),
+                  gradient: const LinearGradient(colors: [Color(0xFF1C6EF2), Color(0xFF0A50C8)]),
                   borderRadius: BorderRadius.circular(T.rFull),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                        color: T.accent.withValues(alpha: 0.4),
-                        blurRadius: 20,
-                        offset: const Offset(0, 6)),
-                  ],
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.5),
+                  boxShadow: [BoxShadow(color: T.accent.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 6))],
                 ),
-                child: const Text('إعادة المحاولة',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15)),
+                child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
               ),
             ),
           ),
@@ -1919,23 +1878,30 @@ class _PError extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════
 // SHARED MICRO-COMPONENTS
 // ═══════════════════════════════════════════════════════════════
+
+// Glass card with real backdrop blur
 class _GlassCard extends StatelessWidget {
   final List<Widget> children;
   const _GlassCard({required this.children});
   @override
   Widget build(BuildContext context) => ClipRRect(
     borderRadius: BorderRadius.circular(T.r16),
-    child: Container(
-      decoration: BoxDecoration(
-        color: T.s2,
-        borderRadius: BorderRadius.circular(T.r16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: T.s2.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(T.r16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.5),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 16, offset: const Offset(0, 4))],
+        ),
+        child: Column(children: children),
       ),
-      child: Column(children: children),
     ),
   );
 }
 
+// Glass action button (used in player)
 class _GBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -1957,6 +1923,7 @@ class _GBtn extends StatelessWidget {
   );
 }
 
+// Animated live dot
 class _PulseDot extends StatefulWidget {
   @override
   State<_PulseDot> createState() => _PulseDotState();
@@ -1964,48 +1931,75 @@ class _PulseDot extends StatefulWidget {
 class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late Animation<double> _a;
-  @override void initState() {
+  @override
+  void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true);
-    _a = Tween(begin: 0.35, end: 1.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+    _a = Tween(begin: 0.3, end: 1.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) => FadeTransition(
+  @override
+  Widget build(BuildContext context) => FadeTransition(
     opacity: _a,
-    child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: T.red, shape: BoxShape.circle)),
+    child: Container(
+      width: 6, height: 6,
+      decoration: BoxDecoration(
+        color: T.red,
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: T.red.withValues(alpha: 0.5), blurRadius: 4, spreadRadius: 1)],
+      ),
+    ),
   );
 }
 
+// Rounded pill label
 class _Pill extends StatelessWidget {
   final String label; final Color color;
   const _Pill({required this.label, required this.color});
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(T.rFull), border: Border.all(color: color.withValues(alpha: 0.28), width: 0.5)),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(T.rFull),
+      border: Border.all(color: color.withValues(alpha: 0.28), width: 0.5),
+    ),
     child: Text(label, style: T.micro.copyWith(color: color, fontWeight: FontWeight.w700)),
   );
 }
 
+// iOS-style search bar
 class _SearchBar extends StatelessWidget {
   final ValueChanged<String> onChanged;
   const _SearchBar({required this.onChanged});
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(color: T.s3, borderRadius: BorderRadius.circular(T.r12)),
-    child: TextField(
-      onChanged: onChanged, textDirection: TextDirection.rtl,
-      style: T.body.copyWith(color: T.lbl),
-      decoration: InputDecoration(
-        hintText: 'بحث...', hintStyle: T.body.copyWith(color: T.lbl3),
-        prefixIcon: const Icon(CupertinoIcons.search, color: T.lbl3, size: 18),
-        border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p12),
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(T.r12),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: T.s3.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(T.r12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.5),
+        ),
+        child: TextField(
+          onChanged: onChanged, textDirection: TextDirection.rtl,
+          style: T.body.copyWith(color: T.lbl),
+          decoration: InputDecoration(
+            hintText: 'بحث...',
+            hintStyle: T.body.copyWith(color: T.lbl3),
+            prefixIcon: const Icon(CupertinoIcons.search, color: T.lbl3, size: 18),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p12),
+          ),
+        ),
       ),
     ),
   );
 }
 
+// Network image with fallback
 class _NetImg extends StatelessWidget {
   final String url;
   final double w, h;
@@ -2022,18 +2016,27 @@ class _NetImg extends StatelessWidget {
   Widget _ph() => Icon(CupertinoIcons.tv, color: T.lbl4, size: math.min(w, h) * 0.5);
 }
 
+// Empty state
 class _EmptyState extends StatelessWidget {
   final IconData icon; final String text;
   const _EmptyState({required this.icon, required this.text});
   @override
   Widget build(BuildContext context) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    Container(width: 76, height: 76, decoration: const BoxDecoration(color: T.s3, shape: BoxShape.circle), child: Icon(icon, size: 34, color: T.lbl3)),
+    Container(
+      width: 78, height: 78,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [T.s3, T.s2], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.5),
+      ),
+      child: Icon(icon, size: 34, color: T.lbl3),
+    ),
     const SizedBox(height: T.p20),
     Text(text, style: T.body.copyWith(color: T.lbl2), textAlign: TextAlign.center),
   ]));
 }
 
-// Tap Scale
+// Spring tap animation (no Material ripple)
 class _Tap extends StatefulWidget {
   final Widget child; final VoidCallback? onTap;
   const _Tap({required this.child, this.onTap});
@@ -2042,13 +2045,15 @@ class _Tap extends StatefulWidget {
 class _TapState extends State<_Tap> with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late Animation<double> _s;
-  @override void initState() {
+  @override
+  void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 115));
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
     _s = Tween(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) => GestureDetector(
+  @override
+  Widget build(BuildContext context) => GestureDetector(
     onTapDown: (_) => _c.forward(),
     onTapUp: (_) { _c.reverse(); widget.onTap?.call(); },
     onTapCancel: () => _c.reverse(),
@@ -2056,7 +2061,7 @@ class _TapState extends State<_Tap> with SingleTickerProviderStateMixin {
   );
 }
 
-// Toast
+// Glass toast notification
 class _Toast extends StatefulWidget {
   final String message; final VoidCallback onDone;
   const _Toast({required this.message, required this.onDone});
@@ -2066,7 +2071,8 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late Animation<double> _o;
   late Animation<double> _y;
-  @override void initState() {
+  @override
+  void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
     _o = CurvedAnimation(parent: _c, curve: Curves.easeOut);
@@ -2075,8 +2081,9 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
     Future.delayed(const Duration(milliseconds: 2300), () { if (mounted) _c.reverse().then((_) => widget.onDone()); });
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).padding.bottom + 82;
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom + 96;
     return Positioned(
       bottom: bottom, left: T.p32, right: T.p32,
       child: AnimatedBuilder(
@@ -2103,7 +2110,7 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
   }
 }
 
-// Shimmer
+// Shimmer loading skeleton
 class _Shimmer extends StatefulWidget {
   const _Shimmer();
   @override State<_Shimmer> createState() => _ShimmerState();
@@ -2111,18 +2118,20 @@ class _Shimmer extends StatefulWidget {
 class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
   late AnimationController _c;
   late Animation<double> _a;
-  @override void initState() {
+  @override
+  void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
     _a = Tween(begin: -1.5, end: 2.5).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) => Padding(
+  @override
+  Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p8),
     child: Column(children: List.generate(5, (_) => AnimatedBuilder(
       animation: _a,
       builder: (_, __) => Container(
-        height: 62, margin: const EdgeInsets.only(bottom: 1),
+        height: 64, margin: const EdgeInsets.only(bottom: 1),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(T.r8),
           gradient: LinearGradient(
@@ -2135,7 +2144,7 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
   );
 }
 
-// Grid Painter (hero texture)
+// Grid painter (subtle background texture)
 class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -2146,7 +2155,7 @@ class _GridPainter extends CustomPainter {
   @override bool shouldRepaint(_) => false;
 }
 
-// Route: zoom + fade in/out
+// Zoom + fade page route (no default Material slide)
 PageRoute<T_> _zoomFade<T_>(Widget page) => PageRouteBuilder<T_>(
   pageBuilder: (_, a, __) => page,
   transitionDuration: const Duration(milliseconds: 400),
@@ -2157,3 +2166,5 @@ PageRoute<T_> _zoomFade<T_>(Widget page) => PageRouteBuilder<T_>(
     return FadeTransition(opacity: opa, child: ScaleTransition(scale: scale, child: child));
   },
 );
+
+// end of StreamGo main.dart
