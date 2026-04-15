@@ -149,7 +149,7 @@ class GameLogic {
       final op = board[over.r][over.c];
       if (op.isEmpty)            continue;
       if (captured.contains(over)) continue;
-      assert(!captured.contains(over), 'Piece captured twice in chain');
+      assert(!captured.contains(over), '');
       if (!(piece.isRed ? op.isBlack : op.isRed)) continue;
       if (board[to.r][to.c] != PieceType.empty)   continue;
 
@@ -444,21 +444,55 @@ class _GameScreenState extends State<GameScreen> {
   Timer?   _aiTimer;
   bool     _winDialogShown = false; 
 
+  bool      _isAnimating = false;
+  PieceType? _animPiece;
+  Pos?      _animEnd;
+  Set<Pos>  _hiddenPieces = {}; 
+  List<Pos> _fadingOut = [];    
+
   @override
   void dispose() { 
     _aiTimer?.cancel(); 
     super.dispose(); 
   }
 
+  void _restart() {
+    _aiTimer?.cancel();
+    setState(() { 
+      _g.restart(); 
+      _aiTurn = false; 
+      _isAnimating = false;
+      _animPiece = null;
+      _hiddenPieces.clear();
+      _fadingOut.clear();
+    });
+  }
+
+  void _toggleMode() {
+    _aiTimer?.cancel(); 
+    setState(() {
+      _mode = _mode == GameMode.twoPlayer ? GameMode.vsAI : GameMode.twoPlayer;
+      _g.restart();
+      _aiTurn = false;
+      _isAnimating = false;
+      _animPiece = null;
+      _hiddenPieces.clear();
+      _fadingOut.clear();
+    });
+  }
+
   void _onTap(Pos pos) {
-    if (_g.phase != Phase.playing) return;
-    if (_aiTurn)  return;
-    if (_mode == GameMode.vsAI && _g.currentPlayer == Player.red) return;
+    if (_g.phase != Phase.playing || _isAnimating) return;
+    if (_aiTurn || (_mode == GameMode.vsAI && _g.currentPlayer == Player.red)) return;
 
     setState(() {
       if (_g.targets.contains(pos)) {
-        final res = _g.moveTo(pos);
-        if (res != null) _afterMove(res);
+        Move? m;
+        for (final mv in _g.availableMoves) { if (mv.to == pos) { m = mv; break; } }
+        if (m != null) {
+          _g.clearSelect(); 
+          _executeMoveWithAnimation(m);
+        }
       } else {
         final piece = _g.at(pos);
         if (!piece.isEmpty && piece.belongs(_g.currentPlayer)) {
@@ -475,15 +509,62 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  void _afterMove(MoveResult res) {
-    if (res.isCapture) Sounds.capture(); else Sounds.move();
-    if (res.phase != Phase.playing) {
-      Sounds.win();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _showWin(res.phase));
-      return;
+  Future<void> _executeMoveWithAnimation(Move m) async {
+    if (_isAnimating) return;
+    setState(() => _isAnimating = true);
+
+    final piece = _g.at(m.from);
+    
+    setState(() {
+      _animPiece = piece;
+      _animEnd = m.from; 
+      _hiddenPieces.add(m.from);
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _animEnd = m.to);
+    });
+
+    Sounds.move();
+
+    for (int i = 0; i < m.captured.length; i++) {
+      final capPos = m.captured[i];
+      Future.delayed(Duration(milliseconds: 150 + (100 * i)), () {
+        if (mounted) {
+          setState(() {
+            _hiddenPieces.add(capPos); 
+            _fadingOut.add(capPos);    
+          });
+          Sounds.capture();
+        }
+      });
     }
-    if (_mode == GameMode.vsAI && _g.currentPlayer == Player.red) {
-      _scheduleAI();
+
+    int maxDelay = 350; 
+    if (m.captured.isNotEmpty) {
+      maxDelay = 150 + (100 * m.captured.length) + 250;
+    }
+    await Future.delayed(Duration(milliseconds: max(350, maxDelay)));
+    if (!mounted) return;
+
+    final res = _g.applyAI(m); 
+    
+    setState(() {
+      _isAnimating = false;
+      _animPiece = null;
+      _hiddenPieces.clear();
+      _fadingOut.clear();
+    });
+
+    if (res != null) {
+      if (res.phase != Phase.playing) {
+        Sounds.win();
+        WidgetsBinding.instance.addPostFrameCallback((_) => _showWin(res.phase));
+        return;
+      }
+      if (_mode == GameMode.vsAI && _g.currentPlayer == Player.red) {
+        _scheduleAI();
+      }
     }
   }
 
@@ -493,12 +574,8 @@ class _GameScreenState extends State<GameScreen> {
     _aiTimer = Timer(const Duration(milliseconds: 700), () {
       if (!mounted) return;
       final move = _g.aiMove(_difficulty); 
-      setState(() {
-        _aiTurn = false;
-        if (move == null) return;
-        final res = _g.applyAI(move);
-        if (res != null) _afterMove(res);
-      });
+      setState(() => _aiTurn = false);
+      if (move != null) _executeMoveWithAnimation(move);
     });
   }
 
@@ -538,23 +615,6 @@ class _GameScreenState extends State<GameScreen> {
         ],
       ),
     );
-  }
-
-  void _restart() {
-    _aiTimer?.cancel();
-    setState(() { 
-      _g.restart(); 
-      _aiTurn = false; 
-    });
-  }
-
-  void _toggleMode() {
-    _aiTimer?.cancel(); 
-    setState(() {
-      _mode = _mode == GameMode.twoPlayer ? GameMode.vsAI : GameMode.twoPlayer;
-      _g.restart();
-      _aiTurn = false;
-    });
   }
 
   @override
@@ -663,20 +723,60 @@ class _GameScreenState extends State<GameScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               boxShadow: const [
-                BoxShadow(
-                  color: Color(0x50000000), blurRadius: 22, offset: Offset(0, 8),
-                ),
+                BoxShadow(color: Color(0x50000000), blurRadius: 22, offset: Offset(0, 8)),
               ],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: kN,
-                ),
-                itemCount: kN * kN,
-                itemBuilder: (_, idx) => _buildCell(idx ~/ kN, idx % kN),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final double cellSize = constraints.maxWidth / kN;
+                  return Stack(
+                    children: [
+                      GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: kN,
+                        ),
+                        itemCount: kN * kN,
+                        itemBuilder: (_, idx) => _buildCell(idx ~/ kN, idx % kN),
+                      ),
+
+                      for (final pos in _fadingOut)
+                        Positioned(
+                          left: pos.c * cellSize,
+                          top: pos.r * cellSize,
+                          width: cellSize,
+                          height: cellSize,
+                          child: TweenAnimationBuilder<double>(
+                            key: ValueKey('fade_${pos.r}_${pos.c}'),
+                            tween: Tween(begin: 1.0, end: 0.0),
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeInBack,
+                            builder: (ctx, val, child) => Transform.scale(
+                              scale: val,
+                              child: Opacity(
+                                opacity: val.clamp(0.0, 1.0),
+                                child: child,
+                              ),
+                            ),
+                            child: _buildPiece(_g.at(pos), false),
+                          ),
+                        ),
+
+                      if (_animPiece != null && _animEnd != null)
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOutCubic,
+                          left: _animEnd!.c * cellSize,
+                          top: _animEnd!.r * cellSize,
+                          width: cellSize,
+                          height: cellSize,
+                          child: _buildPiece(_animPiece!, true), 
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -691,27 +791,34 @@ class _GameScreenState extends State<GameScreen> {
     final piece    = _g.at(pos);
     final isSel    = _g.selectedPos == pos;
     final isTarget = _g.targets.contains(pos);
+    final isHidden = _hiddenPieces.contains(pos); 
 
     final bg = isSel                ? cSel
-             : (isTarget && isDark) ? cHint
+             : (isTarget && isDark) ? cHint.withOpacity(0.55) 
              : isDark               ? cDark
              :                        cLight;
 
     return GestureDetector(
       onTap: () => _onTap(pos),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: const Duration(milliseconds: 150),
         color: bg,
         child: isDark
           ? Stack(alignment: Alignment.center, children: [
-              if (isTarget && piece.isEmpty)
-                Container(
-                  width: 12, height: 12,
-                  decoration: const BoxDecoration(
-                    color: cHint, shape: BoxShape.circle,
+              if (isTarget && piece.isEmpty && !isHidden)
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  builder: (ctx, val, child) => Transform.scale(scale: val, child: child),
+                  child: Container(
+                    width: 14, height: 14,
+                    decoration: const BoxDecoration(
+                      color: cHint, shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              if (!piece.isEmpty) _buildPiece(piece, isSel),
+              if (!piece.isEmpty && !isHidden) _buildPiece(piece, isSel),
             ])
           : null, 
       ),
