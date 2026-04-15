@@ -1106,41 +1106,80 @@ class _IRow extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PLAYER SCREEN
+// PLAYER SCREEN  —  Premium iOS-grade overhaul
+// Architecture: Scaffold → Stack (fills screen)
+//   Layer 0 : black background
+//   Layer 1 : centered AspectRatio video
+//   Layer 2 : gradient scrims (top + bottom)
+//   Layer 3 : animated controls (SafeArea, glass, gradients)
+//   Layer 4 : portrait info panel pinned to bottom
 // ═══════════════════════════════════════════════════════════════
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
   final bool isFavorite, autoPlay;
   final VoidCallback onToggleFav;
-  const PlayerScreen({super.key, required this.channel, required this.isFavorite, required this.autoPlay, required this.onToggleFav});
+  const PlayerScreen({
+    super.key,
+    required this.channel,
+    required this.isFavorite,
+    required this.autoPlay,
+    required this.onToggleFav,
+  });
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin {
+class _PlayerScreenState extends State<PlayerScreen>
+    with TickerProviderStateMixin {
   VideoPlayerController? _vpc;
-  ChewieController? _cc;
+  ChewieController?      _cc;
   bool _loading = true, _error = false, _isFav = false, _ctrlsVisible = true;
 
-  late AnimationController _ctrlsAnim, _favAnim;
-  late Animation<double> _ctrlsOpa, _ctrlsScl, _favScl;
+  // Controls fade+scale
+  late AnimationController _ctrlsAnim;
+  late Animation<double>   _ctrlsOpa, _ctrlsScl;
 
-  static const _ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36';
+  // Favourite spring
+  late AnimationController _favAnim;
+  late Animation<double>   _favScl;
 
+  // Progress ticker (drives the thin scrubber while playing)
+  late AnimationController _progressTicker;
+
+  static const _ua =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+      'AppleWebKit/537.36 (KHTML, like Gecko) '
+      'Chrome/139.0.0.0 Safari/537.36';
+
+  // ── lifecycle ──────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _isFav = widget.isFavorite;
-    _ctrlsAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 340));
-    _ctrlsOpa  = CurvedAnimation(parent: _ctrlsAnim, curve: Curves.easeOut);
-    _ctrlsScl  = Tween(begin: 0.95, end: 1.0).animate(CurvedAnimation(parent: _ctrlsAnim, curve: Curves.easeOutCubic));
+
+    _ctrlsAnim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 320));
+    _ctrlsOpa = CurvedAnimation(parent: _ctrlsAnim, curve: Curves.easeOut);
+    _ctrlsScl = Tween(begin: 0.96, end: 1.0).animate(
+        CurvedAnimation(parent: _ctrlsAnim, curve: Curves.easeOutCubic));
     _ctrlsAnim.forward();
 
-    _favAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
-    _favScl  = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.45).chain(CurveTween(curve: Curves.easeOut)), weight: 35),
-      TweenSequenceItem(tween: Tween(begin: 1.45, end: 1.0).chain(CurveTween(curve: Curves.elasticOut)), weight: 65),
+    _favAnim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 500));
+    _favScl = TweenSequence([
+      TweenSequenceItem(
+          tween: Tween(begin: 1.0, end: 1.5)
+              .chain(CurveTween(curve: Curves.easeOut)),
+          weight: 35),
+      TweenSequenceItem(
+          tween: Tween(begin: 1.5, end: 1.0)
+              .chain(CurveTween(curve: Curves.elasticOut)),
+          weight: 65),
     ]).animate(_favAnim);
+
+    _progressTicker = AnimationController(
+        vsync: this, duration: const Duration(seconds: 1))
+      ..repeat();
 
     _initPlayer();
     _scheduleHide();
@@ -1148,34 +1187,59 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
   @override
   void dispose() {
-    _ctrlsAnim.dispose(); _favAnim.dispose();
-    _cc?.dispose(); _vpc?.dispose();
+    _ctrlsAnim.dispose();
+    _favAnim.dispose();
+    _progressTicker.dispose();
+    _cc?.dispose();
+    _vpc?.dispose();
     super.dispose();
   }
 
+  // ── controls visibility ────────────────────────────────────
   void _scheduleHide() => Future.delayed(const Duration(seconds: 4), () {
-    if (mounted && _ctrlsVisible) { setState(() => _ctrlsVisible = false); _ctrlsAnim.reverse(); }
-  });
+        if (mounted && _ctrlsVisible) {
+          setState(() => _ctrlsVisible = false);
+          _ctrlsAnim.reverse();
+        }
+      });
 
   void _tapScreen() {
     HapticFeedback.selectionClick();
-    setState(() => _ctrlsVisible = !_ctrlsVisible);
-    _ctrlsVisible ? _ctrlsAnim.forward() : _ctrlsAnim.reverse();
-    if (_ctrlsVisible) _scheduleHide();
+    final nowVisible = !_ctrlsVisible;
+    setState(() => _ctrlsVisible = nowVisible);
+    nowVisible ? _ctrlsAnim.forward() : _ctrlsAnim.reverse();
+    if (nowVisible) _scheduleHide();
   }
 
+  // ── stream init ────────────────────────────────────────────
   Future<void> _initPlayer() async {
-    if (widget.channel.streamUrl.isEmpty) { setState(() { _loading = false; _error = true; }); return; }
+    if (widget.channel.streamUrl.isEmpty) {
+      setState(() { _loading = false; _error = true; });
+      return;
+    }
     setState(() { _loading = true; _error = false; });
     try {
-      final headers = {'User-Agent': _ua, 'Referer': 'https://streamgo.tv/', 'Origin': 'https://streamgo.tv'};
-      _vpc = VideoPlayerController.networkUrl(Uri.parse(widget.channel.streamUrl), httpHeaders: headers);
+      final headers = {
+        'User-Agent': _ua,
+        'Referer': 'https://streamgo.tv/',
+        'Origin': 'https://streamgo.tv',
+      };
+      _vpc = VideoPlayerController.networkUrl(
+          Uri.parse(widget.channel.streamUrl),
+          httpHeaders: headers);
       await _vpc!.initialize();
       _cc = ChewieController(
         videoPlayerController: _vpc!,
-        autoPlay: widget.autoPlay, looping: true,
-        allowFullScreen: true, allowMuting: true, showControls: true,
-        placeholder: const Center(child: CupertinoActivityIndicator(radius: 16, color: Colors.white)),
+        autoPlay: widget.autoPlay,
+        looping: true,
+        allowFullScreen: true,
+        allowMuting: true,
+        // We supply our own overlay; tell Chewie NOT to draw its controls
+        // so we avoid the double-controls issue.
+        showControls: false,
+        placeholder: const Center(
+            child: CupertinoActivityIndicator(
+                radius: 16, color: Colors.white)),
         errorBuilder: (_, __) => _PError(onRetry: _retry),
       );
       if (mounted) setState(() => _loading = false);
@@ -1184,7 +1248,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     }
   }
 
-  void _retry() { _cc?.dispose(); _vpc?.dispose(); _cc = null; _vpc = null; _initPlayer(); }
+  void _retry() {
+    _cc?.dispose();
+    _vpc?.dispose();
+    _cc = null;
+    _vpc = null;
+    _initPlayer();
+  }
 
   void _tapFav() {
     widget.onToggleFav();
@@ -1193,101 +1263,656 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     _favAnim.forward(from: 0);
   }
 
+  // ── helpers ────────────────────────────────────────────────
+  Duration get _position  => _vpc?.value.position  ?? Duration.zero;
+  Duration get _duration  => _vpc?.value.duration  ?? Duration.zero;
+  bool     get _isPlaying => _vpc?.value.isPlaying ?? false;
+
+  double get _progress {
+    final dur = _duration.inMilliseconds;
+    if (dur == 0) return 0;
+    return (_position.inMilliseconds / dur).clamp(0.0, 1.0);
+  }
+
+  String _fmtDuration(Duration d) {
+    final h  = d.inHours;
+    final m  = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s  = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+
+  // ── build ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
+    final mq     = MediaQuery.of(context);
     final isLand = mq.orientation == Orientation.landscape;
-    final top = mq.padding.top;
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTap: _tapScreen,
-        behavior: HitTestBehavior.opaque,
-        child: Column(children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Stack(fit: StackFit.expand, children: [
-              Container(color: Colors.black,
-                child: _loading ? const Center(child: CupertinoActivityIndicator(radius: 18, color: Colors.white))
-                    : _error ? _PError(onRetry: _retry)
-                    : _cc != null ? Chewie(controller: _cc!)
-                    : const Center(child: CupertinoActivityIndicator(radius: 18, color: Colors.white)),
+      // Force status-bar icons white over the black player
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: GestureDetector(
+          onTap: _tapScreen,
+          behavior: HitTestBehavior.opaque,
+          child: isLand ? _buildLandscape() : _buildPortrait(),
+        ),
+      ),
+    );
+  }
+
+  // ── PORTRAIT layout ────────────────────────────────────────
+  Widget _buildPortrait() => Column(
+    children: [
+      // ── video zone (16:9 + full controls stack on top) ──
+      AspectRatio(
+        aspectRatio: 16 / 9,
+        child: _buildVideoStack(isLand: false),
+      ),
+      // ── info panel below video ──
+      Expanded(child: _buildInfoPanel()),
+    ],
+  );
+
+  // ── LANDSCAPE layout ───────────────────────────────────────
+  Widget _buildLandscape() => Stack(
+    fit: StackFit.expand,
+    children: [
+      _buildVideoStack(isLand: true),
+    ],
+  );
+
+  // ── VIDEO STACK (the centrepiece) ──────────────────────────
+  // Root is a Stack.  Video is centered in AspectRatio.
+  // Gradient scrims + glass controls float above it.
+  Widget _buildVideoStack({required bool isLand}) => Stack(
+    fit: StackFit.expand,
+    children: [
+      // ── 0: pure black canvas ──────────────────────────────
+      const ColoredBox(color: Colors.black),
+
+      // ── 1: video, perfectly centered ─────────────────────
+      Center(
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: _buildVideoContent(),
+        ),
+      ),
+
+      // ── 2a: top scrim (protects controls from bright video)
+      Positioned(
+        top: 0, left: 0, right: 0,
+        child: _GradientScrim(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          height: 140,
+        ),
+      ),
+
+      // ── 2b: bottom scrim ──────────────────────────────────
+      Positioned(
+        bottom: 0, left: 0, right: 0,
+        child: _GradientScrim(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          height: 140,
+        ),
+      ),
+
+      // ── 3: animated controls overlay ─────────────────────
+      FadeTransition(
+        opacity: _ctrlsOpa,
+        child: ScaleTransition(
+          scale: _ctrlsScl,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                // Top bar: back + title + fav
+                Positioned(
+                  top: 0, left: 0, right: 0,
+                  child: _buildTopBar(),
+                ),
+                // Centre play/pause
+                Center(child: _buildCentrePlayPause()),
+                // Bottom bar: progress + time
+                Positioned(
+                  bottom: 0, left: 0, right: 0,
+                  child: _buildBottomBar(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+
+  // ── video content (loading / error / player) ───────────────
+  Widget _buildVideoContent() {
+    if (_loading) {
+      return const Center(
+          child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
+    }
+    if (_error) return _PError(onRetry: _retry);
+    if (_cc != null) return Chewie(controller: _cc!);
+    return const Center(
+        child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
+  }
+
+  // ── TOP BAR ───────────────────────────────────────────────
+  Widget _buildTopBar() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: T.p16, vertical: T.p12),
+    child: Row(
+      children: [
+        // Back button — always on the LEFT (leading side in LTR,
+        // but since the app is RTL we use Directionality.ltr locally)
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: _PlayerBtn(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        const SizedBox(width: T.p12),
+        // Channel info
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.channel.name,
+                style: T.headline.copyWith(
+                    color: Colors.white,
+                    shadows: [const Shadow(blurRadius: 8)]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              // Controls overlay
-              FadeTransition(
-                opacity: _ctrlsOpa,
+              const SizedBox(height: 2),
+              Row(children: [
+                _PulseDot(),
+                const SizedBox(width: T.p4),
+                Text('بث مباشر',
+                    style: T.caption
+                        .copyWith(color: Colors.white70)),
+              ]),
+            ],
+          ),
+        ),
+        // Favourite button
+        ScaleTransition(
+          scale: _favScl,
+          child: _PlayerBtn(
+            icon: _isFav
+                ? CupertinoIcons.heart_fill
+                : CupertinoIcons.heart,
+            iconColor: _isFav ? T.red : Colors.white,
+            onTap: _tapFav,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  // ── CENTRE PLAY/PAUSE ─────────────────────────────────────
+  Widget _buildCentrePlayPause() {
+    if (_loading || _error) return const SizedBox.shrink();
+    return AnimatedBuilder(
+      animation: _progressTicker,
+      builder: (_, __) {
+        final playing = _isPlaying;
+        return _PlayerBtn(
+          size: 56,
+          iconSize: 28,
+          icon: playing
+              ? CupertinoIcons.pause_fill
+              : CupertinoIcons.play_fill,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            playing ? _vpc!.pause() : _vpc!.play();
+            setState(() {});
+            _scheduleHide();
+          },
+        );
+      },
+    );
+  }
+
+  // ── BOTTOM BAR: progress + time ────────────────────────────
+  Widget _buildBottomBar() => Padding(
+    padding: const EdgeInsets.fromLTRB(T.p16, 0, T.p16, T.p16),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Ultra-thin progress bar with glow
+        AnimatedBuilder(
+          animation: _progressTicker,
+          builder: (_, __) => _ThinProgressBar(progress: _progress),
+        ),
+        const SizedBox(height: T.p8),
+        // Time labels
+        AnimatedBuilder(
+          animation: _progressTicker,
+          builder: (_, __) => Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _fmtDuration(_position),
+                style: T.micro.copyWith(
+                    color: Colors.white70, fontWeight: FontWeight.w500),
+              ),
+              Text(
+                _fmtDuration(_duration),
+                style: T.micro.copyWith(color: Colors.white38),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  // ── INFO PANEL (portrait only, below video) ────────────────
+  Widget _buildInfoPanel() => Container(
+    color: T.void_,
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(T.p20, T.p20, T.p20, T.p20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Channel logo + name row
+            Row(children: [
+              // Logo with glass border
+              Container(
+                width: 60, height: 60,
+                decoration: BoxDecoration(
+                  color: T.s3,
+                  borderRadius: BorderRadius.circular(T.r16),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(T.r16),
+                  child: _NetImg(
+                      url: widget.channel.logo, w: 60, h: 60),
+                ),
+              ),
+              const SizedBox(width: T.p16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(widget.channel.name,
+                        style: T.title3,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: T.p6),
+                    // Glass status pill
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(T.rFull),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                            sigmaX: 15, sigmaY: 15),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: T.p10, vertical: T.p4),
+                          decoration: BoxDecoration(
+                            color: T.red.withValues(alpha: 0.15),
+                            borderRadius:
+                                BorderRadius.circular(T.rFull),
+                            border: Border.all(
+                                color:
+                                    T.red.withValues(alpha: 0.3),
+                                width: 0.5),
+                          ),
+                          child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _PulseDot(),
+                                const SizedBox(width: T.p6),
+                                Text('بث مباشر',
+                                    style: T.caption.copyWith(
+                                        color: T.red,
+                                        fontWeight:
+                                            FontWeight.w600)),
+                              ]),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: T.p12),
+              // Favourite button
+              _Tap(
+                onTap: _tapFav,
                 child: ScaleTransition(
-                  scale: _ctrlsScl,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(T.p16, math.max(isLand ? top + T.p12 : T.p16, T.p16), T.p16, T.p16),
-                    child: Align(
-                      alignment: Alignment.topRight,
-                      child: _GBtn(icon: CupertinoIcons.back, onTap: () => Navigator.of(context).pop()),
+                  scale: _favScl,
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.circular(T.rFull),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                          sigmaX: 15, sigmaY: 15),
+                      child: Container(
+                        width: 46, height: 46,
+                        decoration: BoxDecoration(
+                          color: T.s3
+                              .withValues(alpha: 0.8),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: Colors.white
+                                  .withValues(alpha: 0.08),
+                              width: 0.5),
+                        ),
+                        child: AnimatedSwitcher(
+                          duration:
+                              const Duration(milliseconds: 250),
+                          transitionBuilder: (c, a) =>
+                              ScaleTransition(
+                                  scale: a,
+                                  child: FadeTransition(
+                                      opacity: a, child: c)),
+                          child: Icon(
+                            _isFav
+                                ? CupertinoIcons.heart_fill
+                                : CupertinoIcons.heart,
+                            key: ValueKey(_isFav),
+                            color: _isFav ? T.red : T.lbl2,
+                            size: 22,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ]),
-          ),
-          if (!isLand)
-            Container(
-              color: T.void_,
-              padding: const EdgeInsets.fromLTRB(T.p20, T.p20, T.p20, T.p20),
-              child: Row(children: [
-                Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(color: T.s3, borderRadius: BorderRadius.circular(T.r12)),
-                  child: ClipRRect(borderRadius: BorderRadius.circular(T.r12), child: _NetImg(url: widget.channel.logo, w: 56, h: 56)),
-                ),
-                const SizedBox(width: T.p16),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(widget.channel.name, style: T.title3, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: T.p4),
-                  Row(children: [_PulseDot(), const SizedBox(width: T.p6), Text('بث مباشر', style: T.caption.copyWith(color: T.lbl2))]),
-                ])),
-                const SizedBox(width: T.p12),
-                _Tap(
-                  onTap: _tapFav,
-                  child: ScaleTransition(
-                    scale: _favScl,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 240),
-                      transitionBuilder: (c, a) => ScaleTransition(scale: a, child: FadeTransition(opacity: a, child: c)),
-                      child: Icon(_isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart, key: ValueKey(_isFav), color: _isFav ? T.red : T.lbl3, size: 30),
-                    ),
+            const SizedBox(height: T.p20),
+            // Glass quality/channel info strip
+            ClipRRect(
+              borderRadius: BorderRadius.circular(T.r12),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: T.p16, vertical: T.p12),
+                  decoration: BoxDecoration(
+                    color: T.s2.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(T.r12),
+                    border: Border.all(
+                        color:
+                            Colors.white.withValues(alpha: 0.06),
+                        width: 0.5),
                   ),
+                  child: Row(children: [
+                    _InfoChip(
+                        icon: CupertinoIcons.tv,
+                        label: 'قناة ${widget.channel.number}'),
+                    const SizedBox(width: T.p16),
+                    _InfoChip(
+                        icon: CupertinoIcons.waveform,
+                        label: 'HLS'),
+                    const Spacer(),
+                    // Retry button
+                    _Tap(
+                      onTap: _retry,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: T.p12, vertical: T.p6),
+                        decoration: BoxDecoration(
+                          color: T.accent.withValues(alpha: 0.15),
+                          borderRadius:
+                              BorderRadius.circular(T.rFull),
+                          border: Border.all(
+                              color: T.accent.withValues(alpha: 0.3),
+                              width: 0.5),
+                        ),
+                        child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(CupertinoIcons.refresh,
+                                  size: 12, color: T.accent),
+                              const SizedBox(width: T.p4),
+                              Text('إعادة',
+                                  style: T.micro.copyWith(
+                                      color: T.accent,
+                                      fontWeight: FontWeight.w600)),
+                            ]),
+                      ),
+                    ),
+                  ]),
                 ),
-              ]),
+              ),
             ),
-        ]),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
 }
 
+// ── Thin progress bar with glow ────────────────────────────────
+class _ThinProgressBar extends StatelessWidget {
+  final double progress;
+  const _ThinProgressBar({required this.progress});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (_, constraints) {
+      final w = constraints.maxWidth;
+      return GestureDetector(
+        // Intentionally no-op: scrub handled by Chewie internally
+        // This is purely a visual track element
+        child: SizedBox(
+          height: 20,
+          child: Stack(alignment: Alignment.centerLeft, children: [
+            // Track
+            Container(
+              height: 2.5,
+              width: w,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Fill
+            Container(
+              height: 2.5,
+              width: w * progress,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(2),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0A84FF), Color(0xFF30D158)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: T.accent.withValues(alpha: 0.55),
+                    blurRadius: 6,
+                    offset: Offset.zero,
+                  ),
+                ],
+              ),
+            ),
+            // Thumb dot
+            Positioned(
+              left: (w * progress - 5).clamp(0.0, w - 10),
+              child: Container(
+                width: 10, height: 10,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: T.accent.withValues(alpha: 0.6),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ]),
+        ),
+      );
+    },
+  );
+}
+
+// ── Gradient scrim ─────────────────────────────────────────────
+class _GradientScrim extends StatelessWidget {
+  final AlignmentGeometry begin, end;
+  final double height;
+  const _GradientScrim({
+    required this.begin,
+    required this.end,
+    required this.height,
+  });
+  @override
+  Widget build(BuildContext context) => Container(
+    height: height,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: begin,
+        end: end,
+        colors: [
+          Colors.black.withValues(alpha: 0.72),
+          Colors.black.withValues(alpha: 0.0),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── Glass player button (Back / Play / Fav) ────────────────────
+class _PlayerBtn extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final VoidCallback onTap;
+  final double size, iconSize;
+  const _PlayerBtn({
+    required this.icon,
+    required this.onTap,
+    this.iconColor,
+    this.size = 42,
+    this.iconSize = 20,
+  });
+
+  @override
+  Widget build(BuildContext context) => _Tap(
+    onTap: onTap,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(T.rFull),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          width: size, height: size,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.22),
+                width: 0.5),
+          ),
+          child: Icon(icon,
+              color: iconColor ?? Colors.white, size: iconSize),
+        ),
+      ),
+    ),
+  );
+}
+
+// ── Small info chip inside info panel ─────────────────────────
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoChip({required this.icon, required this.label});
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 12, color: T.lbl3),
+      const SizedBox(width: T.p4),
+      Text(label, style: T.caption.copyWith(fontSize: 11, color: T.lbl2)),
+    ],
+  );
+}
+
+// ── Error overlay ──────────────────────────────────────────────
 class _PError extends StatelessWidget {
   final VoidCallback onRetry;
   const _PError({required this.onRetry});
   @override
   Widget build(BuildContext context) => Container(
     color: Colors.black,
-    child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(CupertinoIcons.wifi_slash, size: 46, color: Colors.white38),
-      const SizedBox(height: T.p16),
-      const Text('تعذّر الاتصال', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
-      const SizedBox(height: T.p8),
-      const Text('حدث خطأ في البث', style: TextStyle(color: Colors.white54, fontSize: 14)),
-      const SizedBox(height: T.p24),
-      _Tap(
-        onTap: onRetry,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: T.p24, vertical: T.p12),
-          decoration: BoxDecoration(color: T.accent, borderRadius: BorderRadius.circular(T.rFull)),
-          child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+    child: Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 72, height: 72,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.06),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1), width: 0.5),
+          ),
+          child: const Icon(CupertinoIcons.wifi_slash,
+              size: 32, color: Colors.white38),
         ),
-      ),
-    ])),
+        const SizedBox(height: T.p20),
+        const Text('تعذّر الاتصال',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.3)),
+        const SizedBox(height: T.p8),
+        const Text('حدث خطأ في البث',
+            style: TextStyle(color: Colors.white54, fontSize: 14)),
+        const SizedBox(height: T.p28),
+        _Tap(
+          onTap: onRetry,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(T.rFull),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: T.p28, vertical: T.p14),
+                decoration: BoxDecoration(
+                  color: T.accent.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(T.rFull),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                        color: T.accent.withValues(alpha: 0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6)),
+                  ],
+                ),
+                child: const Text('إعادة المحاولة',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15)),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    ),
   );
 }
 
