@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -14,97 +16,142 @@ void main() {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light,
+  ));
   runApp(const StreamGoApp());
 }
 
-// ─────────────────────────────────────────
-//  Favorites Manager (SharedPreferences)
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+//  DESIGN TOKENS — iOS 26 Precision System
+// ═══════════════════════════════════════════
+class DS {
+  // Colors
+  static const bg = Color(0xFF000000);
+  static const surface1 = Color(0xFF0A0A0A);
+  static const surface2 = Color(0xFF111111);
+  static const surface3 = Color(0xFF1C1C1E);
+  static const elevated = Color(0xFF2C2C2E);
+  static const label = Color(0xFFFFFFFF);
+  static const label2 = Color(0xFF8E8E93);
+  static const label3 = Color(0xFF48484A);
+  static const tint = Color(0xFF0A84FF);
+  static const red = Color(0xFFFF453A);
+  static const green = Color(0xFF30D158);
+  static const separator = Color(0xFF38383A);
+
+  // Typography — SF Pro rhythm
+  static const tsLargeTitle =
+      TextStyle(fontFamily: 'SF Pro Display', fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: 0.37, height: 1.2, color: label);
+  static const tsTitle1 =
+      TextStyle(fontFamily: 'SF Pro Display', fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: 0.36, height: 1.2, color: label);
+  static const tsTitle2 =
+      TextStyle(fontFamily: 'SF Pro Display', fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 0.35, height: 1.3, color: label);
+  static const tsTitle3 =
+      TextStyle(fontFamily: 'SF Pro Text', fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: 0.38, height: 1.3, color: label);
+  static const tsHeadline =
+      TextStyle(fontFamily: 'SF Pro Text', fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.41, height: 1.4, color: label);
+  static const tsBody =
+      TextStyle(fontFamily: 'SF Pro Text', fontSize: 17, fontWeight: FontWeight.w400, letterSpacing: -0.41, height: 1.5, color: label);
+  static const tsCallout =
+      TextStyle(fontFamily: 'SF Pro Text', fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: -0.32, height: 1.5, color: label);
+  static const tsSubhead =
+      TextStyle(fontFamily: 'SF Pro Text', fontSize: 15, fontWeight: FontWeight.w400, letterSpacing: -0.24, height: 1.5, color: label);
+  static const tsFootnote =
+      TextStyle(fontFamily: 'SF Pro Text', fontSize: 13, fontWeight: FontWeight.w400, letterSpacing: -0.08, height: 1.4, color: label2);
+  static const tsCaption1 =
+      TextStyle(fontFamily: 'SF Pro Text', fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 0.0, height: 1.4, color: label2);
+  static const tsCaption2 =
+      TextStyle(fontFamily: 'SF Pro Text', fontSize: 11, fontWeight: FontWeight.w400, letterSpacing: 0.07, height: 1.3, color: label2);
+
+  // Spacing — 8pt grid
+  static const s2 = 2.0;
+  static const s4 = 4.0;
+  static const s6 = 6.0;
+  static const s8 = 8.0;
+  static const s12 = 12.0;
+  static const s16 = 16.0;
+  static const s20 = 20.0;
+  static const s24 = 24.0;
+  static const s32 = 32.0;
+  static const s40 = 40.0;
+  static const s48 = 48.0;
+  static const s56 = 56.0;
+  static const s64 = 64.0;
+
+  // Radii
+  static const rSmall = 8.0;
+  static const rMed = 12.0;
+  static const rLarge = 16.0;
+  static const rXL = 20.0;
+  static const rFull = 100.0;
+
+  // Blur
+  static const blurLight = 20.0;
+  static const blurMed = 40.0;
+  static const blurHeavy = 80.0;
+}
+
+// ═══════════════════════════════════════════
+//  FAVORITES + SETTINGS PERSISTENCE
+// ═══════════════════════════════════════════
 class FavoritesManager {
-  static const _key = 'favorite_channel_ids';
-
+  static const _key = 'fav_ids_v2';
   static Future<Set<int>> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_key) ?? [];
-    return list.map((e) => int.tryParse(e) ?? -1).toSet();
-  }
-
-  static Future<void> save(Set<int> ids) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_key, ids.map((e) => e.toString()).toList());
+    final p = await SharedPreferences.getInstance();
+    return (p.getStringList(_key) ?? []).map((e) => int.tryParse(e) ?? -1).toSet();
   }
 
   static Future<bool> toggle(int id) async {
-    final favs = await load();
-    if (favs.contains(id)) {
-      favs.remove(id);
-    } else {
-      favs.add(id);
-    }
-    await save(favs);
-    return favs.contains(id);
+    final p = await SharedPreferences.getInstance();
+    final set = await load();
+    set.contains(id) ? set.remove(id) : set.add(id);
+    await p.setStringList(_key, set.map((e) => '$e').toList());
+    return set.contains(id);
   }
 }
 
-// ─────────────────────────────────────────
-//  Settings Manager
-// ─────────────────────────────────────────
 class AppSettings {
-  bool arabicInterface;
   bool autoPlay;
-  bool showMatchScores;
-  String videoQuality; // 'auto', 'hd', 'sd'
-
-  AppSettings({
-    this.arabicInterface = true,
-    this.autoPlay = true,
-    this.showMatchScores = true,
-    this.videoQuality = 'auto',
-  });
+  bool showScores;
+  String quality;
+  AppSettings({this.autoPlay = true, this.showScores = true, this.quality = 'auto'});
 
   static Future<AppSettings> load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final p = await SharedPreferences.getInstance();
     return AppSettings(
-      arabicInterface: prefs.getBool('arabic_interface') ?? true,
-      autoPlay: prefs.getBool('auto_play') ?? true,
-      showMatchScores: prefs.getBool('show_match_scores') ?? true,
-      videoQuality: prefs.getString('video_quality') ?? 'auto',
+      autoPlay: p.getBool('ap') ?? true,
+      showScores: p.getBool('ss') ?? true,
+      quality: p.getString('q') ?? 'auto',
     );
   }
 
   Future<void> save() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('arabic_interface', arabicInterface);
-    await prefs.setBool('auto_play', autoPlay);
-    await prefs.setBool('show_match_scores', showMatchScores);
-    await prefs.setString('video_quality', videoQuality);
+    final p = await SharedPreferences.getInstance();
+    await p.setBool('ap', autoPlay);
+    await p.setBool('ss', showScores);
+    await p.setString('q', quality);
   }
 }
 
-// ─────────────────────────────────────────
-//  Models
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+//  MODELS
+// ═══════════════════════════════════════════
 class Channel {
   final int id;
   final String name;
   final String number;
   final String logo;
   final String streamUrl;
-
-  const Channel({
-    required this.id,
-    required this.name,
-    required this.number,
-    required this.logo,
-    required this.streamUrl,
-  });
-
-  factory Channel.fromJson(Map<String, dynamic> json) => Channel(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        number: json['number']?.toString() ?? '',
-        logo: json['logo'] as String? ?? '',
-        streamUrl: json['stream'] as String? ?? '',
+  const Channel({required this.id, required this.name, required this.number, required this.logo, required this.streamUrl});
+  factory Channel.fromJson(Map<String, dynamic> j) => Channel(
+        id: j['id'] as int,
+        name: j['name'] as String,
+        number: j['number']?.toString() ?? '',
+        logo: j['logo'] as String? ?? '',
+        streamUrl: j['stream'] as String? ?? '',
       );
 }
 
@@ -112,192 +159,147 @@ class Category {
   final String name;
   final IconData icon;
   final List<Channel> channels;
-
-  const Category({
-    required this.name,
-    required this.icon,
-    required this.channels,
-  });
-
-  factory Category.fromJson(Map<String, dynamic> json) => Category(
-        name: json['name'] as String,
-        icon: _iconFromString(json['icon'] as String? ?? 'tv'),
-        channels: (json['channels'] as List<dynamic>)
-            .map((c) => Channel.fromJson(c as Map<String, dynamic>))
-            .toList(),
+  const Category({required this.name, required this.icon, required this.channels});
+  factory Category.fromJson(Map<String, dynamic> j) => Category(
+        name: j['name'] as String,
+        icon: _icon(j['icon'] as String? ?? 'tv'),
+        channels: (j['channels'] as List).map((c) => Channel.fromJson(c)).toList(),
       );
-
-  static IconData _iconFromString(String name) {
-    const map = <String, IconData>{
-      'sports_soccer': Icons.sports_soccer,
-      'sports': Icons.sports,
-      'tv': Icons.tv,
-      'movie': Icons.movie,
-      'star': Icons.star,
-      'flash_on': Icons.flash_on,
-    };
-    return map[name] ?? Icons.tv;
-  }
+  static IconData _icon(String n) => const {
+        'sports_soccer': CupertinoIcons.sportscourt_fill,
+        'sports': CupertinoIcons.sportscourt,
+        'tv': CupertinoIcons.tv_fill,
+        'movie': CupertinoIcons.film_fill,
+        'star': CupertinoIcons.star_fill,
+        'flash_on': CupertinoIcons.bolt_fill,
+      }[n] ??
+      CupertinoIcons.tv_fill;
 }
 
 class Match {
-  final String id;
-  final String league;
-  final String leagueEn;
-  final String leagueLogo;
-  final String home;
-  final String homeEn;
-  final String homeLogo;
-  final String away;
-  final String awayEn;
-  final String awayLogo;
-  final String score;
-  final String date;
-  final String time;
-  final int status; // 1 = live, 0 = scheduled, etc.
+  final String id, league, leagueEn, home, homeEn, homeLogo, away, awayEn, awayLogo, score, date, time;
+  final int status;
   final bool hasChannels;
-
   const Match({
-    required this.id,
-    required this.league,
-    required this.leagueEn,
-    required this.leagueLogo,
-    required this.home,
-    required this.homeEn,
-    required this.homeLogo,
-    required this.away,
-    required this.awayEn,
-    required this.awayLogo,
-    required this.score,
-    required this.date,
-    required this.time,
-    required this.status,
-    required this.hasChannels,
+    required this.id, required this.league, required this.leagueEn,
+    required this.home, required this.homeEn, required this.homeLogo,
+    required this.away, required this.awayEn, required this.awayLogo,
+    required this.score, required this.date, required this.time,
+    required this.status, required this.hasChannels,
   });
-
-  factory Match.fromJson(Map<String, dynamic> json) => Match(
-        id: json['id']?.toString() ?? '',
-        league: json['league'] as String? ?? '',
-        leagueEn: json['league_en'] as String? ?? '',
-        leagueLogo: json['league_logo'] as String? ?? '',
-        home: json['home'] as String? ?? '',
-        homeEn: json['home_en'] as String? ?? '',
-        homeLogo: json['home_logo'] as String? ?? '',
-        away: json['away'] as String? ?? '',
-        awayEn: json['away_en'] as String? ?? '',
-        awayLogo: json['away_logo'] as String? ?? '',
-        score: json['score'] as String? ?? '0 - 0',
-        date: json['date'] as String? ?? '',
-        time: json['time'] as String? ?? '',
-        status: int.tryParse(json['status']?.toString() ?? '0') ?? 0,
-        hasChannels: (json['has_channels']?.toString() ?? '0') == '1',
+  factory Match.fromJson(Map<String, dynamic> j) => Match(
+        id: j['id']?.toString() ?? '',
+        league: j['league'] as String? ?? '',
+        leagueEn: j['league_en'] as String? ?? '',
+        home: j['home'] as String? ?? '',
+        homeEn: j['home_en'] as String? ?? '',
+        homeLogo: j['home_logo'] as String? ?? '',
+        away: j['away'] as String? ?? '',
+        awayEn: j['away_en'] as String? ?? '',
+        awayLogo: j['away_logo'] as String? ?? '',
+        score: j['score'] as String? ?? '0 - 0',
+        date: j['date'] as String? ?? '',
+        time: j['time'] as String? ?? '',
+        status: int.tryParse(j['status']?.toString() ?? '0') ?? 0,
+        hasChannels: (j['has_channels']?.toString() ?? '0') == '1',
       );
-
   bool get isLive => status == 1;
-
-  String get homeLogoUrl =>
-      'https://img.kora-api.space/uploads/team/$homeLogo';
-  String get awayLogoUrl =>
-      'https://img.kora-api.space/uploads/team/$awayLogo';
+  String get homeLogoUrl => 'https://img.kora-api.space/uploads/team/$homeLogo';
+  String get awayLogoUrl => 'https://img.kora-api.space/uploads/team/$awayLogo';
 }
 
-// ─────────────────────────────────────────
-//  Data Services
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+//  SERVICES
+// ═══════════════════════════════════════════
 class ChannelService {
-  static const String _url =
-      'https://raw.githubusercontent.com/illyassvvv/G/refs/heads/main/channels.json';
-
-  static Future<List<Category>> fetchCategories() async {
-    final response = await http.get(Uri.parse(_url));
-    if (response.statusCode != 200) {
-      throw Exception('فشل تحميل القنوات (${response.statusCode})');
-    }
-    final Map<String, dynamic> body =
-        jsonDecode(response.body) as Map<String, dynamic>;
-    final List<dynamic> cats = body['categories'] as List<dynamic>;
-    return cats
-        .map((c) => Category.fromJson(c as Map<String, dynamic>))
-        .toList();
+  static const _url = 'https://raw.githubusercontent.com/illyassvvv/G/refs/heads/main/channels.json';
+  static Future<List<Category>> fetch() async {
+    final r = await http.get(Uri.parse(_url));
+    if (r.statusCode != 200) throw Exception('fetch_failed');
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    return (body['categories'] as List).map((c) => Category.fromJson(c)).toList();
   }
 }
 
 class MatchService {
-  static Future<List<Match>> fetchMatches(String date) async {
-    final url = 'https://ws.kora-api.space/api/matches/$date/1';
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode != 200) {
-      throw Exception('فشل تحميل المباريات (${response.statusCode})');
-    }
-    final Map<String, dynamic> body =
-        jsonDecode(response.body) as Map<String, dynamic>;
-    final List<dynamic> matches = body['matches'] as List<dynamic>? ?? [];
-    return matches
-        .map((m) => Match.fromJson(m as Map<String, dynamic>))
-        .toList();
+  static Future<List<Match>> fetch(String date) async {
+    final r = await http.get(Uri.parse('https://ws.kora-api.space/api/matches/$date/1'));
+    if (r.statusCode != 200) throw Exception('fetch_failed');
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    return ((body['matches'] as List?) ?? []).map((m) => Match.fromJson(m)).toList();
   }
 }
 
-// ─────────────────────────────────────────
-//  App Root
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+//  APP ROOT
+// ═══════════════════════════════════════════
 class StreamGoApp extends StatelessWidget {
   const StreamGoApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'StreamGo TV',
+      title: 'StreamGo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF050505),
-        fontFamily: 'Tahoma',
-        primaryColor: Colors.blueAccent,
+        scaffoldBackgroundColor: DS.bg,
+        fontFamily: 'SF Pro Text',
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        colorScheme: const ColorScheme.dark(primary: DS.tint, surface: DS.surface1),
       ),
-      builder: (context, child) {
-        return Directionality(textDirection: TextDirection.rtl, child: child!);
-      },
-      home: const HomeScreen(),
+      builder: (ctx, child) => Directionality(textDirection: TextDirection.rtl, child: child!),
+      home: const RootShell(),
     );
   }
 }
 
-// ─────────────────────────────────────────
-//  Home Screen (Shell with bottom nav)
-// ─────────────────────────────────────────
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
+// ═══════════════════════════════════════════
+//  ROOT SHELL
+// ═══════════════════════════════════════════
+class RootShell extends StatefulWidget {
+  const RootShell({super.key});
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<RootShell> createState() => _RootShellState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-  late Future<List<Category>> _categoriesFuture;
+class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
+  int _tab = 0;
+  late AnimationController _tabAnimCtrl;
+  late Future<List<Category>> _catsFuture;
   late Future<List<Match>> _matchesFuture;
-  Set<int> _favoriteIds = {};
+  Set<int> _favIds = {};
   AppSettings _settings = AppSettings();
   List<Channel> _allChannels = [];
+  final List<GlobalKey<NavigatorState>> _navKeys = List.generate(5, (_) => GlobalKey());
+
+  // Toast
+  OverlayEntry? _toastEntry;
 
   @override
   void initState() {
     super.initState();
-    _categoriesFuture = ChannelService.fetchCategories();
-    _matchesFuture = MatchService.fetchMatches(_todayDate());
-    _loadFavorites();
+    _tabAnimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _catsFuture = ChannelService.fetch();
+    _matchesFuture = MatchService.fetch(_today());
+    _loadFavs();
     _loadSettings();
   }
 
-  String _todayDate() {
-    final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  @override
+  void dispose() {
+    _tabAnimCtrl.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadFavorites() async {
-    final favs = await FavoritesManager.load();
-    if (mounted) setState(() => _favoriteIds = favs);
+  String _today() {
+    final n = DateTime.now();
+    return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _loadFavs() async {
+    final f = await FavoritesManager.load();
+    if (mounted) setState(() => _favIds = f);
   }
 
   Future<void> _loadSettings() async {
@@ -305,1366 +307,1539 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() => _settings = s);
   }
 
-  void _reload() {
-    setState(() {
-      _categoriesFuture = ChannelService.fetchCategories();
-      _matchesFuture = MatchService.fetchMatches(_todayDate());
-    });
+  void _reload() => setState(() {
+        _catsFuture = ChannelService.fetch();
+        _matchesFuture = MatchService.fetch(_today());
+      });
+
+  Future<void> _toggleFav(int id) async {
+    final isFav = await FavoritesManager.toggle(id);
+    HapticFeedback.lightImpact();
+    if (mounted) setState(() => isFav ? _favIds.add(id) : _favIds.remove(id));
+    _showToast(isFav ? '❤️  أُضيفت إلى المفضلة' : 'تمت الإزالة من المفضلة');
   }
 
-  Future<void> _toggleFavorite(int channelId) async {
-    final isFav = await FavoritesManager.toggle(channelId);
-    if (mounted) {
-      setState(() {
-        if (isFav) {
-          _favoriteIds.add(channelId);
-        } else {
-          _favoriteIds.remove(channelId);
-        }
-      });
-    }
+  void _showToast(String message) {
+    _toastEntry?.remove();
+    _toastEntry = null;
+    final entry = OverlayEntry(
+      builder: (_) => _ToastWidget(message: message, onDone: () {
+        _toastEntry?.remove();
+        _toastEntry = null;
+      }),
+    );
+    _toastEntry = entry;
+    Overlay.of(context).insert(entry);
+  }
+
+  void _openPlayer(Channel ch) {
+    HapticFeedback.selectionClick();
+    Navigator.of(context).push(
+      _slideRoute(VideoPlayerScreen(
+        channel: ch,
+        isFavorite: _favIds.contains(ch.id),
+        onToggleFav: () => _toggleFav(ch.id),
+        autoPlay: _settings.autoPlay,
+      )),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // ── Main Content ──
-          IndexedStack(
-            index: _selectedIndex,
+      backgroundColor: DS.bg,
+      body: FutureBuilder<List<Category>>(
+        future: _catsFuture,
+        builder: (ctx, snap) {
+          if (snap.hasData) {
+            _allChannels = snap.data!.expand((c) => c.channels).toList();
+          }
+          return Stack(
             children: [
-              _buildHomeTab(),
-              _buildChannelsTab(),
-              _buildFavoritesTab(),
-              _buildMatchesTab(),
-              _buildSettingsTab(),
-            ],
-          ),
-
-          // ── Bottom navigation ──
-          Positioned(
-            bottom: 16, left: 16, right: 16,
-            child: _buildBottomNavigation(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── TAB 0: Home ──
-  Widget _buildHomeTab() {
-    return FutureBuilder<List<Category>>(
-      future: _categoriesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingState();
-        }
-        if (snapshot.hasError) {
-          return _buildErrorState(snapshot.error.toString());
-        }
-        final categories = snapshot.data!;
-        _allChannels = categories.expand((c) => c.channels).toList();
-        return RefreshIndicator(
-          onRefresh: () async => _reload(),
-          color: Colors.blueAccent,
-          backgroundColor: const Color(0xFF121212),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 100),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                _buildHeroSection(categories),
-                const SizedBox(height: 12),
-                ...categories.map((cat) => _buildCategoryRow(cat)),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // ── TAB 1: Channels (all channels flat list) ──
-  Widget _buildChannelsTab() {
-    return FutureBuilder<List<Category>>(
-      future: _categoriesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingState();
-        }
-        if (snapshot.hasError) {
-          return _buildErrorState(snapshot.error.toString());
-        }
-        final categories = snapshot.data!;
-        _allChannels = categories.expand((c) => c.channels).toList();
-        return Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.only(bottom: 100, top: 8),
-                itemCount: _allChannels.length,
-                itemBuilder: (context, index) {
-                  final ch = _allChannels[index];
-                  return _buildChannelListTile(ch);
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildChannelListTile(Channel ch) {
-    final isFav = _favoriteIds.contains(ch.id);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: const Color(0xFF141414),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: ch.logo.isNotEmpty
-              ? Image.network(ch.logo, fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.tv, color: Colors.white24))
-              : const Icon(Icons.tv, color: Colors.white24),
-        ),
-      ),
-      title: Text(ch.name,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-      subtitle: Text('قناة ${ch.number}',
-          style: const TextStyle(color: Colors.white38, fontSize: 11)),
-      trailing: IconButton(
-        icon: Icon(
-          isFav ? Icons.favorite : Icons.favorite_border,
-          color: isFav ? Colors.redAccent : Colors.white38,
-          size: 22,
-        ),
-        onPressed: () => _toggleFavorite(ch.id),
-      ),
-      onTap: () => _openPlayer(ch),
-    );
-  }
-
-  // ── TAB 2: Favorites ──
-  Widget _buildFavoritesTab() {
-    return FutureBuilder<List<Category>>(
-      future: _categoriesFuture,
-      builder: (context, snapshot) {
-        final allChannels = snapshot.data?.expand((c) => c.channels).toList() ?? [];
-        final favChannels =
-            allChannels.where((ch) => _favoriteIds.contains(ch.id)).toList();
-
-        return Column(
-          children: [
-            _buildHeader(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Row(
+              // ── Tab Pages ──
+              IndexedStack(
+                index: _tab,
                 children: [
-                  const Icon(Icons.favorite, color: Colors.redAccent, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'المفضلة (${favChannels.length})',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
+                  _HomeTab(
+                    catsFuture: _catsFuture,
+                    matchesFuture: _matchesFuture,
+                    favIds: _favIds,
+                    onToggleFav: _toggleFav,
+                    onOpenPlayer: _openPlayer,
+                    onGoMatches: () => setState(() => _tab = 3),
+                    onReload: _reload,
+                  ),
+                  _ChannelsTab(
+                    channels: _allChannels,
+                    favIds: _favIds,
+                    onToggleFav: _toggleFav,
+                    onOpenPlayer: _openPlayer,
+                    loading: snap.connectionState == ConnectionState.waiting,
+                    error: snap.hasError,
+                    onReload: _reload,
+                  ),
+                  _FavoritesTab(
+                    channels: _allChannels,
+                    favIds: _favIds,
+                    onToggleFav: _toggleFav,
+                    onOpenPlayer: _openPlayer,
+                  ),
+                  _MatchesTab(
+                    matchesFuture: _matchesFuture,
+                    onGoChannels: () => setState(() => _tab = 1),
+                    onReload: _reload,
+                    showScores: _settings.showScores,
+                  ),
+                  _SettingsTab(
+                    settings: _settings,
+                    onChanged: () async {
+                      await _settings.save();
+                      setState(() {});
+                    },
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: favChannels.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.favorite_border,
-                              size: 64,
-                              color: Colors.white.withValues(alpha: 0.2)),
-                          const SizedBox(height: 16),
-                          const Text('لا توجد قنوات مفضلة',
-                              style: TextStyle(
-                                  color: Colors.white38, fontSize: 16)),
-                          const SizedBox(height: 8),
-                          const Text('اضغط على ❤ في أي قناة لإضافتها',
-                              style: TextStyle(
-                                  color: Colors.white24, fontSize: 12)),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 100),
-                      itemCount: favChannels.length,
-                      itemBuilder: (context, index) =>
-                          _buildChannelListTile(favChannels[index]),
-                    ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ── TAB 3: Matches ──
-  Widget _buildMatchesTab() {
-    return Column(
-      children: [
-        _buildHeader(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Row(
-            children: [
-              const Icon(Icons.sports_soccer,
-                  color: Colors.blueAccent, size: 20),
-              const SizedBox(width: 8),
-              const Text('مباريات اليوم',
-                  style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              GestureDetector(
-                onTap: _reload,
-                child: const Icon(Icons.refresh, color: Colors.white54, size: 20),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: FutureBuilder<List<Match>>(
-            future: _matchesFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: Colors.blueAccent),
-                );
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off_rounded,
-                          size: 48, color: Colors.white24),
-                      const SizedBox(height: 12),
-                      const Text('تعذّر تحميل المباريات',
-                          style: TextStyle(color: Colors.white54)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _reload,
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueAccent),
-                        child: const Text('إعادة المحاولة'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              final matches = snapshot.data!;
-              if (matches.isEmpty) {
-                return const Center(
-                  child: Text('لا توجد مباريات اليوم',
-                      style: TextStyle(color: Colors.white38)),
-                );
-              }
-              // Group by league
-              final Map<String, List<Match>> grouped = {};
-              for (final m in matches) {
-                grouped.putIfAbsent(m.league, () => []).add(m);
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 100),
-                itemCount: grouped.keys.length,
-                itemBuilder: (context, i) {
-                  final league = grouped.keys.elementAt(i);
-                  final leagueMatches = grouped[league]!;
-                  return _buildLeagueSection(league, leagueMatches);
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLeagueSection(String league, List<Match> matches) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 4, height: 16,
-                  decoration: BoxDecoration(
-                    color: Colors.blueAccent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(league,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 14)),
-              ],
-            ),
-          ),
-          ...matches.map((m) => _buildMatchCard(m)),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMatchCard(Match match) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: match.isLive
-              ? Colors.redAccent.withValues(alpha: 0.4)
-              : Colors.white.withValues(alpha: 0.05),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Home team
-          Expanded(
-            child: Column(
-              children: [
-                _teamLogo(match.homeLogoUrl),
-                const SizedBox(height: 6),
-                Text(match.home,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    style: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-          // Score / Time
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Column(
-              children: [
-                if (match.isLive)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text('LIVE',
-                        style: TextStyle(
-                            fontSize: 9, fontWeight: FontWeight.bold)),
-                  ),
-                const SizedBox(height: 4),
-                Text(
-                  match.isLive ? match.score : match.time,
-                  style: TextStyle(
-                    fontSize: match.isLive ? 20 : 14,
-                    fontWeight: FontWeight.w900,
-                    color: match.isLive ? Colors.white : Colors.white70,
-                  ),
-                ),
-                if (!match.isLive)
-                  Text(match.date,
-                      style: const TextStyle(
-                          fontSize: 9, color: Colors.white38)),
-                if (match.hasChannels) ...[
-                  const SizedBox(height: 6),
-                  GestureDetector(
-                    onTap: () => _showMatchChannels(match),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.blueAccent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text('شاهد',
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          // Away team
-          Expanded(
-            child: Column(
-              children: [
-                _teamLogo(match.awayLogoUrl),
-                const SizedBox(height: 6),
-                Text(match.away,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    style: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _teamLogo(String url) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        shape: BoxShape.circle,
-      ),
-      child: ClipOval(
-        child: Image.network(
-          url,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) =>
-              const Icon(Icons.sports_soccer, color: Colors.white24, size: 24),
-        ),
-      ),
-    );
-  }
-
-  void _showMatchChannels(Match match) {
-    // Navigate to channels tab and optionally filter
-    setState(() => _selectedIndex = 1);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('اختر قناة لمشاهدة ${match.home} vs ${match.away}'),
-        backgroundColor: Colors.blueAccent,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-  // ── TAB 4: Settings ──
-  Widget _buildSettingsTab() {
-    return Column(
-      children: [
-        _buildHeader(),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('الإعدادات',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ),
-              _settingsTile(
-                icon: Icons.play_circle_outline,
-                title: 'تشغيل تلقائي',
-                subtitle: 'تشغيل القناة عند الاختيار مباشرة',
-                value: _settings.autoPlay,
-                onChanged: (v) async {
-                  setState(() => _settings.autoPlay = v);
-                  await _settings.save();
-                },
-              ),
-              _settingsTile(
-                icon: Icons.scoreboard_outlined,
-                title: 'عرض نتائج المباريات',
-                subtitle: 'إظهار نتيجة المباراة في الواجهة',
-                value: _settings.showMatchScores,
-                onChanged: (v) async {
-                  setState(() => _settings.showMatchScores = v);
-                  await _settings.save();
-                },
-              ),
-              const SizedBox(height: 16),
-              _settingsSectionTitle('جودة الفيديو'),
-              _qualityOption('auto', 'تلقائي'),
-              _qualityOption('hd', 'عالية الجودة HD'),
-              _qualityOption('sd', 'جودة عادية SD'),
-              const SizedBox(height: 16),
-              _settingsSectionTitle('حول التطبيق'),
-              _infoTile('الإصدار', '2.0.0'),
-              _infoTile('المطور', 'StreamGo Team'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _settingsTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: SwitchListTile(
-        secondary: Icon(icon, color: Colors.blueAccent, size: 22),
-        title: Text(title, style: const TextStyle(fontSize: 14)),
-        subtitle: Text(subtitle,
-            style: const TextStyle(color: Colors.white38, fontSize: 11)),
-        value: value,
-        onChanged: onChanged,
-        activeColor: Colors.blueAccent,
-      ),
-    );
-  }
-
-  Widget _settingsSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(title,
-          style: const TextStyle(
-              color: Colors.blueAccent,
-              fontWeight: FontWeight.bold,
-              fontSize: 13)),
-    );
-  }
-
-  Widget _qualityOption(String value, String label) {
-    final isSelected = _settings.videoQuality == value;
-    return GestureDetector(
-      onTap: () async {
-        setState(() => _settings.videoQuality = value);
-        await _settings.save();
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.blueAccent.withValues(alpha: 0.15)
-              : const Color(0xFF141414),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected
-                ? Colors.blueAccent
-                : Colors.white.withValues(alpha: 0.05),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: isSelected ? Colors.blueAccent : Colors.white38,
-              size: 18,
-            ),
-            const SizedBox(width: 12),
-            Text(label),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _infoTile(String label, String value) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.white54)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
-  // ── Open Player ──
-  void _openPlayer(Channel channel) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => VideoPlayerScreen(
-          channel: channel,
-          isFavorite: _favoriteIds.contains(channel.id),
-          onToggleFavorite: () => _toggleFavorite(channel.id),
-          autoPlay: _settings.autoPlay,
-        ),
-      ),
-    );
-  }
-
-  // ── Loading ──
-  Widget _buildLoadingState() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 120),
-      child: Column(
-        children: List.generate(
-          3,
-          (_) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Container(
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wifi_off_rounded, size: 56, color: Colors.white24),
-            const SizedBox(height: 16),
-            const Text('تعذّر تحميل البيانات',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(error,
-                style:
-                    const TextStyle(color: Colors.white38, fontSize: 12),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _reload,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Header ──
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 48, 16, 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF050505).withValues(alpha: 0.95),
-            Colors.transparent,
-          ],
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blueAccent.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child:
-                    const Icon(Icons.flash_on, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 8),
-              const Text('STREAM',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2)),
-              const Text('GO',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.blueAccent)),
-            ],
-          ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.white),
-                onPressed: _reload,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Hero Section (shows first live match or default) ──
-  Widget _buildHeroSection(List<Category> categories) {
-    return FutureBuilder<List<Match>>(
-      future: _matchesFuture,
-      builder: (context, snapshot) {
-        Match? featuredMatch;
-        if (snapshot.hasData) {
-          final live =
-              snapshot.data!.where((m) => m.isLive).toList();
-          if (live.isNotEmpty) featuredMatch = live.first;
-        }
-
-        return Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-          height: 200,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0D47A1), Color(0xFF1565C0)],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.network(
-                    'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&q=80&w=1200',
-                    fit: BoxFit.cover,
-                    color: Colors.black.withValues(alpha: 0.5),
-                    colorBlendMode: BlendMode.darken,
-                    errorBuilder: (_, __, ___) => const SizedBox(),
-                  ),
+              // ── Tab Bar ──
+              Positioned(
+                bottom: 0, left: 0, right: 0,
+                child: _IOSTabBar(
+                  selectedIndex: _tab,
+                  onTap: (i) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _tab = i);
+                  },
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: featuredMatch != null
-                    ? _heroMatchContent(featuredMatch)
-                    : _heroDefaultContent(),
-              ),
             ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _heroMatchContent(Match match) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.redAccent,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text('LIVE',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 8),
-            Text(match.league,
-                style:
-                    const TextStyle(color: Colors.white70, fontSize: 12)),
-          ],
-        ),
-        const Spacer(),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _teamLogo(match.homeLogoUrl),
-            const SizedBox(width: 12),
-            Column(
-              children: [
-                Text(match.score,
-                    style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900)),
-                Text('${match.home} vs ${match.away}',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 11)),
-              ],
-            ),
-            const SizedBox(width: 12),
-            _teamLogo(match.awayLogoUrl),
-          ],
-        ),
-        const Spacer(),
-        if (match.hasChannels)
-          ElevatedButton(
-            onPressed: () => _showMatchChannels(match),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('شاهد الآن',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(width: 6),
-                Icon(Icons.play_arrow, size: 18),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _heroDefaultContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.redAccent,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text('LIVE',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 8),
-            const Text('البث المباشر',
-                style: TextStyle(color: Colors.white70, fontSize: 12)),
-          ],
-        ),
-        const Spacer(),
-        const Text('مشاهدة المباريات\nمباشرة الآن',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.3)),
-        const Spacer(),
-        ElevatedButton(
-          onPressed: () => setState(() => _selectedIndex = 3),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('المباريات', style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(width: 6),
-              Icon(Icons.sports_soccer, size: 18),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Category Row ──
-  Widget _buildCategoryRow(Category category) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(category.name,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-                Icon(category.icon, size: 16, color: Colors.blueAccent),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 155,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: category.channels.length,
-              itemBuilder: (context, index) {
-                return _buildChannelCard(category.channels[index]);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChannelCard(Channel ch) {
-    final isFav = _favoriteIds.contains(ch.id);
-    return GestureDetector(
-      onTap: () => _openPlayer(ch),
-      child: Container(
-        width: 105,
-        margin: const EdgeInsets.symmetric(horizontal: 5),
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF141414),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.05)),
-                ),
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(14.0),
-                      child: Center(
-                        child: ch.logo.isNotEmpty
-                            ? Image.network(ch.logo,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.tv,
-                                    color: Colors.white24,
-                                    size: 36))
-                            : const Icon(Icons.tv,
-                                color: Colors.white24, size: 36),
-                      ),
-                    ),
-                    // Fav button
-                    Positioned(
-                      top: 4, left: 4,
-                      child: GestureDetector(
-                        onTap: () => _toggleFavorite(ch.id),
-                        child: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border,
-                          color: isFav ? Colors.redAccent : Colors.white38,
-                          size: 16,
-                        ),
-                      ),
-                    ),
-                    // Number badge
-                    Positioned(
-                      top: 4, right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(ch.number,
-                            style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.blueAccent,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(ch.name,
-                style: const TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w500),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Bottom Nav ──
-  Widget _buildBottomNavigation() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: Container(
-          height: 62,
-          decoration: BoxDecoration(
-            color: const Color(0xFF121212).withValues(alpha: 0.9),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _navItem(Icons.home_filled, 'الرئيسية', 0),
-              _navItem(Icons.tv, 'القنوات', 1),
-              _navItem(Icons.favorite, 'المفضلة', 2),
-              _navItem(Icons.sports_soccer, 'المباريات', 3),
-              _navItem(Icons.settings, 'الإعدادات', 4),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, int index) {
-    final isActive = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon,
-              color: isActive ? Colors.blueAccent : Colors.grey, size: 24),
-          const SizedBox(height: 2),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 9,
-                  color: isActive ? Colors.blueAccent : Colors.grey,
-                  fontWeight: FontWeight.bold)),
-        ],
+          );
+        },
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────
-//  Video Player Screen (Real HLS Player)
-// ─────────────────────────────────────────
-class VideoPlayerScreen extends StatefulWidget {
-  final Channel channel;
-  final bool isFavorite;
-  final VoidCallback onToggleFavorite;
-  final bool autoPlay;
+// ═══════════════════════════════════════════
+//  iOS TAB BAR
+// ═══════════════════════════════════════════
+class _IOSTabBar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+  const _IOSTabBar({required this.selectedIndex, required this.onTap});
 
-  const VideoPlayerScreen({
-    super.key,
-    required this.channel,
-    required this.isFavorite,
-    required this.onToggleFavorite,
-    this.autoPlay = true,
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: DS.blurHeavy, sigmaY: DS.blurHeavy),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.72),
+            border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.12), width: 0.5)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 49,
+              child: Row(
+                children: [
+                  _tab(0, CupertinoIcons.house_fill, CupertinoIcons.house, 'الرئيسية'),
+                  _tab(1, CupertinoIcons.tv_fill, CupertinoIcons.tv, 'القنوات'),
+                  _tab(2, CupertinoIcons.heart_fill, CupertinoIcons.heart, 'المفضلة'),
+                  _tab(3, CupertinoIcons.sportscourt_fill, CupertinoIcons.sportscourt, 'المباريات'),
+                  _tab(4, CupertinoIcons.gear_alt_fill, CupertinoIcons.gear_alt, 'الإعدادات'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tab(int idx, IconData filledIcon, IconData outlineIcon, String label) {
+    final active = selectedIndex == idx;
+    return Expanded(
+      child: _TapScale(
+        onTap: () => onTap(idx),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                active ? filledIcon : outlineIcon,
+                key: ValueKey(active),
+                size: 24,
+                color: active ? DS.tint : DS.label2,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'SF Pro Text',
+                fontSize: 10,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                color: active ? DS.tint : DS.label2,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  HOME TAB
+// ═══════════════════════════════════════════
+class _HomeTab extends StatelessWidget {
+  final Future<List<Category>> catsFuture;
+  final Future<List<Match>> matchesFuture;
+  final Set<int> favIds;
+  final Function(int) onToggleFav;
+  final Function(Channel) onOpenPlayer;
+  final VoidCallback onGoMatches;
+  final VoidCallback onReload;
+
+  const _HomeTab({
+    required this.catsFuture, required this.matchesFuture, required this.favIds,
+    required this.onToggleFav, required this.onOpenPlayer, required this.onGoMatches, required this.onReload,
   });
 
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Category>>(
+      future: catsFuture,
+      builder: (ctx, snap) {
+        return CustomScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          slivers: [
+            // ── Large Title Nav ──
+            _SliverLargeTitle(title: 'StreamGo', onRefresh: onReload),
+            // ── Live Hero Card ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(DS.s16, DS.s8, DS.s16, DS.s24),
+                child: _HeroMatchCard(matchesFuture: matchesFuture, onGoMatches: onGoMatches),
+              ),
+            ),
+            // ── Section Header ──
+            if (snap.hasData) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(DS.s16, 0, DS.s16, DS.s12),
+                  child: Text('القنوات', style: DS.tsTitle2),
+                ),
+              ),
+              ...snap.data!.map((cat) => SliverToBoxAdapter(
+                    child: _CategoryRow(
+                      category: cat, favIds: favIds,
+                      onToggleFav: onToggleFav, onOpenPlayer: onOpenPlayer,
+                    ),
+                  )),
+            ] else if (snap.connectionState == ConnectionState.waiting)
+              const SliverToBoxAdapter(child: _LoadingShimmer())
+            else if (snap.hasError)
+              SliverToBoxAdapter(child: _ErrorCard(onRetry: onReload)),
+            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  CHANNELS TAB
+// ═══════════════════════════════════════════
+class _ChannelsTab extends StatefulWidget {
+  final List<Channel> channels;
+  final Set<int> favIds;
+  final Function(int) onToggleFav;
+  final Function(Channel) onOpenPlayer;
+  final bool loading, error;
+  final VoidCallback onReload;
+  const _ChannelsTab({
+    required this.channels, required this.favIds, required this.onToggleFav,
+    required this.onOpenPlayer, required this.loading, required this.error, required this.onReload,
+  });
+  @override
+  State<_ChannelsTab> createState() => _ChannelsTabState();
+}
+
+class _ChannelsTabState extends State<_ChannelsTab> {
+  String _query = '';
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.channels
+        .where((ch) => _query.isEmpty || ch.name.contains(_query) || ch.number.contains(_query))
+        .toList();
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        _SliverLargeTitle(title: 'القنوات', onRefresh: widget.onReload),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(DS.s16, 0, DS.s16, DS.s16),
+            child: _IOSSearchBar(
+              placeholder: 'بحث عن قناة...',
+              onChanged: (v) => setState(() => _query = v),
+            ),
+          ),
+        ),
+        if (widget.loading)
+          const SliverToBoxAdapter(child: _LoadingShimmer())
+        else if (widget.error)
+          SliverToBoxAdapter(child: _ErrorCard(onRetry: widget.onReload))
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) => _ChannelRow(
+                channel: filtered[i],
+                isFav: widget.favIds.contains(filtered[i].id),
+                onToggleFav: () => widget.onToggleFav(filtered[i].id),
+                onTap: () => widget.onOpenPlayer(filtered[i]),
+                isLast: i == filtered.length - 1,
+              ),
+              childCount: filtered.length,
+            ),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  FAVORITES TAB
+// ═══════════════════════════════════════════
+class _FavoritesTab extends StatelessWidget {
+  final List<Channel> channels;
+  final Set<int> favIds;
+  final Function(int) onToggleFav;
+  final Function(Channel) onOpenPlayer;
+  const _FavoritesTab({required this.channels, required this.favIds, required this.onToggleFav, required this.onOpenPlayer});
+
+  @override
+  Widget build(BuildContext context) {
+    final favs = channels.where((ch) => favIds.contains(ch.id)).toList();
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        _SliverLargeTitle(title: 'المفضلة'),
+        if (favs.isEmpty)
+          const SliverFillRemaining(child: _EmptyFavorites())
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) => _ChannelRow(
+                channel: favs[i],
+                isFav: true,
+                onToggleFav: () => onToggleFav(favs[i].id),
+                onTap: () => onOpenPlayer(favs[i]),
+                isLast: i == favs.length - 1,
+              ),
+              childCount: favs.length,
+            ),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  MATCHES TAB
+// ═══════════════════════════════════════════
+class _MatchesTab extends StatelessWidget {
+  final Future<List<Match>> matchesFuture;
+  final VoidCallback onGoChannels, onReload;
+  final bool showScores;
+  const _MatchesTab({required this.matchesFuture, required this.onGoChannels, required this.onReload, required this.showScores});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Match>>(
+      future: matchesFuture,
+      builder: (ctx, snap) {
+        return CustomScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          slivers: [
+            _SliverLargeTitle(title: 'المباريات', onRefresh: onReload),
+            if (snap.connectionState == ConnectionState.waiting)
+              const SliverToBoxAdapter(child: _LoadingShimmer())
+            else if (snap.hasError)
+              SliverToBoxAdapter(child: _ErrorCard(onRetry: onReload))
+            else ..._buildMatchGroups(snap.data!, showScores, onGoChannels),
+            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          ],
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildMatchGroups(List<Match> matches, bool showScores, VoidCallback onGoChannels) {
+    final grouped = <String, List<Match>>{};
+    for (final m in matches) grouped.putIfAbsent(m.league, () => []).add(m);
+
+    return grouped.entries.map((e) => SliverToBoxAdapter(
+          child: _LeagueGroup(league: e.key, matches: e.value, showScores: showScores, onGoChannels: onGoChannels),
+        )).toList();
+  }
+}
+
+// ═══════════════════════════════════════════
+//  SETTINGS TAB
+// ═══════════════════════════════════════════
+class _SettingsTab extends StatelessWidget {
+  final AppSettings settings;
+  final VoidCallback onChanged;
+  const _SettingsTab({required this.settings, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        _SliverLargeTitle(title: 'الإعدادات'),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(DS.s16, DS.s8, DS.s16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _settingsSection('التشغيل', [
+                  _IOSToggleRow(
+                    icon: CupertinoIcons.play_circle_fill,
+                    iconColor: DS.red,
+                    title: 'تشغيل تلقائي',
+                    subtitle: 'تشغيل البث فور اختيار القناة',
+                    value: settings.autoPlay,
+                    onChanged: (v) { settings.autoPlay = v; onChanged(); },
+                  ),
+                  _IOSToggleRow(
+                    icon: CupertinoIcons.sportscourt_fill,
+                    iconColor: DS.green,
+                    title: 'نتائج المباريات',
+                    subtitle: 'إظهار النتيجة على بطاقة المباراة',
+                    value: settings.showScores,
+                    onChanged: (v) { settings.showScores = v; onChanged(); },
+                  ),
+                ]),
+                const SizedBox(height: DS.s32),
+                _settingsSection('جودة الفيديو', [
+                  _QualitySelector(current: settings.quality, onSelect: (v) { settings.quality = v; onChanged(); }),
+                ]),
+                const SizedBox(height: DS.s32),
+                _settingsSection('حول التطبيق', [
+                  _InfoRow(label: 'الإصدار', value: '2.0'),
+                  _InfoRow(label: 'المطوّر', value: 'StreamGo'),
+                ]),
+                const SizedBox(height: 120),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _settingsSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: DS.s16, bottom: DS.s8),
+          child: Text(title.toUpperCase(), style: DS.tsCaption1.copyWith(color: DS.label2, letterSpacing: 0.5)),
+        ),
+        _IOSGroupedCard(children: children),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  VIDEO PLAYER SCREEN
+// ═══════════════════════════════════════════
+class VideoPlayerScreen extends StatefulWidget {
+  final Channel channel;
+  final bool isFavorite, autoPlay;
+  final VoidCallback onToggleFav;
+  const VideoPlayerScreen({super.key, required this.channel, required this.isFavorite, required this.onToggleFav, required this.autoPlay});
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
-  VideoPlayerController? _videoController;
-  ChewieController? _chewieController;
-  bool _isFavorite = false;
-  bool _isLoading = true;
-  bool _hasError = false;
-  String _errorMessage = '';
+class _VideoPlayerScreenState extends State<VideoPlayerScreen> with TickerProviderStateMixin {
+  VideoPlayerController? _vpc;
+  ChewieController? _cc;
+  bool _loading = true, _error = false, _isFav = false;
+  late AnimationController _favAnimCtrl;
+  late Animation<double> _favScale;
 
   @override
   void initState() {
     super.initState();
-    _isFavorite = widget.isFavorite;
-    if (widget.channel.streamUrl.isNotEmpty) {
-      _initPlayer();
-    } else {
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-        _errorMessage = 'لا يوجد رابط بث لهذه القناة';
-      });
-    }
+    _isFav = widget.isFavorite;
+    _favAnimCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _favScale = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.4).chain(CurveTween(curve: Curves.easeOut)), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 1.4, end: 1.0).chain(CurveTween(curve: Curves.elasticOut)), weight: 60),
+    ]).animate(_favAnimCtrl);
+    _initPlayer();
+  }
+
+  @override
+  void dispose() {
+    _favAnimCtrl.dispose();
+    _cc?.dispose();
+    _vpc?.dispose();
+    super.dispose();
   }
 
   Future<void> _initPlayer() async {
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
-
+    if (widget.channel.streamUrl.isEmpty) {
+      setState(() { _loading = false; _error = true; });
+      return;
+    }
+    setState(() { _loading = true; _error = false; });
     try {
-      final uri = Uri.parse(widget.channel.streamUrl);
-      _videoController = VideoPlayerController.networkUrl(uri);
-
-      await _videoController!.initialize();
-
-      _chewieController = ChewieController(
-        videoPlayerController: _videoController!,
+      _vpc = VideoPlayerController.networkUrl(Uri.parse(widget.channel.streamUrl));
+      await _vpc!.initialize();
+      _cc = ChewieController(
+        videoPlayerController: _vpc!,
         autoPlay: widget.autoPlay,
         looping: true,
         allowFullScreen: true,
         allowMuting: true,
         showControls: true,
-        placeholder: const Center(
-          child: CircularProgressIndicator(color: Colors.blueAccent),
-        ),
-        errorBuilder: (context, errorMessage) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline,
-                    color: Colors.redAccent, size: 48),
-                const SizedBox(height: 12),
-                Text(errorMessage,
-                    style: const TextStyle(color: Colors.white70),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _retryPlayer,
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent),
-                  child: const Text('إعادة المحاولة'),
-                ),
-              ],
-            ),
-          );
-        },
+        placeholder: const Center(child: CupertinoActivityIndicator(radius: 14, color: Colors.white)),
+        errorBuilder: (ctx, msg) => _PlayerErrorView(onRetry: _retry),
       );
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-          _errorMessage = e.toString();
-        });
-      }
+      if (mounted) setState(() => _loading = false);
+    } catch (_) {
+      if (mounted) setState(() { _loading = false; _error = true; });
     }
   }
 
-  void _retryPlayer() {
-    _disposePlayer();
+  void _retry() {
+    _cc?.dispose(); _vpc?.dispose();
+    _cc = null; _vpc = null;
     _initPlayer();
   }
 
-  void _disposePlayer() {
-    _chewieController?.dispose();
-    _videoController?.dispose();
-    _chewieController = null;
-    _videoController = null;
-  }
-
-  @override
-  void dispose() {
-    _disposePlayer();
-    super.dispose();
+  void _tapFav() {
+    widget.onToggleFav();
+    HapticFeedback.mediumImpact();
+    setState(() => _isFav = !_isFav);
+    _favAnimCtrl.forward(from: 0);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLand = MediaQuery.of(context).orientation == Orientation.landscape;
+    final top = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Player area ──
-            AspectRatio(
-              aspectRatio: isLandscape ? 16 / 9 : 16 / 9,
-              child: Stack(
-                children: [
-                  // Video or placeholder
-                  Container(
-                    color: Colors.black,
-                    child: _isLoading
-                        ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircularProgressIndicator(
-                                    color: Colors.blueAccent),
-                                SizedBox(height: 12),
-                                Text('جاري تحميل البث...',
-                                    style:
-                                        TextStyle(color: Colors.blueAccent)),
-                              ],
-                            ),
-                          )
-                        : _hasError
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.error_outline,
-                                        color: Colors.redAccent, size: 48),
-                                    const SizedBox(height: 12),
-                                    const Text('تعذّر تحميل البث',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 8),
-                                    Text(_errorMessage,
-                                        style: const TextStyle(
-                                            color: Colors.white54,
-                                            fontSize: 11),
-                                        textAlign: TextAlign.center),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton(
-                                      onPressed: _retryPlayer,
-                                      style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blueAccent),
-                                      child: const Text('إعادة المحاولة'),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : _chewieController != null
-                                ? Chewie(controller: _chewieController!)
-                                : const SizedBox(),
-                  ),
-                  // Back button overlay
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.arrow_back,
-                            color: Colors.white, size: 20),
-                      ),
-                    ),
-                  ),
-                ],
+      body: Column(
+        children: [
+          // ── VIDEO CONTAINER ──
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Player / Loading / Error
+                if (_loading)
+                  const _PlayerLoadingView()
+                else if (_error)
+                  _PlayerErrorView(onRetry: _retry)
+                else if (_cc != null)
+                  Chewie(controller: _cc!)
+                else
+                  const _PlayerLoadingView(),
+
+                // Top Controls Overlay
+                Positioned(
+                  top: 0, left: 0, right: 0,
+                  child: _VideoTopControls(topPadding: isLand ? top : 0, onBack: () => Navigator.pop(context)),
+                ),
+              ],
+            ),
+          ),
+
+          // ── CHANNEL INFO ──
+          if (!isLand)
+            Expanded(
+              child: _ChannelInfoPanel(
+                channel: widget.channel,
+                isFav: _isFav,
+                favScale: _favScale,
+                onToggleFav: _tapFav,
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
 
-            // ── Channel Info ──
-            if (!isLandscape) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Row(
-                  children: [
-                    // Logo
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF141414),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: widget.channel.logo.isNotEmpty
-                            ? Image.network(widget.channel.logo,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.tv,
-                                    color: Colors.white24))
-                            : const Icon(Icons.tv, color: Colors.white24),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.channel.name,
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold)),
-                          Text(
-                            widget.channel.streamUrl.isNotEmpty
-                                ? 'بث مباشر 🔴'
-                                : 'غير متاح',
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Favorite toggle button
-                    IconButton(
-                      icon: Icon(
-                        _isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: _isFavorite ? Colors.redAccent : Colors.white54,
-                        size: 28,
-                      ),
-                      onPressed: () {
-                        widget.onToggleFavorite();
-                        setState(() => _isFavorite = !_isFavorite);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(_isFavorite
-                                ? 'تمت إضافة القناة للمفضلة ❤'
-                                : 'تم حذف القناة من المفضلة'),
-                            duration: const Duration(seconds: 2),
-                            backgroundColor: _isFavorite
-                                ? Colors.redAccent
-                                : Colors.grey[800],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+// ─── Player Sub-views ───
+class _PlayerLoadingView extends StatelessWidget {
+  const _PlayerLoadingView();
+  @override
+  Widget build(BuildContext context) => Container(
+    color: Colors.black,
+    child: const Center(child: CupertinoActivityIndicator(radius: 16, color: Colors.white)),
+  );
+}
+
+class _PlayerErrorView extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _PlayerErrorView({required this.onRetry});
+  @override
+  Widget build(BuildContext context) => Container(
+    color: Colors.black,
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(CupertinoIcons.wifi_slash, size: 44, color: Colors.white54),
+          const SizedBox(height: DS.s16),
+          const Text('تعذّر الاتصال', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Text')),
+          const SizedBox(height: DS.s8),
+          const Text('حدث خطأ في البث', style: TextStyle(color: Colors.white54, fontSize: 14, fontFamily: 'SF Pro Text')),
+          const SizedBox(height: DS.s24),
+          _TapScale(
+            onTap: onRetry,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: DS.s24, vertical: DS.s12),
+              decoration: BoxDecoration(color: DS.tint, borderRadius: BorderRadius.circular(DS.rFull)),
+              child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontFamily: 'SF Pro Text')),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _VideoTopControls extends StatelessWidget {
+  final double topPadding;
+  final VoidCallback onBack;
+  const _VideoTopControls({required this.topPadding, required this.onBack});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(DS.s16, math.max(topPadding + DS.s16, DS.s16), DS.s16, DS.s16),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _GlassButton(icon: CupertinoIcons.back, onTap: onBack),
+      ],
+    ),
+  );
+}
+
+class _ChannelInfoPanel extends StatelessWidget {
+  final Channel channel;
+  final bool isFav;
+  final Animation<double> favScale;
+  final VoidCallback onToggleFav;
+  const _ChannelInfoPanel({required this.channel, required this.isFav, required this.favScale, required this.onToggleFav});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(DS.s20, DS.s20, DS.s20, DS.s16),
+    child: Row(
+      children: [
+        // Logo
+        Container(
+          width: 56, height: 56,
+          decoration: BoxDecoration(
+            color: DS.surface3,
+            borderRadius: BorderRadius.circular(DS.rMed),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: channel.logo.isNotEmpty
+              ? Image.network(channel.logo, fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.tv, color: DS.label3, size: 28))
+              : const Icon(CupertinoIcons.tv, color: DS.label3, size: 28),
+        ),
+        const SizedBox(width: DS.s16),
+        // Title
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(channel.name, style: DS.tsHeadline, maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: DS.s4),
+              Row(
+                children: [
+                  _LiveDot(),
+                  const SizedBox(width: DS.s6),
+                  Text('بث مباشر', style: DS.tsCaption1.copyWith(color: DS.label2)),
+                ],
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Divider(color: Colors.white12),
-              ),
-              // Stream URL info
-              if (widget.channel.streamUrl.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.link,
-                            color: Colors.blueAccent, size: 14),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            widget.channel.streamUrl,
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 10),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
             ],
+          ),
+        ),
+        const SizedBox(width: DS.s16),
+        // Fav button
+        _TapScale(
+          onTap: onToggleFav,
+          child: ScaleTransition(
+            scale: favScale,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: Icon(
+                isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                key: ValueKey(isFav),
+                color: isFav ? DS.red : DS.label2,
+                size: 28,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// ═══════════════════════════════════════════
+//  REUSABLE UI COMPONENTS
+// ═══════════════════════════════════════════
+
+// ── Sliver Large Title (iOS Navigation) ──
+class _SliverLargeTitle extends StatelessWidget {
+  final String title;
+  final VoidCallback? onRefresh;
+  const _SliverLargeTitle({required this.title, this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.of(context).padding.top;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(DS.s20, top + DS.s8, DS.s20, DS.s16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: DS.tsLargeTitle),
+            if (onRefresh != null)
+              _TapScale(
+                onTap: onRefresh!,
+                child: Icon(CupertinoIcons.refresh, color: DS.tint, size: 22),
+              ),
           ],
         ),
       ),
     );
   }
 }
+
+// ── Hero Match Card ──
+class _HeroMatchCard extends StatelessWidget {
+  final Future<List<Match>> matchesFuture;
+  final VoidCallback onGoMatches;
+  const _HeroMatchCard({required this.matchesFuture, required this.onGoMatches});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Match>>(
+      future: matchesFuture,
+      builder: (ctx, snap) {
+        Match? featured;
+        if (snap.hasData) {
+          final live = snap.data!.where((m) => m.isLive).toList();
+          if (live.isNotEmpty) featured = live.first;
+        }
+
+        return _TapScale(
+          onTap: onGoMatches,
+          child: Container(
+            height: 180,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(DS.rXL),
+              gradient: const LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Color(0xFF1A2A4A), Color(0xFF0D1B35), Color(0xFF050A14)],
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Background noise texture feel
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(DS.rXL),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(DS.s20),
+                  child: featured != null ? _liveMatchContent(featured) : _defaultContent(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _liveMatchContent(Match m) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _LiveDot(),
+            const SizedBox(width: DS.s6),
+            Text('مباشر', style: DS.tsCaption1.copyWith(color: DS.red)),
+            const SizedBox(width: DS.s8),
+            Expanded(child: Text(m.league, style: DS.tsCaption1, maxLines: 1, overflow: TextOverflow.ellipsis)),
+          ],
+        ),
+        const Spacer(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _SmallTeamLogo(url: m.homeLogoUrl),
+            const SizedBox(width: DS.s12),
+            Expanded(
+              child: Column(
+                children: [
+                  Text(m.score, style: DS.tsTitle1.copyWith(fontSize: 32, letterSpacing: 2)),
+                  Text('${m.home} - ${m.away}', style: DS.tsCaption1, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+            const SizedBox(width: DS.s12),
+            _SmallTeamLogo(url: m.awayLogoUrl),
+          ],
+        ),
+        const Spacer(),
+      ],
+    );
+  }
+
+  Widget _defaultContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _LiveDot(),
+            const SizedBox(width: DS.s6),
+            Text('بث مباشر', style: DS.tsCaption1.copyWith(color: DS.red)),
+          ],
+        ),
+        const Spacer(),
+        Text('مباريات اليوم', style: DS.tsTitle2),
+        const SizedBox(height: DS.s4),
+        Text('اضغط لعرض جميع المباريات', style: DS.tsFootnote),
+        const Spacer(),
+      ],
+    );
+  }
+}
+
+// ── Category Row (Horizontal Scroll) ──
+class _CategoryRow extends StatelessWidget {
+  final Category category;
+  final Set<int> favIds;
+  final Function(int) onToggleFav;
+  final Function(Channel) onOpenPlayer;
+  const _CategoryRow({required this.category, required this.favIds, required this.onToggleFav, required this.onOpenPlayer});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: DS.s24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(DS.s20, 0, DS.s20, DS.s12),
+            child: Row(
+              children: [
+                Icon(category.icon, size: 16, color: DS.tint),
+                const SizedBox(width: DS.s8),
+                Text(category.name, style: DS.tsTitle3),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 148,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: DS.s16),
+              itemCount: category.channels.length,
+              itemBuilder: (ctx, i) => _ChannelCard(
+                channel: category.channels[i],
+                isFav: favIds.contains(category.channels[i].id),
+                onToggleFav: () => onToggleFav(category.channels[i].id),
+                onTap: () => onOpenPlayer(category.channels[i]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Channel Card (Grid/Horizontal) ──
+class _ChannelCard extends StatelessWidget {
+  final Channel channel;
+  final bool isFav;
+  final VoidCallback onToggleFav, onTap;
+  const _ChannelCard({required this.channel, required this.isFav, required this.onToggleFav, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return _TapScale(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        margin: const EdgeInsets.symmetric(horizontal: DS.s6),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: DS.surface3,
+                  borderRadius: BorderRadius.circular(DS.rLarge),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.5),
+                ),
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(DS.s16),
+                      child: Center(
+                        child: channel.logo.isNotEmpty
+                            ? Image.network(channel.logo, fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.tv, color: DS.label3, size: 32))
+                            : const Icon(CupertinoIcons.tv, color: DS.label3, size: 32),
+                      ),
+                    ),
+                    Positioned(
+                      top: DS.s6, left: DS.s6,
+                      child: _TapScale(
+                        onTap: onToggleFav,
+                        child: Icon(
+                          isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                          color: isFav ? DS.red : DS.label3,
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: DS.s6, right: DS.s6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(DS.s4),
+                        ),
+                        child: Text(channel.number, style: DS.tsCaption2.copyWith(color: DS.tint, fontSize: 9, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: DS.s8),
+            Text(channel.name, style: DS.tsCaption1.copyWith(fontWeight: FontWeight.w500, color: DS.label), maxLines: 1, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Channel Row (List) ──
+class _ChannelRow extends StatelessWidget {
+  final Channel channel;
+  final bool isFav, isLast;
+  final VoidCallback onToggleFav, onTap;
+  const _ChannelRow({required this.channel, required this.isFav, required this.isLast, required this.onToggleFav, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: DS.s16),
+      child: _TapScale(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 1),
+          decoration: BoxDecoration(
+            color: DS.surface3,
+            borderRadius: isLast
+                ? const BorderRadius.vertical(bottom: Radius.circular(DS.rLarge))
+                : BorderRadius.zero,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: DS.s16, vertical: DS.s12),
+            child: Row(
+              children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: DS.elevated,
+                    borderRadius: BorderRadius.circular(DS.rSmall),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: channel.logo.isNotEmpty
+                      ? Image.network(channel.logo, fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.tv, color: DS.label3, size: 20))
+                      : const Icon(CupertinoIcons.tv, color: DS.label3, size: 20),
+                ),
+                const SizedBox(width: DS.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(channel.name, style: DS.tsCallout.copyWith(fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text('قناة ${channel.number}', style: DS.tsCaption1),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: DS.s8),
+                _TapScale(
+                  onTap: onToggleFav,
+                  child: Padding(
+                    padding: const EdgeInsets.all(DS.s8),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                        key: ValueKey(isFav),
+                        color: isFav ? DS.red : DS.label3,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ),
+                const Icon(CupertinoIcons.chevron_forward, size: 14, color: DS.label3),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── League Group ──
+class _LeagueGroup extends StatelessWidget {
+  final String league;
+  final List<Match> matches;
+  final bool showScores;
+  final VoidCallback onGoChannels;
+  const _LeagueGroup({required this.league, required this.matches, required this.showScores, required this.onGoChannels});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(DS.s16, 0, DS.s16, DS.s24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: DS.s4, bottom: DS.s8),
+            child: Text(league, style: DS.tsFootnote.copyWith(color: DS.label2, letterSpacing: 0.3)),
+          ),
+          _IOSGroupedCard(
+            children: matches.asMap().entries.map((e) => _MatchRow(
+              match: e.value,
+              showScore: showScores,
+              isLast: e.key == matches.length - 1,
+              onGoChannels: onGoChannels,
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Match Row ──
+class _MatchRow extends StatelessWidget {
+  final Match match;
+  final bool showScore, isLast;
+  final VoidCallback onGoChannels;
+  const _MatchRow({required this.match, required this.showScore, required this.isLast, required this.onGoChannels});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: DS.s16, vertical: DS.s12),
+      child: Row(
+        children: [
+          _SmallTeamLogo(url: match.homeLogoUrl, size: 36),
+          const SizedBox(width: DS.s10),
+          Expanded(
+            child: Text(match.home, style: DS.tsCallout.copyWith(fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: DS.s8),
+            child: Column(
+              children: [
+                if (match.isLive) ...[
+                  _LiveDot(),
+                  const SizedBox(height: DS.s4),
+                  if (showScore)
+                    Text(match.score, style: DS.tsHeadline.copyWith(letterSpacing: 1)),
+                ] else ...[
+                  Text(match.time, style: DS.tsSubhead.copyWith(fontWeight: FontWeight.w600)),
+                ],
+                if (match.hasChannels) ...[
+                  const SizedBox(height: DS.s6),
+                  _TapScale(
+                    onTap: onGoChannels,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: DS.s10, vertical: DS.s4),
+                      decoration: BoxDecoration(color: DS.tint, borderRadius: BorderRadius.circular(DS.rFull)),
+                      child: Text('شاهد', style: DS.tsCaption2.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: Text(match.away, style: DS.tsCallout.copyWith(fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+          ),
+          const SizedBox(width: DS.s10),
+          _SmallTeamLogo(url: match.awayLogoUrl, size: 36),
+        ],
+      ),
+    );
+  }
+}
+
+// ── iOS Grouped Card ──
+class _IOSGroupedCard extends StatelessWidget {
+  final List<Widget> children;
+  const _IOSGroupedCard({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(DS.rLarge),
+      child: Column(
+        children: children.asMap().entries.map((e) {
+          final isLast = e.key == children.length - 1;
+          return Column(
+            children: [
+              Container(color: DS.surface3, child: e.value),
+              if (!isLast) Container(height: 0.5, color: DS.separator.withValues(alpha: 0.5), margin: const EdgeInsets.only(right: DS.s16)),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ── iOS Toggle Row ──
+class _IOSToggleRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title, subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  const _IOSToggleRow({required this.icon, required this.iconColor, required this.title, required this.subtitle, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: DS.s16, vertical: DS.s12),
+      child: Row(
+        children: [
+          Container(
+            width: 30, height: 30,
+            decoration: BoxDecoration(color: iconColor, borderRadius: BorderRadius.circular(DS.rSmall)),
+            child: Icon(icon, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: DS.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: DS.tsCallout.copyWith(fontWeight: FontWeight.w500)),
+                Text(subtitle, style: DS.tsCaption1),
+              ],
+            ),
+          ),
+          CupertinoSwitch(value: value, onChanged: onChanged, activeColor: DS.tint),
+        ],
+      ),
+    );
+  }
+}
+
+class _QualitySelector extends StatelessWidget {
+  final String current;
+  final ValueChanged<String> onSelect;
+  const _QualitySelector({required this.current, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final opts = [('auto', 'تلقائي', CupertinoIcons.waveform), ('hd', 'عالي HD', CupertinoIcons.tv), ('sd', 'عادي SD', CupertinoIcons.tv_music_note)];
+    return Column(
+      children: opts.asMap().entries.map((e) {
+        final isSelected = current == e.value.$1;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: DS.s16, vertical: DS.s12),
+          child: _TapScale(
+            onTap: () => onSelect(e.value.$1),
+            child: Row(
+              children: [
+                Icon(e.value.$3, color: isSelected ? DS.tint : DS.label2, size: 20),
+                const SizedBox(width: DS.s12),
+                Expanded(child: Text(e.value.$2, style: DS.tsCallout.copyWith(fontWeight: FontWeight.w500))),
+                if (isSelected) const Icon(CupertinoIcons.checkmark, color: DS.tint, size: 18),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label, value;
+  const _InfoRow({required this.label, required this.value});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: DS.s16, vertical: DS.s14),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: DS.tsCallout.copyWith(fontWeight: FontWeight.w500)),
+        Text(value, style: DS.tsCallout.copyWith(color: DS.label2)),
+      ],
+    ),
+  );
+}
+
+// ── iOS Search Bar ──
+class _IOSSearchBar extends StatelessWidget {
+  final String placeholder;
+  final ValueChanged<String> onChanged;
+  const _IOSSearchBar({required this.placeholder, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(color: DS.surface3, borderRadius: BorderRadius.circular(DS.rMed)),
+      child: TextField(
+        onChanged: onChanged,
+        textDirection: TextDirection.rtl,
+        style: DS.tsBody.copyWith(color: DS.label),
+        decoration: InputDecoration(
+          hintText: placeholder,
+          hintStyle: DS.tsBody.copyWith(color: DS.label3),
+          prefixIcon: const Icon(CupertinoIcons.search, color: DS.label3, size: 18),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: DS.s16, vertical: DS.s12),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Live Dot (Pulsing) ──
+class _LiveDot extends StatefulWidget {
+  @override
+  State<_LiveDot> createState() => _LiveDotState();
+}
+
+class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+    _anim = Tween(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: _anim,
+    child: Container(
+      width: 6, height: 6,
+      decoration: const BoxDecoration(color: DS.red, shape: BoxShape.circle),
+    ),
+  );
+}
+
+// ── Glass Button ──
+class _GlassButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _GlassButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => _TapScale(
+    onTap: onTap,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(DS.rFull),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: DS.blurLight, sigmaY: DS.blurLight),
+        child: Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.5),
+          ),
+          child: Icon(icon, color: Colors.white, size: 18),
+        ),
+      ),
+    ),
+  );
+}
+
+// ── Small Team Logo ──
+class _SmallTeamLogo extends StatelessWidget {
+  final String url;
+  final double size;
+  const _SmallTeamLogo({required this.url, this.size = 40});
+
+  @override
+  Widget build(BuildContext context) => ClipOval(
+    child: Container(
+      width: size, height: size, color: DS.surface3,
+      child: Image.network(url, fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.sportscourt, color: DS.label3, size: 18)),
+    ),
+  );
+}
+
+// ── Loading Shimmer ──
+class _LoadingShimmer extends StatefulWidget {
+  const _LoadingShimmer();
+  @override
+  State<_LoadingShimmer> createState() => _LoadingShimmerState();
+}
+
+class _LoadingShimmerState extends State<_LoadingShimmer> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+    _anim = Tween(begin: -1.0, end: 2.0).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: DS.s16, vertical: DS.s8),
+      child: Column(children: List.generate(4, (_) => _shimmerItem())),
+    );
+  }
+  Widget _shimmerItem() {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (ctx, _) => Container(
+        height: 60, margin: const EdgeInsets.only(bottom: 1),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(DS.rMed),
+          gradient: LinearGradient(
+            begin: Alignment(_anim.value - 1, 0),
+            end: Alignment(_anim.value, 0),
+            colors: [DS.surface3, DS.elevated.withValues(alpha: 0.6), DS.surface3],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error Card ──
+class _ErrorCard extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _ErrorCard({required this.onRetry});
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(DS.s48),
+      child: Column(
+        children: [
+          const Icon(CupertinoIcons.wifi_slash, size: 48, color: DS.label3),
+          const SizedBox(height: DS.s16),
+          const Text('تعذّر الاتصال', style: DS.tsHeadline),
+          const SizedBox(height: DS.s8),
+          const Text('حدث خطأ في الاتصال', style: DS.tsFootnote, textAlign: TextAlign.center),
+          const SizedBox(height: DS.s24),
+          _TapScale(
+            onTap: onRetry,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: DS.s24, vertical: DS.s12),
+              decoration: BoxDecoration(color: DS.tint, borderRadius: BorderRadius.circular(DS.rFull)),
+              child: const Text('إعادة المحاولة', style: DS.tsCallout),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── Empty Favorites ──
+class _EmptyFavorites extends StatelessWidget {
+  const _EmptyFavorites();
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(CupertinoIcons.heart, size: 56, color: DS.label3),
+        const SizedBox(height: DS.s16),
+        const Text('لا توجد مفضلات', style: DS.tsHeadline),
+        const SizedBox(height: DS.s8),
+        Text('اضغط ❤ على أي قناة لإضافتها', style: DS.tsFootnote.copyWith(color: DS.label3), textAlign: TextAlign.center),
+      ],
+    ),
+  );
+}
+
+// ── Toast Widget ──
+class _ToastWidget extends StatefulWidget {
+  final String message;
+  final VoidCallback onDone;
+  const _ToastWidget({required this.message, required this.onDone});
+  @override
+  State<_ToastWidget> createState() => _ToastWidgetState();
+}
+
+class _ToastWidgetState extends State<_ToastWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _opacity;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _opacity = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween(begin: const Offset(0, 0.5), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _ctrl.forward();
+    Future.delayed(const Duration(milliseconds: 2200), () {
+      if (mounted) _ctrl.reverse().then((_) => widget.onDone());
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom + 80;
+    return Positioned(
+      bottom: bottom, left: DS.s32, right: DS.s32,
+      child: SlideTransition(
+        position: _slide,
+        child: FadeTransition(
+          opacity: _opacity,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(DS.rXL),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: DS.blurMed, sigmaY: DS.blurMed),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: DS.s20, vertical: DS.s14),
+                decoration: BoxDecoration(
+                  color: DS.surface3.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(DS.rXL),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.5),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                ),
+                child: Text(widget.message, style: DS.tsCallout.copyWith(fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════
+
+// Tap Scale Animation (iOS press feel)
+class _TapScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  const _TapScale({required this.child, this.onTap});
+  @override
+  State<_TapScale> createState() => _TapScaleState();
+}
+
+class _TapScaleState extends State<_TapScale> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+    _scale = Tween(begin: 1.0, end: 0.96).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTapDown: (_) => _ctrl.forward(),
+    onTapUp: (_) { _ctrl.reverse(); widget.onTap?.call(); },
+    onTapCancel: () => _ctrl.reverse(),
+    child: ScaleTransition(scale: _scale, child: widget.child),
+  );
+}
+
+// Slide Route (iOS-style right-to-left)
+PageRoute _slideRoute(Widget page) => PageRouteBuilder(
+  pageBuilder: (_, anim, __) => page,
+  transitionsBuilder: (_, anim, __, child) {
+    const begin = Offset(1.0, 0.0);
+    final tween = Tween(begin: begin, end: Offset.zero).chain(CurveTween(curve: Curves.easeOutCubic));
+    return SlideTransition(position: anim.drive(tween), child: child);
+  },
+  transitionDuration: const Duration(milliseconds: 380),
+);
+
+// SizedBox helper
+extension on EdgeInsets {
+  static EdgeInsets fromLTRB(double l, double t, double r, double b) => EdgeInsets.fromLTRB(l, t, r, b);
+}
+
+extension _SpacingExt on double {
+  static const s14 = 14.0;
+  static const s10 = 10.0;
+}
+
+const _s14 = 14.0;
+const _s10 = 10.0;
