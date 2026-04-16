@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -10,6 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ENTRY POINT
+// ═══════════════════════════════════════════════════════════════════════════
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([
@@ -27,7 +29,11 @@ void main() async {
   runApp(const StreamGoApp());
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// DESIGN TOKENS
+// ═══════════════════════════════════════════════════════════════════════════
 abstract class D {
+  // Palette
   static const bg     = Color(0xFF030303);
   static const s1     = Color(0xFF0A0A0C);
   static const s2     = Color(0xFF111113);
@@ -43,6 +49,7 @@ abstract class D {
   static const red    = Color(0xFFFF453A);
   static const green  = Color(0xFF30D158);
 
+  // Radii
   static const r6   =  6.0;
   static const r8   =  8.0;
   static const r10  = 10.0;
@@ -54,6 +61,7 @@ abstract class D {
   static const r32  = 32.0;
   static const rMax = 999.0;
 
+  // Spacing
   static const g4  =  4.0;
   static const g6  =  6.0;
   static const g8  =  8.0;
@@ -66,6 +74,7 @@ abstract class D {
   static const g28 = 28.0;
   static const g32 = 32.0;
 
+  // Typography
   static TextStyle get hero     => const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1.4, height: 1.08, color: lbl);
   static TextStyle get title1   => const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8, height: 1.15, color: lbl);
   static TextStyle get title2   => const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5, height: 1.2,  color: lbl);
@@ -77,6 +86,9 @@ abstract class D {
   static TextStyle get micro    => const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing:  0.3, height: 1.2,  color: lbl2);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MODELS
+// ═══════════════════════════════════════════════════════════════════════════
 class Channel {
   final int    id;
   final String name, number, logo, streamUrl;
@@ -158,10 +170,14 @@ class Match {
   String get homeLogoUrl => 'https://img.kora-api.space/uploads/team/$homeLogo';
   String get awayLogoUrl => 'https://img.kora-api.space/uploads/team/$awayLogo';
 
+  /// Best display name: English first, fall back to original
   String get homeDisplay => homeEn.isNotEmpty ? homeEn : home;
   String get awayDisplay => awayEn.isNotEmpty ? awayEn : away;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MOCK DATA
+// ═══════════════════════════════════════════════════════════════════════════
 const _kStream = 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8';
 
 final List<ChannelGroup> _kMockGroups = [
@@ -194,6 +210,9 @@ final List<Match> _kMockMatches = [
   Match(id:'6', league:'UEFA Champions League', home:'Juventus',       homeEn:'Juventus',       homeLogo:'juve.png',        away:'Inter Milan',  awayEn:'Inter Milan', awayLogo:'inter.png',     score:'',      time:'22:00', date:DateTime.now().add(const Duration(days:2)),  isLive:false, hasChannels:false),
 ];
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════════════════════════════════
 class Prefs {
   static const _kFavKey = 'favs_v3';
 
@@ -213,6 +232,9 @@ class Prefs {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOT APP
+// ═══════════════════════════════════════════════════════════════════════════
 class StreamGoApp extends StatelessWidget {
   const StreamGoApp({super.key});
 
@@ -232,10 +254,14 @@ class StreamGoApp extends StatelessWidget {
         TargetPlatform.android: CupertinoPageTransitionsBuilder(),
       }),
     ),
+    // ← LTR: no Directionality wrapper, English only
     home: const RootShell(),
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ROOT SHELL  —  2 tabs: Home | Matches
+// ═══════════════════════════════════════════════════════════════════════════
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
   @override
@@ -245,16 +271,20 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
   int _tab = 0;
 
+  // Data
   Set<int>          _favIds        = {};
   List<ChannelGroup> _groups       = [];
   List<Match>       _matches       = [];
   bool              _groupsLoading = true;
   bool              _matchLoading  = true;
 
+  // Tab bar slide-in
   late final AnimationController _tabAnim;
 
+  // Overlay toast
   OverlayEntry? _toast;
 
+  // ── lifecycle ──────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -274,6 +304,7 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
   Future<void> _init() async =>
       Future.wait([_loadFavs(), _loadGroups(), _loadMatches()]);
 
+  // ── data loaders ───────────────────────────────────────────
   Future<void> _loadFavs() async {
     final f = await Prefs.loadFavs();
     if (mounted) setState(() => _favIds = f);
@@ -320,6 +351,7 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
 
   Future<void> _refresh() => Future.wait([_loadGroups(), _loadMatches()]);
 
+  // ── actions ────────────────────────────────────────────────
   Future<void> _toggleFav(int id) async {
     HapticFeedback.lightImpact();
     final added = await Prefs.toggleFav(id);
@@ -347,12 +379,14 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     Overlay.of(context).insert(entry);
   }
 
+  // ── build ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: D.bg,
       body: Stack(
         children: [
+          // ── pages ────────────────────────────────────────
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 270),
             switchInCurve:  Curves.easeOutCubic,
@@ -381,6 +415,7 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
               ][_tab],
             ),
           ),
+          // ── floating pill tab bar ────────────────────────
           Positioned(
             bottom: 0, left: 0, right: 0,
             child: SlideTransition(
@@ -401,6 +436,9 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PILL TAB BAR  (floating glass, 2 items)
+// ═══════════════════════════════════════════════════════════════════════════
 class _PillTabBar extends StatelessWidget {
   final int             selected;
   final ValueChanged<int> onTap;
@@ -469,6 +507,7 @@ class _PillItem extends StatelessWidget {
       child: _SpringTap(
         onTap: () => onTap(index),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          // Icon with spring pop on activate
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 240),
             transitionBuilder: (child, anim) => ScaleTransition(
@@ -500,6 +539,9 @@ class _PillItem extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// HOME SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
 class HomeScreen extends StatelessWidget {
   final List<ChannelGroup> groups;
   final List<Match>        matches;
@@ -531,10 +573,13 @@ class HomeScreen extends StatelessWidget {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
+        // Native iOS pull-to-refresh
         CupertinoSliverRefreshControl(onRefresh: onRefresh),
 
+        // Status-bar spacer
         SliverToBoxAdapter(child: SizedBox(height: topPad + D.g8)),
 
+        // ── Header ───────────────────────────────────────────
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(D.g20, 0, D.g20, D.g24),
@@ -546,6 +591,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text('StreamGo', style: D.hero),
                 ]),
+                // Avatar
                 Container(
                   width: 44, height: 44,
                   decoration: BoxDecoration(
@@ -565,6 +611,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
 
+        // ── Featured match card ──────────────────────────────
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(D.g16, 0, D.g16, D.g32),
@@ -576,6 +623,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
 
+        // ── Live Channels ────────────────────────────────────
         if (groupsLoading)
           const SliverToBoxAdapter(child: _Skeleton())
         else
@@ -583,12 +631,14 @@ class HomeScreen extends StatelessWidget {
             child: _ChannelGroupRow(group: g, onOpen: onOpenPlayer),
           )),
 
+        // Bottom spacer for tab bar
         const SliverToBoxAdapter(child: SizedBox(height: 116)),
       ],
     );
   }
 }
 
+// ─── Featured match card ─────────────────────────────────────────────────
 class _FeaturedCard extends StatefulWidget {
   final List<Match> matches;
   final bool        loading;
@@ -649,7 +699,9 @@ class _FeaturedCardState extends State<_FeaturedCard> with SingleTickerProviderS
         child: ClipRRect(
           borderRadius: BorderRadius.circular(D.r24),
           child: Stack(children: [
+            // Texture grid
             Positioned.fill(child: CustomPaint(painter: _GridPainter())),
+            // Highlight orb
             Positioned(
               top: -50, right: -50,
               child: Container(
@@ -663,6 +715,7 @@ class _FeaturedCardState extends State<_FeaturedCard> with SingleTickerProviderS
                 ),
               ),
             ),
+            // Glass border
             Positioned.fill(child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(D.r24),
@@ -690,6 +743,7 @@ class _CardMatchContent extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
+      // League + status row
       Row(children: [
         if (match.isLive) ...[const _LivePulse(), const SizedBox(width: D.g6)],
         _Badge(label: match.isLive ? 'Live Now' : 'Upcoming', color: match.isLive ? D.red : D.blue),
@@ -697,6 +751,7 @@ class _CardMatchContent extends StatelessWidget {
         Expanded(child: Text(match.league, style: D.caption.copyWith(color: D.lbl2), maxLines: 1, overflow: TextOverflow.ellipsis)),
       ]),
       const Spacer(),
+      // Teams
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         _MiniTeam(name: match.homeDisplay, logoUrl: match.homeLogoUrl),
         Expanded(child: Column(children: [
@@ -749,6 +804,7 @@ class _MiniTeam extends StatelessWidget {
   );
 }
 
+// ─── Channel group row ───────────────────────────────────────────────────
 class _ChannelGroupRow extends StatelessWidget {
   final ChannelGroup      group;
   final Function(Channel) onOpen;
@@ -758,6 +814,7 @@ class _ChannelGroupRow extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: D.g28),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Row header
       Padding(
         padding: const EdgeInsets.fromLTRB(D.g20, 0, D.g20, D.g14),
         child: Row(children: [
@@ -778,6 +835,7 @@ class _ChannelGroupRow extends StatelessWidget {
           const Icon(CupertinoIcons.chevron_forward, size: 10, color: D.lbl3),
         ]),
       ),
+      // Horizontal channel cards
       SizedBox(
         height: 162,
         child: ListView.builder(
@@ -821,6 +879,7 @@ class _ChannelCard extends StatelessWidget {
               ],
             ),
             child: Stack(children: [
+              // Glass sheen overlay
               Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(D.r20),
                 gradient: LinearGradient(
@@ -828,7 +887,9 @@ class _ChannelCard extends StatelessWidget {
                   colors: [Colors.white.withValues(alpha: 0.055), Colors.transparent, Colors.black.withValues(alpha: 0.08)],
                 ),
               ))),
+              // Logo
               Padding(padding: const EdgeInsets.all(D.g16), child: Center(child: _NetworkImage(url: channel.logo, w: 58, h: 58))),
+              // Number badge
               if (channel.number.isNotEmpty)
                 Positioned(
                   top: D.g8, right: D.g8,
@@ -854,6 +915,9 @@ class _ChannelCard extends StatelessWidget {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MATCHES SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
 class MatchesScreen extends StatelessWidget {
   final List<Match> matches;
   final bool        loading;
@@ -876,6 +940,7 @@ class MatchesScreen extends StatelessWidget {
     final today    = _fmtDate(now);
     final tomorrow = _fmtDate(now.add(const Duration(days: 1)));
 
+    // Group by day label
     final grouped = <String, List<Match>>{};
     for (final m in matches) {
       final d   = _fmtDate(m.date);
@@ -917,6 +982,7 @@ class _MatchDaySection extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(D.g16, 0, D.g16, D.g24),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Day header pill
       Padding(
         padding: const EdgeInsets.only(left: D.g4, bottom: D.g12),
         child: Row(children: [
@@ -958,6 +1024,7 @@ class _MatchRow extends StatelessWidget {
         Text(match.league, style: D.caption.copyWith(color: D.lbl3, fontSize: 11), textAlign: TextAlign.center),
         const SizedBox(height: D.g12),
         Row(children: [
+          // Home team
           Expanded(child: Column(children: [
             _NetworkImage(url: match.homeLogoUrl, w: 42, h: 42),
             const SizedBox(height: D.g6),
@@ -965,6 +1032,7 @@ class _MatchRow extends StatelessWidget {
               style: D.caption.copyWith(fontWeight: FontWeight.w600, color: D.lbl),
               textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
           ])),
+          // Score / time
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: D.g8),
             child: match.isLive
@@ -978,6 +1046,7 @@ class _MatchRow extends StatelessWidget {
                   ])
                 : Text(match.time, style: D.headline.copyWith(color: D.lbl2, fontWeight: FontWeight.w700, letterSpacing: 1)),
           ),
+          // Away team
           Expanded(child: Column(children: [
             _NetworkImage(url: match.awayLogoUrl, w: 42, h: 42),
             const SizedBox(height: D.g6),
@@ -996,6 +1065,25 @@ class _MatchRow extends StatelessWidget {
   ]);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PLAYER SCREEN
+//
+// Architecture  (FIXED — all controls ON the video, nothing below controls):
+//
+//   Scaffold(black)
+//   └── Column
+//       ├── [PORTRAIT] SizedBox(statusBar + 16:9)   ← GestureDetector
+//       │   └── Stack (StackFit.expand)
+//       │       ├── ColoredBox (black)
+//       │       ├── Positioned(top=statusBarH)  ← actual video
+//       │       ├── Positioned top  ← gradient scrim
+//       │       ├── Positioned bot  ← gradient scrim
+//       │       └── FadeTransition  ← ALL controls (back, play, progress)
+//       │
+//       └── Expanded  ← channel info panel (not controls)
+//
+//   [LANDSCAPE] single GestureDetector + Stack fills whole screen
+// ═══════════════════════════════════════════════════════════════════════════
 class PlayerScreen extends StatefulWidget {
   final Channel  channel;
   final bool     isFavorite;
@@ -1013,17 +1101,21 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin {
+  // Player state
   VideoPlayerController? _vpc;
   ChewieController?      _cc;
   bool _loading = true, _error = false, _ctrlsVisible = true;
   late bool _isFav;
 
+  // Controls fade
   late final AnimationController _ctrlsCtrl;
   late final Animation<double>   _ctrlsFade;
 
+  // Favourite heart spring
   late final AnimationController _favCtrl;
   late final Animation<double>   _favScale;
 
+  // 1-sec tick to redraw progress bar
   late final AnimationController _tick;
 
   static const _kUA =
@@ -1031,6 +1123,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       'AppleWebKit/537.36 (KHTML, like Gecko) '
       'Chrome/139.0.0.0 Safari/537.36';
 
+  // ── lifecycle ──────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -1062,6 +1155,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     super.dispose();
   }
 
+  // ── controls visibility ────────────────────────────────────
   void _autoHideControls() => Future.delayed(const Duration(seconds: 4), () {
     if (mounted && _ctrlsVisible) {
       setState(() => _ctrlsVisible = false);
@@ -1076,6 +1170,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     if (_ctrlsVisible) _autoHideControls();
   }
 
+  // ── player init ────────────────────────────────────────────
   Future<void> _initPlayer() async {
     if (widget.channel.streamUrl.isEmpty) {
       if (mounted) setState(() { _loading = false; _error = true; });
@@ -1098,7 +1193,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         looping:          true,
         allowFullScreen:  true,
         allowMuting:      true,
-        showControls:     false,
+        showControls:     false,          // ← we draw our own controls
         placeholder:      const Center(child: CupertinoActivityIndicator(radius: 16, color: Colors.white)),
         errorBuilder:     (_, __) => _PlayerError(onRetry: _retry),
       );
@@ -1121,6 +1216,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     _favCtrl.forward(from: 0);
   }
 
+  // ── helpers ────────────────────────────────────────────────
   bool     get _playing  => _vpc?.value.isPlaying ?? false;
   Duration get _position => _vpc?.value.position  ?? Duration.zero;
   Duration get _duration => _vpc?.value.duration  ?? Duration.zero;
@@ -1136,6 +1232,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     return d.inHours > 0 ? '${d.inHours}:$m:$s' : '$m:$s';
   }
 
+  // ── root build ─────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final mq     = MediaQuery.of(context);
@@ -1150,20 +1247,24 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
+  // ── LANDSCAPE: full-screen stack ───────────────────────────
   Widget _buildLandscape(MediaQueryData mq) => GestureDetector(
     onTap: _toggleControls,
     behavior: HitTestBehavior.opaque,
     child: Stack(fit: StackFit.expand, children: [
       const ColoredBox(color: Colors.black),
       _videoContent(),
+      // Top scrim
       Positioned(
         top: 0, left: 0, right: 0, height: 160,
         child: _GradScrim(fromTop: true),
       ),
+      // Bottom scrim
       Positioned(
         bottom: 0, left: 0, right: 0, height: 160,
         child: _GradScrim(fromTop: false),
       ),
+      // Controls overlaid on video
       FadeTransition(
         opacity: _ctrlsFade,
         child: SafeArea(child: _controlsStack(topOffset: 0)),
@@ -1171,11 +1272,15 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     ]),
   );
 
+  // ── PORTRAIT: video zone (16:9 + status bar) + info panel ──
   Widget _buildPortrait(MediaQueryData mq) {
     final topPad = mq.padding.top;
     final videoH = mq.size.width * 9.0 / 16.0;
 
     return Column(children: [
+      // ╔════════════════════════════════════════════════════╗
+      // ║  VIDEO ZONE — all controls are ON the video here  ║
+      // ╚════════════════════════════════════════════════════╝
       GestureDetector(
         onTap: _toggleControls,
         behavior: HitTestBehavior.opaque,
@@ -1183,23 +1288,30 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           width: double.infinity,
           height: topPad + videoH,
           child: Stack(fit: StackFit.expand, children: [
+            // Black canvas
             const ColoredBox(color: Colors.black),
 
+            // Actual video — positioned below the status bar
             Positioned(
               top: topPad, left: 0, right: 0, height: videoH,
               child: _videoContent(),
             ),
 
+            // Top scrim (covers status bar + upper video edge)
             Positioned(
               top: 0, left: 0, right: 0, height: topPad + 88,
               child: _GradScrim(fromTop: true),
             ),
 
+            // Bottom scrim (lower video edge, above progress bar)
             Positioned(
               bottom: 0, left: 0, right: 0, height: 100,
               child: _GradScrim(fromTop: false),
             ),
 
+            // ──────────────────────────────────────────────
+            // ALL CONTROLS overlaid directly ON the video
+            // ──────────────────────────────────────────────
             FadeTransition(
               opacity: _ctrlsFade,
               child: _controlsStack(topOffset: topPad),
@@ -1208,10 +1320,14 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         ),
       ),
 
+      // ─────────────────────────────────────────────────────
+      // INFO PANEL — channel details, NOT interactive controls
+      // ─────────────────────────────────────────────────────
       Expanded(child: _infoPanel()),
     ]);
   }
 
+  // ── Video content widget ───────────────────────────────────
   Widget _videoContent() {
     if (_loading) return const Center(child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
     if (_error)   return _PlayerError(onRetry: _retry);
@@ -1219,12 +1335,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     return const Center(child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
   }
 
+  // ── Controls stack (back, play/pause, progress) ────────────
+  // topOffset = status-bar height (portrait) or 0 (landscape/SafeArea)
   Widget _controlsStack(double topOffset) => Stack(children: [
+    // — Top bar: back + channel name + fav ——————————————————
     Positioned(
       top: topOffset + D.g8, left: 0, right: 0,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: D.g16),
         child: Row(children: [
+          // Back button (forced LTR so arrow always points left)
           Directionality(
             textDirection: TextDirection.ltr,
             child: _GlassCircleBtn(
@@ -1233,6 +1353,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             ),
           ),
           const SizedBox(width: D.g12),
+          // Channel name + live badge
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(
@@ -1248,6 +1369,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               ]),
             ]),
           ),
+          // Favourite button
           ScaleTransition(
             scale: _favScale,
             child: _GlassCircleBtn(
@@ -1260,6 +1382,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       ),
     ),
 
+    // — Centre play/pause ————————————————————————————————
     if (!_loading && !_error)
       Center(
         child: AnimatedBuilder(
@@ -1277,6 +1400,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         ),
       ),
 
+    // — Bottom: progress bar + time stamps ────────────────
     if (!_loading && !_error)
       Positioned(
         bottom: D.g14, left: 0, right: 0,
@@ -1303,6 +1427,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       ),
   ]);
 
+  // ── Info panel (portrait only, NOT controls) ───────────────
   Widget _infoPanel() => Container(
     decoration: const BoxDecoration(
       gradient: LinearGradient(
@@ -1315,7 +1440,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       child: Padding(
         padding: const EdgeInsets.all(D.g20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          // Channel row
           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            // Logo container
             Container(
               width: 64, height: 64,
               decoration: BoxDecoration(
@@ -1333,6 +1460,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(widget.channel.name, style: D.title3, maxLines: 1, overflow: TextOverflow.ellipsis),
               const SizedBox(height: D.g8),
+              // Glass live badge
               ClipRRect(
                 borderRadius: BorderRadius.circular(D.rMax),
                 child: BackdropFilter(
@@ -1353,6 +1481,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               ),
             ])),
             const SizedBox(width: D.g12),
+            // Fav toggle button
             _SpringTap(
               onTap: _tapFav,
               child: ScaleTransition(
@@ -1387,6 +1516,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             ),
           ]),
           const SizedBox(height: D.g20),
+          // Meta + reload strip
           ClipRRect(
             borderRadius: BorderRadius.circular(D.r14),
             child: BackdropFilter(
@@ -1403,6 +1533,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   const SizedBox(width: D.g16),
                   const _Chip(icon: CupertinoIcons.waveform, label: 'HLS'),
                   const Spacer(),
+                  // Reload button
                   _SpringTap(
                     onTap: _retry,
                     child: Container(
@@ -1429,6 +1560,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PLAYER SUB-WIDGETS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Gradient scrim — covers top or bottom of the video
 class _GradScrim extends StatelessWidget {
   final bool fromTop;
   const _GradScrim({required this.fromTop});
@@ -1445,6 +1581,7 @@ class _GradScrim extends StatelessWidget {
   );
 }
 
+/// Thin progress track with glow + thumb dot
 class _ProgressBar extends StatelessWidget {
   final double progress;
   const _ProgressBar({required this.progress});
@@ -1456,6 +1593,7 @@ class _ProgressBar extends StatelessWidget {
       return SizedBox(
         height: 22,
         child: Stack(alignment: Alignment.centerLeft, children: [
+          // Track
           Container(
             height: 2.5, width: w,
             decoration: BoxDecoration(
@@ -1463,6 +1601,7 @@ class _ProgressBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
+          // Fill
           Container(
             height: 2.5, width: w * progress,
             decoration: BoxDecoration(
@@ -1471,6 +1610,7 @@ class _ProgressBar extends StatelessWidget {
               boxShadow: [BoxShadow(color: D.blue.withValues(alpha: 0.55), blurRadius: 7)],
             ),
           ),
+          // Thumb
           Positioned(
             left: (w * progress - 5).clamp(0.0, w - 10),
             child: Container(
@@ -1487,6 +1627,7 @@ class _ProgressBar extends StatelessWidget {
   );
 }
 
+/// Glass circular button used in player controls
 class _GlassCircleBtn extends StatelessWidget {
   final IconData   icon;
   final Color?     iconColor;
@@ -1522,6 +1663,7 @@ class _GlassCircleBtn extends StatelessWidget {
   );
 }
 
+/// Error overlay inside player
 class _PlayerError extends StatelessWidget {
   final VoidCallback onRetry;
   const _PlayerError({required this.onRetry});
@@ -1563,6 +1705,11 @@ class _PlayerError extends StatelessWidget {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED UI COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Glass frosted card
 class _GlassCard extends StatelessWidget {
   final List<Widget> children;
   const _GlassCard({required this.children});
@@ -1585,6 +1732,7 @@ class _GlassCard extends StatelessWidget {
   );
 }
 
+/// Animated pulsing live dot
 class _LivePulse extends StatefulWidget {
   const _LivePulse();
   @override State<_LivePulse> createState() => _LivePulseState();
@@ -1612,6 +1760,7 @@ class _LivePulseState extends State<_LivePulse> with SingleTickerProviderStateMi
   );
 }
 
+/// Rounded status badge
 class _Badge extends StatelessWidget {
   final String label;
   final Color  color;
@@ -1629,6 +1778,7 @@ class _Badge extends StatelessWidget {
   );
 }
 
+/// Icon + label chip (used in info strip)
 class _Chip extends StatelessWidget {
   final IconData icon;
   final String   label;
@@ -1642,6 +1792,7 @@ class _Chip extends StatelessWidget {
   ]);
 }
 
+/// Network image with icon fallback
 class _NetworkImage extends StatelessWidget {
   final String url;
   final double w, h;
@@ -1660,6 +1811,7 @@ class _NetworkImage extends StatelessWidget {
   }
 }
 
+/// Empty state view
 class _EmptyView extends StatelessWidget {
   final IconData icon;
   final String   label;
@@ -1683,6 +1835,7 @@ class _EmptyView extends StatelessWidget {
   );
 }
 
+/// Shimmer skeleton loading
 class _Skeleton extends StatefulWidget {
   const _Skeleton();
   @override State<_Skeleton> createState() => _SkeletonState();
@@ -1719,6 +1872,7 @@ class _SkeletonState extends State<_Skeleton> with SingleTickerProviderStateMixi
   );
 }
 
+/// Spring-press tap (no Material ripple, iOS feel)
 class _SpringTap extends StatefulWidget {
   final Widget    child;
   final VoidCallback? onTap;
@@ -1744,6 +1898,7 @@ class _SpringTapState extends State<_SpringTap> with SingleTickerProviderStateMi
   );
 }
 
+/// Glass toast notification
 class _Toast extends StatefulWidget {
   final String   message;
   final VoidCallback onDone;
@@ -1798,6 +1953,11 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Subtle grid texture painter (used on hero card)
 class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -1810,6 +1970,7 @@ class _GridPainter extends CustomPainter {
   @override bool shouldRepaint(_) => false;
 }
 
+/// Fade + zoom page route (replaces default Material slide)
 PageRoute<R> _fadeZoomRoute<R>(Widget page) => PageRouteBuilder<R>(
   pageBuilder: (_, a, __) => page,
   transitionDuration:        const Duration(milliseconds: 390),
@@ -1823,3 +1984,5 @@ PageRoute<R> _fadeZoomRoute<R>(Widget page) => PageRouteBuilder<R>(
     ),
   ),
 );
+
+// end of StreamGo main.dart
