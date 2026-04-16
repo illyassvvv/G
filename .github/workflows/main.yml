@@ -8,31 +8,59 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14  # أسرع من latest غالبًا
 
     steps:
       - uses: actions/checkout@v4
 
+      # Flutter + cache
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
 
-      - name: Clean
-        run: flutter clean
+      # Pub cache
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+
+      # Pods cache (مهم جدًا)
+      - uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+
+      # ❌ حذف clean (مهم)
+      # - name: Clean
+      #   run: flutter clean
 
       - name: Get packages
         run: flutter pub get
 
+      # ⚡ أسرع بدون repo-update
       - name: Install Pods
         run: |
           cd ios
-          pod install --repo-update
+          pod install
 
       - name: Build iOS
         run: |
           flutter build ios --release --no-codesign --config-only
           cd ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos -destination generic/platform=iOS -derivedDataPath ../build/ios build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" COMPILER_INDEX_STORE_ENABLE=NO
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination generic/platform=iOS \
+            -derivedDataPath ../build/ios \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Make IPA
         run: |
