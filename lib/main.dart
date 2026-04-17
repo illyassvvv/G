@@ -161,12 +161,12 @@ final List<ChannelGroup> _kMockGroups = [
 ];
 
 final List<Match> _kMockMatches = [
-  Match(id:'1', league:'UEFA Champions League', home:'Real Madrid',   homeEn:'Real Madrid',   homeLogo:'real_madrid.png', away:'Man City',    awayEn:'Man City',    awayLogo:'man_city.png',  score:'2 - 1', time:'21:00', date:DateTime.now(),                             isLive:true,  hasChannels:true),
-  Match(id:'2', league:'Premier League',        home:'Liverpool',     homeEn:'Liverpool',     homeLogo:'liverpool.png',   away:'Arsenal',     awayEn:'Arsenal',     awayLogo:'arsenal.png',   score:'1 - 1', time:'22:45', date:DateTime.now(),                             isLive:true,  hasChannels:true),
-  Match(id:'3', league:'La Liga',               home:'Barcelona',     homeEn:'Barcelona',     homeLogo:'barca.png',       away:'Atletico',    awayEn:'Atletico',    awayLogo:'atletico.png',  score:'',      time:'23:00', date:DateTime.now(),                             isLive:false, hasChannels:true),
-  Match(id:'4', league:'Bundesliga',            home:'Bayern Munich', homeEn:'Bayern Munich', homeLogo:'bayern.png',      away:'Dortmund',    awayEn:'Dortmund',    awayLogo:'dortmund.png',  score:'',      time:'20:30', date:DateTime.now().add(const Duration(days:1)), isLive:false, hasChannels:false),
-  Match(id:'5', league:'Ligue 1',               home:'PSG',           homeEn:'PSG',           homeLogo:'psg.png',         away:'Marseille',   awayEn:'Marseille',   awayLogo:'marseille.png', score:'',      time:'21:45', date:DateTime.now().add(const Duration(days:1)), isLive:false, hasChannels:false),
-  Match(id:'6', league:'UEFA Champions League', home:'Juventus',      homeEn:'Juventus',      homeLogo:'juve.png',        away:'Inter Milan', awayEn:'Inter Milan', awayLogo:'inter.png',     score:'',      time:'22:00', date:DateTime.now().add(const Duration(days:2)), isLive:false, hasChannels:false),
+  Match(id:'1', league:'UEFA Champions League', home:'Real Madrid',   homeEn:'Real Madrid',   homeLogo:'real_madrid.png', away:'Man City',    awayEn:'Man City',    awayLogo:'man_city.png',  score:'2 - 1', time:'19:45', date: DateTime.now(), isLive: true, hasChannels: true),
+  Match(id:'2', league:'Premier League',        home:'Liverpool',     homeEn:'Liverpool',     homeLogo:'liverpool.png',   away:'Arsenal',     awayEn:'Arsenal',     awayLogo:'arsenal.png',   score:'', time:'20:00', date: DateTime.now(), isLive: false, hasChannels: true),
+  Match(id:'3', league:'La Liga',               home:'Barcelona',     homeEn:'Barcelona',     homeLogo:'barca.png',       away:'Atletico',    awayEn:'Atletico',    awayLogo:'atletico.png',  score:'', time:'21:30', date: DateTime.now(), isLive: false, hasChannels: true),
+  Match(id:'4', league:'Bundesliga',            home:'Bayern Munich', homeEn:'Bayern Munich', homeLogo:'bayern.png',      away:'Dortmund',    awayEn:'Dortmund',    awayLogo:'dortmund.png',  score:'', time:'18:30', date: DateTime.now(), isLive: false, hasChannels: true),
+  Match(id:'5', league:'Ligue 1',               home:'PSG',           homeEn:'PSG',           homeLogo:'psg.png',         away:'Marseille',   awayEn:'Marseille',   awayLogo:'marseille.png', score:'', time:'20:45', date: DateTime.now(), isLive: false, hasChannels: true),
+  Match(id:'6', league:'UEFA Champions League', home:'Juventus',      homeEn:'Juventus',      homeLogo:'juve.png',        away:'Inter Milan', awayEn:'Inter Milan', awayLogo:'inter.png',     score:'', time:'21:00', date: DateTime.now(), isLive: false, hasChannels: true),
 ];
 
 class Prefs {
@@ -276,7 +276,7 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     final added = await Prefs.toggleFav(id);
     if (!mounted) return;
     setState(() => added ? _favIds.add(id) : _favIds.remove(id));
-    _showToast(added ? '❤️  Added to Favorites' : 'Removed from Favorites');
+    _showToast(added ? '❤️ Added to Favorites' : '💔 Removed from Favorites');
   }
 
   void _openPlayer(Channel ch) {
@@ -332,6 +332,7 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     ]),
   );
 }
+
 
 class _PillTabBar extends StatelessWidget {
   final int selected;
