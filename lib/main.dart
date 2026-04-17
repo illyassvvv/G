@@ -1279,7 +1279,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       // Controls overlaid on video
       FadeTransition(
         opacity: _ctrlsFade,
-        child: SafeArea(child: _controlsStack(topOffset: 0)),
+        SafeArea(child: _controlsStack(0)),
       ),
     ]),
   );
