@@ -1326,7 +1326,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             // ──────────────────────────────────────────────
             FadeTransition(
               opacity: _ctrlsFade,
-              child: _controlsStack(topOffset: topPad),
+              _controlsStack(topPad),
             ),
           ]),
         ),
