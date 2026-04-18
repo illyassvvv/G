@@ -11,6 +11,7 @@ import 'package:chewie/chewie.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GestureBinding.instance.resamplingEnabled = true;
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.landscapeLeft,
@@ -65,15 +66,15 @@ abstract class D {
   static const g28 = 28.0;
   static const g32 = 32.0;
 
-  static TextStyle get hero     => const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1.4, height: 1.08, color: lbl);
-  static TextStyle get title1   => const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8, height: 1.15, color: lbl);
-  static TextStyle get title2   => const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5, height: 1.2,  color: lbl);
-  static TextStyle get title3   => const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3, height: 1.3,  color: lbl);
-  static TextStyle get headline => const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2, height: 1.4,  color: lbl);
-  static TextStyle get body     => const TextStyle(fontSize: 15, fontWeight: FontWeight.w400, letterSpacing: -0.1, height: 1.5,  color: lbl);
-  static TextStyle get callout  => const TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing:  0.0, height: 1.4,  color: lbl);
-  static TextStyle get caption  => const TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing:  0.1, height: 1.3,  color: lbl2);
-  static TextStyle get micro    => const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing:  0.3, height: 1.2,  color: lbl2);
+  static TextStyle get hero     => const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1.4, height: 1.08, color: lbl, decoration: TextDecoration.none);
+  static TextStyle get title1   => const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8, height: 1.15, color: lbl, decoration: TextDecoration.none);
+  static TextStyle get title2   => const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5, height: 1.2,  color: lbl, decoration: TextDecoration.none);
+  static TextStyle get title3   => const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3, height: 1.3,  color: lbl, decoration: TextDecoration.none);
+  static TextStyle get headline => const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.2, height: 1.4,  color: lbl, decoration: TextDecoration.none);
+  static TextStyle get body     => const TextStyle(fontSize: 15, fontWeight: FontWeight.w400, letterSpacing: -0.1, height: 1.5,  color: lbl, decoration: TextDecoration.none);
+  static TextStyle get callout  => const TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing:  0.0, height: 1.4,  color: lbl, decoration: TextDecoration.none);
+  static TextStyle get caption  => const TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing:  0.1, height: 1.3,  color: lbl2, decoration: TextDecoration.none);
+  static TextStyle get micro    => const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing:  0.3, height: 1.2,  color: lbl2, decoration: TextDecoration.none);
 }
 
 class Channel {
@@ -112,11 +113,11 @@ class Match {
   final DateTime date;
   final bool isLive, hasChannels;
   const Match({
-    required this.id,       required this.league,
-    required this.home,     required this.homeEn,  required this.homeLogo,
-    required this.away,     required this.awayEn,  required this.awayLogo,
-    required this.score,    required this.time,    required this.date,
-    required this.isLive,   required this.hasChannels,
+    required this.id, required this.league,
+    required this.home, required this.homeEn, required this.homeLogo,
+    required this.away, required this.awayEn, required this.awayLogo,
+    required this.score, required this.time, required this.date,
+    required this.isLive, required this.hasChannels,
   });
   factory Match.fromJson(Map<String, dynamic> j) {
     DateTime d;
@@ -131,10 +132,10 @@ class Match {
       hasChannels: (j['has_channels']?.toString() ?? '0') == '1',
     );
   }
-  String get homeLogoUrl  => 'https://img.kora-api.space/uploads/team/$homeLogo';
-  String get awayLogoUrl  => 'https://img.kora-api.space/uploads/team/$awayLogo';
-  String get homeDisplay  => homeEn.isNotEmpty ? homeEn : home;
-  String get awayDisplay  => awayEn.isNotEmpty ? awayEn : away;
+  String get homeLogoUrl => 'https://img.kora-api.space/uploads/team/$homeLogo';
+  String get awayLogoUrl => 'https://img.kora-api.space/uploads/team/$awayLogo';
+  String get homeDisplay => homeEn.isNotEmpty ? homeEn : home;
+  String get awayDisplay => awayEn.isNotEmpty ? awayEn : away;
 }
 
 const _kStream = 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8';
@@ -149,9 +150,9 @@ final List<ChannelGroup> _kMockGroups = [
     const Channel(id: 6,  name: 'MBC Sport',     number: '06', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/MBC_Sports_logo.svg/200px-MBC_Sports_logo.svg.png', streamUrl: _kStream),
   ]),
   ChannelGroup(name: 'News', icon: CupertinoIcons.news_solid, channels: [
-    const Channel(id: 7,  name: 'Al Jazeera',  number: '07', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b2/Al_Jazeera_Logo_2006.svg/200px-Al_Jazeera_Logo_2006.svg.png', streamUrl: _kStream),
-    const Channel(id: 8,  name: 'Sky News',    number: '08', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sky_News_Arabia_logo.svg/200px-Sky_News_Arabia_logo.svg.png', streamUrl: _kStream),
-    const Channel(id: 9,  name: 'Al Arabiya',  number: '09', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Al_Arabiya_logo.svg/200px-Al_Arabiya_logo.svg.png', streamUrl: _kStream),
+    const Channel(id: 7,  name: 'Al Jazeera', number: '07', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b2/Al_Jazeera_Logo_2006.svg/200px-Al_Jazeera_Logo_2006.svg.png', streamUrl: _kStream),
+    const Channel(id: 8,  name: 'Sky News',   number: '08', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sky_News_Arabia_logo.svg/200px-Sky_News_Arabia_logo.svg.png', streamUrl: _kStream),
+    const Channel(id: 9,  name: 'Al Arabiya', number: '09', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Al_Arabiya_logo.svg/200px-Al_Arabiya_logo.svg.png', streamUrl: _kStream),
   ]),
   ChannelGroup(name: 'Entertainment', icon: CupertinoIcons.tv_fill, channels: [
     const Channel(id: 10, name: 'MBC 1',         number: '10', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png', streamUrl: _kStream),
@@ -161,27 +162,45 @@ final List<ChannelGroup> _kMockGroups = [
 ];
 
 final List<Match> _kMockMatches = [
-  Match(id:'1', league:'UEFA Champions League', home:'Real Madrid',   homeEn:'Real Madrid',   homeLogo:'real_madrid.png', away:'Man City',    awayEn:'Man City',    awayLogo:'man_city.png',  score:'2 - 1', time:'19:45', date: DateTime.now(), isLive: true, hasChannels: true),
-  Match(id:'2', league:'Premier League',        home:'Liverpool',     homeEn:'Liverpool',     homeLogo:'liverpool.png',   away:'Arsenal',     awayEn:'Arsenal',     awayLogo:'arsenal.png',   score:'', time:'20:00', date: DateTime.now(), isLive: false, hasChannels: true),
-  Match(id:'3', league:'La Liga',               home:'Barcelona',     homeEn:'Barcelona',     homeLogo:'barca.png',       away:'Atletico',    awayEn:'Atletico',    awayLogo:'atletico.png',  score:'', time:'21:30', date: DateTime.now(), isLive: false, hasChannels: true),
-  Match(id:'4', league:'Bundesliga',            home:'Bayern Munich', homeEn:'Bayern Munich', homeLogo:'bayern.png',      away:'Dortmund',    awayEn:'Dortmund',    awayLogo:'dortmund.png',  score:'', time:'18:30', date: DateTime.now(), isLive: false, hasChannels: true),
-  Match(id:'5', league:'Ligue 1',               home:'PSG',           homeEn:'PSG',           homeLogo:'psg.png',         away:'Marseille',   awayEn:'Marseille',   awayLogo:'marseille.png', score:'', time:'20:45', date: DateTime.now(), isLive: false, hasChannels: true),
-  Match(id:'6', league:'UEFA Champions League', home:'Juventus',      homeEn:'Juventus',      homeLogo:'juve.png',        away:'Inter Milan', awayEn:'Inter Milan', awayLogo:'inter.png',     score:'', time:'21:00', date: DateTime.now(), isLive: false, hasChannels: true),
+  Match(id:'1', league:'UEFA Champions League', home:'Real Madrid',   homeEn:'Real Madrid',   homeLogo:'real_madrid.png', away:'Man City',    awayEn:'Man City',    awayLogo:'man_city.png',  score:'2 - 1', time:'21:00', date:DateTime.now(),                             isLive:true,  hasChannels:true),
+  Match(id:'2', league:'Premier League',        home:'Liverpool',     homeEn:'Liverpool',     homeLogo:'liverpool.png',   away:'Arsenal',     awayEn:'Arsenal',     awayLogo:'arsenal.png',   score:'1 - 1', time:'22:45', date:DateTime.now(),                             isLive:true,  hasChannels:true),
+  Match(id:'3', league:'La Liga',               home:'Barcelona',     homeEn:'Barcelona',     homeLogo:'barca.png',       away:'Atletico',    awayEn:'Atletico',    awayLogo:'atletico.png',  score:'',      time:'23:00', date:DateTime.now(),                             isLive:false, hasChannels:true),
+  Match(id:'4', league:'Bundesliga',            home:'Bayern Munich', homeEn:'Bayern Munich', homeLogo:'bayern.png',      away:'Dortmund',    awayEn:'Dortmund',    awayLogo:'dortmund.png',  score:'',      time:'20:30', date:DateTime.now().add(const Duration(days:1)), isLive:false, hasChannels:false),
+  Match(id:'5', league:'Ligue 1',               home:'PSG',           homeEn:'PSG',           homeLogo:'psg.png',         away:'Marseille',   awayEn:'Marseille',   awayLogo:'marseille.png', score:'',      time:'21:45', date:DateTime.now().add(const Duration(days:1)), isLive:false, hasChannels:false),
+  Match(id:'6', league:'UEFA Champions League', home:'Juventus',      homeEn:'Juventus',      homeLogo:'juve.png',        away:'Inter Milan', awayEn:'Inter Milan', awayLogo:'inter.png',     score:'',      time:'22:00', date:DateTime.now().add(const Duration(days:2)), isLive:false, hasChannels:false),
 ];
 
 class Prefs {
-  static const _kKey = 'favs_v3';
+  static const _kFav      = 'favs_v3';
+  static const _kSettings = 'settings_v2';
+
   static Future<Set<int>> loadFavs() async {
     final p = await SharedPreferences.getInstance();
-    return (p.getStringList(_kKey) ?? []).map((e) => int.tryParse(e) ?? -1).toSet();
+    return (p.getStringList(_kFav) ?? []).map((e) => int.tryParse(e) ?? -1).toSet();
   }
+
   static Future<bool> toggleFav(int id) async {
     final p   = await SharedPreferences.getInstance();
     final set = await loadFavs();
     set.contains(id) ? set.remove(id) : set.add(id);
-    await p.setStringList(_kKey, set.map((e) => '$e').toList());
+    await p.setStringList(_kFav, set.map((e) => '$e').toList());
     return set.contains(id);
   }
+
+  static Future<Map<String, dynamic>> loadSettings() async {
+    final p   = await SharedPreferences.getInstance();
+    final raw = p.getString(_kSettings);
+    if (raw == null) return _defaultSettings();
+    try { return jsonDecode(raw) as Map<String, dynamic>; } catch (_) { return _defaultSettings(); }
+  }
+
+  static Future<void> saveSettings(Map<String, dynamic> s) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kSettings, jsonEncode(s));
+  }
+
+  static Map<String, dynamic> _defaultSettings() =>
+      {'autoPlay': true, 'showScores': true, 'quality': 'auto'};
 }
 
 class StreamGoApp extends StatelessWidget {
@@ -214,9 +233,10 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
   int _tab = 0;
-  Set<int> _favIds = {};
-  List<ChannelGroup> _groups = [];
-  List<Match> _matches = [];
+  Set<int>            _favIds       = {};
+  List<ChannelGroup>  _groups       = [];
+  List<Match>         _matches      = [];
+  Map<String,dynamic> _settings     = {'autoPlay': true, 'showScores': true, 'quality': 'auto'};
   bool _groupsLoading = true;
   bool _matchLoading  = true;
   late final AnimationController _tabAnim;
@@ -232,17 +252,25 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
   @override
   void dispose() { _tabAnim.dispose(); super.dispose(); }
 
-  Future<void> _init() => Future.wait([_loadFavs(), _loadGroups(), _loadMatches()]);
+  Future<void> _init() =>
+      Future.wait([_loadFavs(), _loadSettings(), _loadGroups(), _loadMatches()]);
 
   Future<void> _loadFavs() async {
     final f = await Prefs.loadFavs();
     if (mounted) setState(() => _favIds = f);
   }
 
+  Future<void> _loadSettings() async {
+    final s = await Prefs.loadSettings();
+    if (mounted) setState(() => _settings = s);
+  }
+
   Future<void> _loadGroups() async {
     if (mounted) setState(() => _groupsLoading = true);
     try {
-      final r = await http.get(Uri.parse('https://raw.githubusercontent.com/illyassvvv/G/refs/heads/main/channels.json')).timeout(const Duration(seconds: 10));
+      final r = await http
+          .get(Uri.parse('https://raw.githubusercontent.com/illyassvvv/G/refs/heads/main/channels.json'))
+          .timeout(const Duration(seconds: 10));
       if (r.statusCode == 200) {
         final body = jsonDecode(r.body) as Map<String, dynamic>;
         final list = (body['categories'] as List).map((c) => ChannelGroup.fromJson(c)).toList();
@@ -258,7 +286,9 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     final now = DateTime.now();
     final ds  = '${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')}';
     try {
-      final r = await http.get(Uri.parse('https://ws.kora-api.space/api/matches/$ds/1')).timeout(const Duration(seconds: 10));
+      final r = await http
+          .get(Uri.parse('https://ws.kora-api.space/api/matches/$ds/1'))
+          .timeout(const Duration(seconds: 10));
       if (r.statusCode == 200) {
         final body = jsonDecode(r.body) as Map<String, dynamic>;
         final list = ((body['matches'] as List?) ?? []).map((m) => Match.fromJson(m)).toList();
@@ -276,24 +306,30 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     final added = await Prefs.toggleFav(id);
     if (!mounted) return;
     setState(() => added ? _favIds.add(id) : _favIds.remove(id));
-    _showToast(added ? '❤️ Added to Favorites' : '💔 Removed from Favorites');
+    _showToast(added ? '❤️  Added to Favorites' : 'Removed from Favorites');
   }
 
   void _openPlayer(Channel ch) {
     HapticFeedback.selectionClick();
     Navigator.of(context).push(_fadeZoomRoute(PlayerScreen(
-      channel: ch,
-      isFavorite: _favIds.contains(ch.id),
+      channel:     ch,
+      isFavorite:  _favIds.contains(ch.id),
+      autoPlay:    _settings['autoPlay'] as bool? ?? true,
       onToggleFav: () => _toggleFav(ch.id),
     )));
   }
 
   void _showToast(String msg) {
     _toast?.remove(); _toast = null;
-    final entry = OverlayEntry(builder: (_) => _Toast(message: msg, onDone: () { _toast?.remove(); _toast = null; }));
+    final entry = OverlayEntry(
+      builder: (_) => _Toast(message: msg, onDone: () { _toast?.remove(); _toast = null; }),
+    );
     _toast = entry;
     Overlay.of(context).insert(entry);
   }
+
+  List<Channel> get _allChannels => _groups.expand((g) => g.channels).toList();
+  List<Channel> get _favChannels => _allChannels.where((c) => _favIds.contains(c.id)).toList();
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -301,7 +337,7 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     body: Stack(children: [
       AnimatedSwitcher(
         duration: const Duration(milliseconds: 260),
-        switchInCurve: Curves.easeOutCubic,
+        switchInCurve:  Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         transitionBuilder: (child, anim) => FadeTransition(
           opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
@@ -314,10 +350,27 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
               groups: _groups, matches: _matches,
               groupsLoading: _groupsLoading, matchLoading: _matchLoading,
               onOpenPlayer: _openPlayer,
-              onGoMatches: () => setState(() => _tab = 1),
-              onRefresh: _refresh,
+              onGoMatches:  () => setState(() => _tab = 1),
+              onRefresh:    _refresh,
             ),
-            MatchesScreen(matches: _matches, loading: _matchLoading, onRefresh: _loadMatches),
+            MatchesScreen(
+              matches:    _matches,
+              loading:    _matchLoading,
+              showScores: _settings['showScores'] as bool? ?? true,
+              onRefresh:  _loadMatches,
+            ),
+            FavoritesScreen(
+              channels:    _favChannels,
+              onOpenPlayer: _openPlayer,
+              onToggleFav:  _toggleFav,
+            ),
+            SettingsScreen(
+              settings:  _settings,
+              onChanged: (s) async {
+                setState(() => _settings = s);
+                await Prefs.saveSettings(s);
+              },
+            ),
           ][_tab],
         ),
       ),
@@ -326,13 +379,15 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
         child: SlideTransition(
           position: Tween(begin: const Offset(0, 1), end: Offset.zero)
               .animate(CurvedAnimation(parent: _tabAnim, curve: Curves.easeOutCubic)),
-          child: _PillTabBar(selected: _tab, onTap: (i) { HapticFeedback.selectionClick(); setState(() => _tab = i); }),
+          child: _PillTabBar(
+            selected: _tab,
+            onTap: (i) { HapticFeedback.selectionClick(); setState(() => _tab = i); },
+          ),
         ),
       ),
     ]),
   );
 }
-
 
 class _PillTabBar extends StatelessWidget {
   final int selected;
@@ -343,7 +398,7 @@ class _PillTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(28, 0, 28, math.max(bottom, 8) + 12),
+      padding: EdgeInsets.fromLTRB(24, 0, 24, math.max(bottom, 8) + 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(D.r36),
         child: BackdropFilter(
@@ -351,11 +406,11 @@ class _PillTabBar extends StatelessWidget {
           child: Container(
             height: 66,
             decoration: BoxDecoration(
-              color: const Color(0xFF18181A).withValues(alpha: 0.82),
+              color: const Color(0xFF18181A).withValues(alpha: 0.84),
               borderRadius: BorderRadius.circular(D.r36),
               border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 0.5),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.65), blurRadius: 60, spreadRadius: -6, offset: const Offset(0, 20)),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.65), blurRadius: 60, spreadRadius: -6, offset: const Offset(0, 22)),
                 BoxShadow(color: D.blue.withValues(alpha: 0.04), blurRadius: 32),
               ],
             ),
@@ -368,8 +423,10 @@ class _PillTabBar extends StatelessWidget {
                 ),
               ))),
               Row(children: [
-                _PillItem(index: 0, selected: selected, icon: CupertinoIcons.house,       activeIcon: CupertinoIcons.house_fill,       label: 'Home',    onTap: onTap),
-                _PillItem(index: 1, selected: selected, icon: CupertinoIcons.sportscourt, activeIcon: CupertinoIcons.sportscourt_fill, label: 'Matches', onTap: onTap),
+                _PillItem(index: 0, selected: selected, icon: CupertinoIcons.house,       activeIcon: CupertinoIcons.house_fill,       label: 'Home',      onTap: onTap),
+                _PillItem(index: 1, selected: selected, icon: CupertinoIcons.sportscourt, activeIcon: CupertinoIcons.sportscourt_fill, label: 'Matches',   onTap: onTap),
+                _PillItem(index: 2, selected: selected, icon: CupertinoIcons.heart,       activeIcon: CupertinoIcons.heart_fill,       label: 'Favorites', onTap: onTap),
+                _PillItem(index: 3, selected: selected, icon: CupertinoIcons.gear_alt,    activeIcon: CupertinoIcons.gear_alt_fill,    label: 'Settings',  onTap: onTap),
               ]),
             ]),
           ),
@@ -394,17 +451,24 @@ class _PillItem extends StatelessWidget {
         onTap: () => onTap(index),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 240),
+            duration: const Duration(milliseconds: 230),
             transitionBuilder: (child, anim) => ScaleTransition(
-              scale: Tween(begin: 0.60, end: 1.0).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack)),
+              scale: Tween(begin: 0.62, end: 1.0)
+                  .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutBack)),
               child: FadeTransition(opacity: anim, child: child),
             ),
-            child: Icon(active ? activeIcon : icon, key: ValueKey(active), size: 24, color: active ? D.blue : D.lbl3),
+            child: Icon(active ? activeIcon : icon, key: ValueKey(active), size: 22, color: active ? D.blue : D.lbl3),
           ),
           const SizedBox(height: 3),
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 220),
-            style: TextStyle(fontSize: 10, fontWeight: active ? FontWeight.w600 : FontWeight.w400, color: active ? D.blue : D.lbl3, letterSpacing: -0.1),
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+              color: active ? D.blue : D.lbl3,
+              letterSpacing: -0.1,
+              decoration: TextDecoration.none,
+            ),
             child: Text(label),
           ),
         ]),
@@ -501,10 +565,7 @@ class _FeaturedCardState extends State<_FeaturedCard> with SingleTickerProviderS
   @override
   Widget build(BuildContext context) {
     if (widget.loading) {
-      return Container(
-        height: 204,
-        decoration: BoxDecoration(color: D.s2, borderRadius: BorderRadius.circular(D.r24)),
-      );
+      return Container(height: 204, decoration: BoxDecoration(color: D.s2, borderRadius: BorderRadius.circular(D.r24)));
     }
     final live     = widget.matches.where((m) => m.isLive).toList();
     final featured = live.isNotEmpty ? live.first : (widget.matches.isNotEmpty ? widget.matches.first : null);
@@ -550,7 +611,7 @@ class _FeaturedCardState extends State<_FeaturedCard> with SingleTickerProviderS
             ))),
             Padding(
               padding: const EdgeInsets.all(D.g20),
-              child: featured != null ? _CardMatchContent(match: featured) : _CardDefault(),
+              child: featured != null ? _CardMatchContent(match: featured) : const _CardDefault(),
             ),
           ]),
         ),
@@ -589,6 +650,7 @@ class _CardMatchContent extends StatelessWidget {
 }
 
 class _CardDefault extends StatelessWidget {
+  const _CardDefault();
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     const Row(children: [_LivePulse(), SizedBox(width: D.g6), _Badge(label: 'Live', color: D.red)]),
@@ -730,11 +792,14 @@ class _ChannelCard extends StatelessWidget {
 
 class MatchesScreen extends StatelessWidget {
   final List<Match> matches;
-  final bool loading;
+  final bool        loading;
+  final bool        showScores;
   final Future<void> Function() onRefresh;
-  const MatchesScreen({super.key, required this.matches, required this.loading, required this.onRefresh});
 
-  String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
+  const MatchesScreen({super.key, required this.matches, required this.loading, required this.showScores, required this.onRefresh});
+
+  String _fmtDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -759,7 +824,7 @@ class MatchesScreen extends StatelessWidget {
         else if (matches.isEmpty)
           const SliverFillRemaining(child: _EmptyView(icon: CupertinoIcons.sportscourt, label: 'No matches today'))
         else
-          ...grouped.entries.map((e) => SliverToBoxAdapter(child: _MatchDaySection(label: e.key, matches: e.value))),
+          ...grouped.entries.map((e) => SliverToBoxAdapter(child: _MatchDaySection(label: e.key, matches: e.value, showScores: showScores))),
         const SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],
     );
@@ -769,7 +834,8 @@ class MatchesScreen extends StatelessWidget {
 class _MatchDaySection extends StatelessWidget {
   final String label;
   final List<Match> matches;
-  const _MatchDaySection({required this.label, required this.matches});
+  final bool showScores;
+  const _MatchDaySection({required this.label, required this.matches, required this.showScores});
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(D.g16, 0, D.g16, D.g24),
@@ -798,15 +864,17 @@ class _MatchDaySection extends StatelessWidget {
           ),
         ]),
       ),
-      _GlassCard(children: matches.asMap().entries.map((e) => _MatchRow(match: e.value, isLast: e.key == matches.length - 1)).toList()),
+      _GlassCard(children: matches.asMap().entries.map((e) =>
+        _MatchRow(match: e.value, showScore: showScores, isLast: e.key == matches.length - 1),
+      ).toList()),
     ]),
   );
 }
 
 class _MatchRow extends StatelessWidget {
   final Match match;
-  final bool isLast;
-  const _MatchRow({required this.match, required this.isLast});
+  final bool showScore, isLast;
+  const _MatchRow({required this.match, required this.showScore, required this.isLast});
   @override
   Widget build(BuildContext context) => Column(children: [
     Padding(
@@ -826,7 +894,7 @@ class _MatchRow extends StatelessWidget {
                 ? Column(children: [
                     const Row(mainAxisSize: MainAxisSize.min, children: [_LivePulse(), SizedBox(width: D.g4), _Badge(label: 'Live', color: D.red)]),
                     const SizedBox(height: D.g8),
-                    Text(match.score, style: D.title2.copyWith(letterSpacing: 3)),
+                    if (showScore) Text(match.score, style: D.title2.copyWith(letterSpacing: 3)),
                   ])
                 : Text(match.time, style: D.headline.copyWith(color: D.lbl2, fontWeight: FontWeight.w700, letterSpacing: 1)),
           ),
@@ -842,18 +910,280 @@ class _MatchRow extends StatelessWidget {
   ]);
 }
 
+class FavoritesScreen extends StatelessWidget {
+  final List<Channel>     channels;
+  final Function(Channel) onOpenPlayer;
+  final Function(int)     onToggleFav;
+
+  const FavoritesScreen({super.key, required this.channels, required this.onOpenPlayer, required this.onToggleFav});
+
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        SliverToBoxAdapter(child: SizedBox(height: topPad + D.g8)),
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.fromLTRB(D.g20, 0, D.g20, D.g24),
+          child: Row(children: [
+            Text('Favorites', style: D.hero),
+            if (channels.isNotEmpty) ...[
+              const SizedBox(width: D.g12),
+              _Badge(label: '${channels.length}', color: D.red),
+            ],
+          ]),
+        )),
+        if (channels.isEmpty)
+          SliverFillRemaining(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(D.rMax),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  width: 80, height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [D.s3, D.s2]),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+                  ),
+                  child: const Icon(CupertinoIcons.heart, size: 36, color: D.lbl3),
+                ),
+              ),
+            ),
+            const SizedBox(height: D.g20),
+            Text('No favorites yet', style: D.body.copyWith(color: D.lbl2)),
+            const SizedBox(height: D.g8),
+            Text('Tap ♡ on any channel to add it', style: D.caption.copyWith(color: D.lbl3)),
+          ]))
+        else
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: D.g16),
+            sliver: SliverList(delegate: SliverChildBuilderDelegate(
+              (_, i) {
+                final ch = channels[i];
+                return _FavRow(
+                  channel: ch,
+                  isFirst: i == 0,
+                  isLast:  i == channels.length - 1,
+                  onTap:      () => onOpenPlayer(ch),
+                  onRemove:   () => onToggleFav(ch.id),
+                );
+              },
+              childCount: channels.length,
+            )),
+          ),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+      ],
+    );
+  }
+}
+
+class _FavRow extends StatelessWidget {
+  final Channel  channel;
+  final bool     isFirst, isLast;
+  final VoidCallback onTap, onRemove;
+  const _FavRow({required this.channel, required this.isFirst, required this.isLast, required this.onTap, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) => _SpringTap(
+    onTap: onTap,
+    child: Container(
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 0.8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [D.s3, D.s2]),
+        borderRadius: BorderRadius.vertical(
+          top:    isFirst ? const Radius.circular(D.r16) : Radius.zero,
+          bottom: isLast  ? const Radius.circular(D.r16) : Radius.zero,
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: D.g16, vertical: D.g12),
+        child: Row(children: [
+          Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [D.s4, D.s3]),
+              borderRadius: BorderRadius.circular(D.r10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+            ),
+            child: ClipRRect(borderRadius: BorderRadius.circular(D.r10), child: _NetworkImage(url: channel.logo, w: 48, h: 48)),
+          ),
+          const SizedBox(width: D.g12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(channel.name, style: D.callout.copyWith(fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Text('Ch. ${channel.number}', style: D.caption.copyWith(fontSize: 11, color: D.lbl3)),
+          ])),
+          _SpringTap(
+            onTap: onRemove,
+            child: Padding(
+              padding: const EdgeInsets.all(D.g8),
+              child: const Icon(CupertinoIcons.heart_fill, color: D.red, size: 20),
+            ),
+          ),
+          const Icon(CupertinoIcons.chevron_forward, size: 12, color: D.lbl3),
+        ]),
+      ),
+    ),
+  );
+}
+
+class SettingsScreen extends StatelessWidget {
+  final Map<String, dynamic> settings;
+  final ValueChanged<Map<String, dynamic>> onChanged;
+
+  const SettingsScreen({super.key, required this.settings, required this.onChanged});
+
+  void _update(String key, dynamic val) =>
+      onChanged(Map<String, dynamic>.from(settings)..[key] = val);
+
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        SliverToBoxAdapter(child: SizedBox(height: topPad + D.g8)),
+        SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(D.g20, 0, D.g20, D.g32), child: Text('Settings', style: D.hero))),
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: D.g16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _SectionLabel('Playback'),
+            _GlassCard(children: [
+              _ToggleRow(
+                icon: CupertinoIcons.play_circle_fill, iconColor: D.red,
+                title: 'Auto Play', subtitle: 'Start streaming immediately on channel open',
+                value: settings['autoPlay'] as bool? ?? true,
+                onChanged: (v) => _update('autoPlay', v),
+              ),
+              _ToggleRow(
+                icon: CupertinoIcons.sportscourt_fill, iconColor: D.green,
+                title: 'Show Scores', subtitle: 'Display live scores on match cards',
+                value: settings['showScores'] as bool? ?? true,
+                onChanged: (v) => _update('showScores', v),
+              ),
+            ]),
+            const SizedBox(height: D.g28),
+            _SectionLabel('Stream Quality'),
+            _GlassCard(children: [
+              for (final q in [('auto', 'Auto'), ('hd', 'HD'), ('sd', 'SD')])
+                _QualityRow(
+                  label:  q.$2,
+                  active: (settings['quality'] as String? ?? 'auto') == q.$1,
+                  isLast: q.$1 == 'sd',
+                  onTap:  () => _update('quality', q.$1),
+                ),
+            ]),
+            const SizedBox(height: D.g28),
+            _SectionLabel('About'),
+            _GlassCard(children: [
+              _InfoRow(label: 'App',      value: 'StreamGo'),
+              _InfoRow(label: 'Version',  value: '3.0.0'),
+              _InfoRow(label: 'Developer', value: 'StreamGo Team', isLast: true),
+            ]),
+            const SizedBox(height: D.g32),
+          ]),
+        )),
+        const SliverToBoxAdapter(child: SizedBox(height: 120)),
+      ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: D.g6, bottom: D.g10),
+    child: Text(text.toUpperCase(), style: D.micro.copyWith(color: D.lbl3, letterSpacing: 0.8)),
+  );
+}
+
+class _ToggleRow extends StatelessWidget {
+  final IconData icon;
+  final Color    iconColor;
+  final String   title, subtitle;
+  final bool     value;
+  final ValueChanged<bool> onChanged;
+  const _ToggleRow({required this.icon, required this.iconColor, required this.title, required this.subtitle, required this.value, required this.onChanged});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: D.g16, vertical: D.g14),
+    child: Row(children: [
+      Container(
+        width: 32, height: 32,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [iconColor, Color.lerp(iconColor, Colors.black, 0.22)!]),
+          borderRadius: BorderRadius.circular(D.r8),
+          boxShadow: [BoxShadow(color: iconColor.withValues(alpha: 0.30), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Icon(icon, color: Colors.white, size: 16),
+      ),
+      const SizedBox(width: D.g14),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,    style: D.callout.copyWith(fontWeight: FontWeight.w500, color: D.lbl)),
+        const SizedBox(height: 2),
+        Text(subtitle, style: D.caption.copyWith(fontSize: 11, color: D.lbl3)),
+      ])),
+      CupertinoSwitch(value: value, onChanged: onChanged, activeColor: D.blue),
+    ]),
+  );
+}
+
+class _QualityRow extends StatelessWidget {
+  final String label;
+  final bool   active, isLast;
+  final VoidCallback onTap;
+  const _QualityRow({required this.label, required this.active, required this.isLast, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    _SpringTap(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: D.g16, vertical: D.g16),
+        child: Row(children: [
+          Expanded(child: Text(label, style: D.callout.copyWith(fontWeight: FontWeight.w500, color: active ? D.blue : D.lbl))),
+          if (active) const Icon(CupertinoIcons.checkmark, color: D.blue, size: 17),
+        ]),
+      ),
+    ),
+    if (!isLast) Container(height: 0.5, color: Colors.white.withValues(alpha: 0.055), margin: const EdgeInsets.only(left: D.g16)),
+  ]);
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label, value;
+  final bool   isLast;
+  const _InfoRow({required this.label, required this.value, this.isLast = false});
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: D.g16, vertical: D.g16),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: D.callout.copyWith(fontWeight: FontWeight.w500, color: D.lbl)),
+        Text(value, style: D.callout.copyWith(color: D.lbl3)),
+      ]),
+    ),
+    if (!isLast) Container(height: 0.5, color: Colors.white.withValues(alpha: 0.055), margin: const EdgeInsets.only(left: D.g16)),
+  ]);
+}
+
 class PlayerScreen extends StatefulWidget {
-  final Channel channel;
-  final bool isFavorite;
+  final Channel  channel;
+  final bool     isFavorite;
+  final bool     autoPlay;
   final VoidCallback onToggleFav;
-  const PlayerScreen({super.key, required this.channel, required this.isFavorite, required this.onToggleFav});
+  const PlayerScreen({super.key, required this.channel, required this.isFavorite, required this.autoPlay, required this.onToggleFav});
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
 class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin {
   VideoPlayerController? _vpc;
-  ChewieController? _cc;
+  ChewieController?      _cc;
   bool _loading = true, _error = false, _ctrlsVisible = true;
   late bool _isFav;
 
@@ -861,7 +1191,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   late final Animation<double>   _ctrlsFade;
   late final AnimationController _favCtrl;
   late final Animation<double>   _favScale;
-  late final AnimationController _tick;
 
   static const _kUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36';
 
@@ -870,7 +1199,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     super.initState();
     _isFav = widget.isFavorite;
 
-    _ctrlsCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _ctrlsCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 280));
     _ctrlsFade = CurvedAnimation(parent: _ctrlsCtrl, curve: Curves.easeOut);
     _ctrlsCtrl.forward();
 
@@ -880,21 +1209,34 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       TweenSequenceItem(tween: Tween(begin: 1.5, end: 1.0).chain(CurveTween(curve: Curves.elasticOut)), weight: 70),
     ]).animate(_favCtrl);
 
-    _tick = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-
     _initPlayer();
     _autoHide();
   }
 
   @override
   void dispose() {
-    _ctrlsCtrl.dispose(); _favCtrl.dispose(); _tick.dispose();
-    _cc?.dispose(); _vpc?.dispose();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    _ctrlsCtrl.dispose();
+    _favCtrl.dispose();
+    _vpc?.removeListener(_onVideoUpdate);
+    _cc?.dispose();
+    _vpc?.dispose();
     super.dispose();
   }
 
+  void _onVideoUpdate() {
+    if (mounted) setState(() {});
+  }
+
   void _autoHide() => Future.delayed(const Duration(seconds: 4), () {
-    if (mounted && _ctrlsVisible) { setState(() => _ctrlsVisible = false); _ctrlsCtrl.reverse(); }
+    if (mounted && _ctrlsVisible) {
+      setState(() => _ctrlsVisible = false);
+      _ctrlsCtrl.reverse();
+    }
   });
 
   void _toggleControls() {
@@ -905,7 +1247,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   }
 
   Future<void> _initPlayer() async {
-    if (widget.channel.streamUrl.isEmpty) { if (mounted) setState(() { _loading = false; _error = true; }); return; }
+    if (widget.channel.streamUrl.isEmpty) {
+      if (mounted) setState(() { _loading = false; _error = true; });
+      return;
+    }
     if (mounted) setState(() { _loading = true; _error = false; });
     try {
       _vpc = VideoPlayerController.networkUrl(
@@ -913,24 +1258,44 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         httpHeaders: {'User-Agent': _kUA, 'Referer': 'https://streamgo.tv/', 'Origin': 'https://streamgo.tv'},
       );
       await _vpc!.initialize();
+      _vpc!.addListener(_onVideoUpdate);
       _cc = ChewieController(
         videoPlayerController: _vpc!,
-        autoPlay: true, looping: true, allowFullScreen: true, allowMuting: true,
-        showControls: false,
-        placeholder: const Center(child: CupertinoActivityIndicator(radius: 16, color: Colors.white)),
-        errorBuilder: (_, __) => _PlayerError(onRetry: _retry),
+        autoPlay:        widget.autoPlay,
+        looping:         true,
+        allowFullScreen: false,
+        allowMuting:     true,
+        showControls:    false,
+        placeholder:     const Center(child: CupertinoActivityIndicator(radius: 16, color: Colors.white)),
+        errorBuilder:    (_, __) => _PlayerError(onRetry: _retry),
       );
       if (mounted) setState(() => _loading = false);
-    } catch (_) { if (mounted) setState(() { _loading = false; _error = true; }); }
+    } catch (_) {
+      if (mounted) setState(() { _loading = false; _error = true; });
+    }
   }
 
-  void _retry() { _cc?.dispose(); _vpc?.dispose(); _cc = null; _vpc = null; _initPlayer(); }
+  void _retry() {
+    _vpc?.removeListener(_onVideoUpdate);
+    _cc?.dispose(); _vpc?.dispose();
+    _cc = null; _vpc = null;
+    _initPlayer();
+  }
 
   void _tapFav() {
     widget.onToggleFav();
     HapticFeedback.mediumImpact();
     setState(() => _isFav = !_isFav);
     _favCtrl.forward(from: 0);
+  }
+
+  void _toggleFullscreen(bool isLand) {
+    HapticFeedback.lightImpact();
+    if (isLand) {
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    } else {
+      SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+    }
   }
 
   bool     get _playing  => _vpc?.value.isPlaying ?? false;
@@ -967,11 +1332,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     child: Stack(fit: StackFit.expand, children: [
       const ColoredBox(color: Colors.black),
       _videoWidget(),
-      Positioned(top: 0, left: 0, right: 0, height: 160, child: const _GradScrim(fromTop: true)),
+      Positioned(top: 0,    left: 0, right: 0, height: 160, child: const _GradScrim(fromTop: true)),
       Positioned(bottom: 0, left: 0, right: 0, height: 160, child: const _GradScrim(fromTop: false)),
       FadeTransition(
         opacity: _ctrlsFade,
-        child: SafeArea(child: _controls(0)),
+        child: SafeArea(child: _controls(0, isLand: true)),
       ),
     ]),
   );
@@ -989,9 +1354,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           child: Stack(fit: StackFit.expand, children: [
             const ColoredBox(color: Colors.black),
             Positioned(top: topPad, left: 0, right: 0, height: videoH, child: _videoWidget()),
-            Positioned(top: 0, left: 0, right: 0, height: topPad + 96, child: const _GradScrim(fromTop: true)),
-            Positioned(bottom: 0, left: 0, right: 0, height: 110, child: const _GradScrim(fromTop: false)),
-            FadeTransition(opacity: _ctrlsFade, child: _controls(topPad)),
+            Positioned(top: 0,    left: 0, right: 0, height: topPad + 96, child: const _GradScrim(fromTop: true)),
+            Positioned(bottom: 0, left: 0, right: 0, height: 110,         child: const _GradScrim(fromTop: false)),
+            FadeTransition(opacity: _ctrlsFade, child: _controls(topPad, isLand: false)),
           ]),
         ),
       ),
@@ -1006,31 +1371,51 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     return const Center(child: CupertinoActivityIndicator(radius: 18, color: Colors.white));
   }
 
-  Widget _controls(double topOffset) => Stack(children: [
+  Widget _controls(double topOffset, {required bool isLand}) => Stack(children: [
     Positioned(
       top: topOffset + D.g10, left: 0, right: 0,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: D.g16),
         child: Row(children: [
-          _GlassBtn(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).pop()),
+          _GlassBtn(
+            icon:  Icons.arrow_back_ios_new_rounded,
+            onTap: () => Navigator.of(context).pop(),
+          ),
           const SizedBox(width: D.g12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(widget.channel.name, style: D.headline.copyWith(color: Colors.white, shadows: [const Shadow(blurRadius: 12)]), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(
+              widget.channel.name,
+              style: D.headline.copyWith(color: Colors.white, shadows: [const Shadow(blurRadius: 12)], decoration: TextDecoration.none),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 2),
-            const Row(children: [_LivePulse(), SizedBox(width: D.g4), Text('Live', style: TextStyle(color: Colors.white70, fontSize: 12))]),
+            const Row(children: [
+              _LivePulse(),
+              SizedBox(width: D.g4),
+              Text('Live', style: TextStyle(color: Colors.white70, fontSize: 12, decoration: TextDecoration.none)),
+            ]),
           ])),
-          ScaleTransition(scale: _favScale, child: _GlassBtn(icon: _isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart, iconColor: _isFav ? D.red : Colors.white, onTap: _tapFav)),
+          ScaleTransition(
+            scale: _favScale,
+            child: _GlassBtn(
+              icon:      _isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+              iconColor: _isFav ? D.red : Colors.white,
+              onTap:     _tapFav,
+            ),
+          ),
         ]),
       ),
     ),
     if (!_loading && !_error)
-      Center(child: AnimatedBuilder(
-        animation: _tick,
-        builder: (_, __) => _GlassBtn(
-          icon: _playing ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
-          size: 62, iconSize: 28,
-          onTap: () { HapticFeedback.lightImpact(); _playing ? _vpc!.pause() : _vpc!.play(); setState(() {}); _autoHide(); },
-        ),
+      Center(child: _GlassBtn(
+        icon: _playing ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
+        size: 62, iconSize: 28,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          _playing ? _vpc!.pause() : _vpc!.play();
+          setState(() {});
+          _autoHide();
+        },
       )),
     if (!_loading && !_error)
       Positioned(
@@ -1038,15 +1423,20 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: D.g16),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            AnimatedBuilder(animation: _tick, builder: (_, __) => _ProgressBar(progress: _progress)),
+            _ProgressBar(progress: _progress),
             const SizedBox(height: D.g6),
-            AnimatedBuilder(
-              animation: _tick,
-              builder: (_, __) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text(_fmt(_position), style: D.micro.copyWith(color: Colors.white70, fontWeight: FontWeight.w500)),
-                Text(_fmt(_duration), style: D.micro.copyWith(color: Colors.white38)),
-              ]),
-            ),
+            Row(children: [
+              Text(_fmt(_position), style: D.micro.copyWith(color: Colors.white70, fontWeight: FontWeight.w500, decoration: TextDecoration.none)),
+              const Spacer(),
+              _GlassBtn(
+                icon:     isLand ? CupertinoIcons.arrow_down_right_arrow_up_left : CupertinoIcons.arrow_up_left_arrow_down_right,
+                size:     30,
+                iconSize: 14,
+                onTap:    () => _toggleFullscreen(isLand),
+              ),
+              const Spacer(),
+              Text(_fmt(_duration), style: D.micro.copyWith(color: Colors.white38, decoration: TextDecoration.none)),
+            ]),
           ]),
         ),
       ),
@@ -1089,7 +1479,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                     ),
                     child: const Row(mainAxisSize: MainAxisSize.min, children: [
                       _LivePulse(), SizedBox(width: D.g6),
-                      Text('Live', style: TextStyle(color: D.red, fontWeight: FontWeight.w600, fontSize: 12)),
+                      Text('Live', style: TextStyle(color: D.red, fontWeight: FontWeight.w600, fontSize: 12, decoration: TextDecoration.none)),
                     ]),
                   ),
                 ),
@@ -1175,7 +1565,7 @@ class _GradScrim extends StatelessWidget {
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
       gradient: LinearGradient(
-        begin: fromTop ? Alignment.topCenter : Alignment.bottomCenter,
+        begin: fromTop ? Alignment.topCenter    : Alignment.bottomCenter,
         end:   fromTop ? Alignment.bottomCenter : Alignment.topCenter,
         colors: [Colors.black.withValues(alpha: 0.80), Colors.transparent],
         stops: const [0.0, 1.0],
@@ -1216,9 +1606,9 @@ class _ProgressBar extends StatelessWidget {
 
 class _GlassBtn extends StatelessWidget {
   final IconData icon;
-  final Color? iconColor;
+  final Color?   iconColor;
   final VoidCallback onTap;
-  final double size, iconSize;
+  final double   size, iconSize;
   const _GlassBtn({required this.icon, required this.onTap, this.iconColor, this.size = 44, this.iconSize = 21});
   @override
   Widget build(BuildContext context) => _SpringTap(
@@ -1266,9 +1656,9 @@ class _PlayerError extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 20),
-      const Text('Connection Failed', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3)),
+      const Text('Connection Failed', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.3, decoration: TextDecoration.none)),
       const SizedBox(height: 8),
-      const Text('Unable to load stream', style: TextStyle(color: Colors.white54, fontSize: 14)),
+      const Text('Unable to load stream', style: TextStyle(color: Colors.white54, fontSize: 14, decoration: TextDecoration.none)),
       const SizedBox(height: 28),
       _SpringTap(
         onTap: onRetry,
@@ -1279,7 +1669,7 @@ class _PlayerError extends StatelessWidget {
             borderRadius: BorderRadius.circular(D.rMax),
             boxShadow: [BoxShadow(color: D.blue.withValues(alpha: 0.48), blurRadius: 24, offset: const Offset(0, 6))],
           ),
-          child: const Text('Try Again', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+          child: const Text('Try Again', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15, decoration: TextDecoration.none)),
         ),
       ),
     ])),
@@ -1319,7 +1709,7 @@ class _LivePulse extends StatefulWidget {
 }
 class _LivePulseState extends State<_LivePulse> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
-  late final Animation<double> _a;
+  late final Animation<double>   _a;
   @override
   void initState() {
     super.initState();
@@ -1342,7 +1732,7 @@ class _LivePulseState extends State<_LivePulse> with SingleTickerProviderStateMi
 
 class _Badge extends StatelessWidget {
   final String label;
-  final Color color;
+  final Color  color;
   const _Badge({required this.label, required this.color});
   @override
   Widget build(BuildContext context) => Container(
@@ -1358,7 +1748,7 @@ class _Badge extends StatelessWidget {
 
 class _Chip extends StatelessWidget {
   final IconData icon;
-  final String label;
+  final String   label;
   const _Chip({required this.icon, required this.label});
   @override
   Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1384,7 +1774,7 @@ class _NetworkImage extends StatelessWidget {
 
 class _EmptyView extends StatelessWidget {
   final IconData icon;
-  final String label;
+  final String   label;
   const _EmptyView({required this.icon, required this.label});
   @override
   Widget build(BuildContext context) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -1414,7 +1804,7 @@ class _Skeleton extends StatefulWidget {
 }
 class _SkeletonState extends State<_Skeleton> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
-  late final Animation<double> _x;
+  late final Animation<double>   _x;
   @override
   void initState() {
     super.initState();
@@ -1449,7 +1839,7 @@ class _SpringTap extends StatefulWidget {
 }
 class _SpringTapState extends State<_SpringTap> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
-  late final Animation<double> _s;
+  late final Animation<double>   _s;
   @override
   void initState() {
     super.initState();
@@ -1467,14 +1857,14 @@ class _SpringTapState extends State<_SpringTap> with SingleTickerProviderStateMi
 }
 
 class _Toast extends StatefulWidget {
-  final String message;
+  final String   message;
   final VoidCallback onDone;
   const _Toast({required this.message, required this.onDone});
   @override State<_Toast> createState() => _ToastState();
 }
 class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
-  late final Animation<double> _opa, _dy;
+  late final Animation<double>   _opa, _dy;
   @override
   void initState() {
     super.initState();
@@ -1482,7 +1872,9 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
     _opa = CurvedAnimation(parent: _c, curve: Curves.easeOut);
     _dy  = Tween(begin: 20.0, end: 0.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeOutCubic));
     _c.forward();
-    Future.delayed(const Duration(milliseconds: 2300), () { if (mounted) _c.reverse().then((_) => widget.onDone()); });
+    Future.delayed(const Duration(milliseconds: 2300), () {
+      if (mounted) _c.reverse().then((_) => widget.onDone());
+    });
   }
   @override void dispose() { _c.dispose(); super.dispose(); }
   @override
@@ -1492,7 +1884,10 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
       bottom: bottomPad, left: 32, right: 32,
       child: AnimatedBuilder(
         animation: _c,
-        builder: (_, child) => Opacity(opacity: _opa.value, child: Transform.translate(offset: Offset(0, _dy.value), child: child)),
+        builder: (_, child) => Opacity(
+          opacity: _opa.value,
+          child: Transform.translate(offset: Offset(0, _dy.value), child: child),
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(D.r20),
           child: BackdropFilter(
@@ -1505,13 +1900,24 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.11), width: 0.5),
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.38), blurRadius: 28, offset: const Offset(0, 8))],
               ),
-              child: Stack(children: [
-                Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(D.r20),
-                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.white.withValues(alpha: 0.05), Colors.transparent]),
-                ))),
-                Text(widget.message, style: D.callout.copyWith(fontWeight: FontWeight.w500), textAlign: TextAlign.center),
-              ]),
+              child: DefaultTextStyle(
+                style: const TextStyle(decoration: TextDecoration.none),
+                child: Stack(children: [
+                  Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(D.r20),
+                    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.white.withValues(alpha: 0.05), Colors.transparent]),
+                  ))),
+                  Text(
+                    widget.message,
+                    style: D.callout.copyWith(
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.none,
+                      decorationColor: Colors.transparent,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ]),
+              ),
             ),
           ),
         ),
@@ -1525,7 +1931,7 @@ class _GridPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final p = Paint()..color = Colors.white.withValues(alpha: 0.022)..strokeWidth = 0.5;
     for (double x = 0; x < size.width;  x += 28) canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
-    for (double y = 0; y < size.height; y += 28) canvas.drawLine(Offset(0, y), Offset(size.width,  y),  p);
+    for (double y = 0; y < size.height; y += 28) canvas.drawLine(Offset(0, y), Offset(size.width, y),  p);
   }
   @override bool shouldRepaint(_) => false;
 }
