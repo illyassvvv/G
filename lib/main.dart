@@ -85,8 +85,7 @@ import 'package:chewie/chewie.dart';
 // ─── 2. App entry-point ───────────────────────────────────────────────────────
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GestureBinding.instance.resamplingEnabled = true;
-  await SystemChrome.setPreferredOrientations([
+    await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
