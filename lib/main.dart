@@ -1,74 +1,3 @@
-// =============================================================================
-// main.dart — StreamGo  (Fixed + Improved)
-// =============================================================================
-// FIXES
-//  1. _NetworkImage — added loading shimmer placeholder (was bare blank space)
-//  2. _autoHide — replaced fire-and-forget Future.delayed with a cancellable
-//     Timer so it cannot fire after dispose() (memory-leak / setState-after-
-//     dispose bug)
-//  3. PlayerScreen._tapFav — HapticFeedback was called AFTER setState, making
-//     the haptic lag; moved before setState
-//  4. _retry — old _vpc listener was not removed before disposing the old
-//     controller; fixed ordering: removeListener → dispose → null → reinit
-//  5. Prefs.toggleFav — returned set.contains(id) AFTER mutating the set,
-//     so "added" was always the NEW state — correct, but the variable name
-//     "added" was misleading and the logic was subtly wrong on rapid double-
-//     taps because loadFavs() created a fresh set each call. Pinned to a
-//     single SharedPreferences instance per operation.
-//  6. _RootShellState._toggleFav — setState called both add AND remove in one
-//     ternary but the bool from Prefs was the POST-mutation state, so the
-//     local set could diverge on error; guarded with mounted checks and
-//     single-source-of-truth refresh.
-//  7. _ProgressBar — progress thumb Positioned.left used (w * progress - 5)
-//     which can be negative when progress == 0; fixed clamp start.
-//  8. _controls — play/pause calls _vpc!.play() / _vpc!.pause() with ! even
-//     though _vpc could theoretically be null at that moment (e.g. during
-//     retry); guarded with null-aware calls.
-//  9. _Toast — onDone callback captured overlay entry via closure BEFORE the
-//     entry existed (_toast was null at build time); refactored to pass the
-//     remove callback correctly.
-// 10. MatchesScreen — grouped map iteration order is insertion-order in Dart,
-//     but dates could arrive out of order from the API; added explicit sort.
-// 11. _GlassCard — Positioned.fill inside a Stack whose size is determined by
-//     its Column child caused unbounded height warnings on some devices; added
-//     explicit constraints.
-// 12. HomeScreen — SliverToBoxAdapter wrapping each group row was correct but
-//     the trailing SizedBox height was 120, clashing with the pill bar height
-//     on devices with large safe-area insets; changed to MediaQuery-aware pad.
-//
-// DESIGN & ANIMATION IMPROVEMENTS
-//  • _LivePulse — added a second expanding ring (ripple) animation alongside
-//    the existing fade for a more authentic "live" indicator
-//  • _SpringTap — spring-back curve changed to Curves.elasticOut for a
-//    bouncier, more premium feel
-//  • _FeaturedCard — ambient glow now also animates hue shift slightly
-//  • _ChannelCard — added a subtle shimmer sweep animation on idle
-//  • _PillItem — active tab now shows a soft blue pill indicator behind the
-//    icon+label instead of just color change
-//  • _SkeletonState — shimmer gradient now uses three stops for more realism
-//  • PlayerScreen controls — backdrop blur on the top/bottom scrims for
-//    better legibility over bright video frames
-//  • _GlassBtn — micro-bounce on press via _SpringTap (was plain GestureDetector)
-//  • Page transitions — reverseTransitionDuration aligned to match forward
-//
-// CODE ARRANGEMENT
-//  Sections (separated by banners):
-//   1. Imports
-//   2. App entry-point
-//   3. Design tokens  (D)
-//   4. Data models    (Channel, ChannelGroup, Match)
-//   5. Mock / seed data
-//   6. Persistence    (Prefs)
-//   7. App root       (StreamGoApp, RootShell)
-//   8. Navigation     (_PillTabBar, _PillItem)
-//   9. Screens        (HomeScreen, MatchesScreen, FavoritesScreen,
-//                      SettingsScreen, PlayerScreen)
-//  10. Screen sub-widgets (per screen)
-//  11. Shared widgets (reused across screens)
-//  12. Utilities      (route builder, painters, formatters)
-// =============================================================================
-
-// ─── 1. Imports ───────────────────────────────────────────────────────────────
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -82,44 +11,39 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
-// ─── 2. App entry-point ───────────────────────────────────────────────────────
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-    await SystemChrome.setPreferredOrientations([
+  GestureBinding.instance.resamplingEnabled = true;
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor:                   Colors.transparent,
-    statusBarBrightness:              Brightness.dark,
-    statusBarIconBrightness:          Brightness.light,
-    systemNavigationBarColor:         Colors.transparent,
+    statusBarColor: Colors.transparent,
+    statusBarBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.light,
   ));
   runApp(const StreamGoApp());
 }
 
-// ─── 3. Design tokens ─────────────────────────────────────────────────────────
 abstract class D {
-  // Backgrounds
   static const bg   = Color(0xFF020202);
   static const s1   = Color(0xFF080809);
   static const s2   = Color(0xFF0F0F11);
   static const s3   = Color(0xFF181819);
   static const s4   = Color(0xFF222224);
   static const s5   = Color(0xFF2C2C2F);
-  // Labels
   static const lbl  = Color(0xFFFFFFFF);
   static const lbl2 = Color(0xFF8E8E95);
   static const lbl3 = Color(0xFF48484E);
   static const lbl4 = Color(0xFF2D2D31);
-  // Accents
   static const blue  = Color(0xFF0A84FF);
   static const red   = Color(0xFFFF453A);
   static const green = Color(0xFF30D158);
 
-  // Radii
   static const r6   =  6.0;
   static const r8   =  8.0;
   static const r10  = 10.0;
@@ -132,7 +56,6 @@ abstract class D {
   static const r36  = 36.0;
   static const rMax = 999.0;
 
-  // Gaps
   static const g4  =  4.0;
   static const g6  =  6.0;
   static const g8  =  8.0;
@@ -145,7 +68,6 @@ abstract class D {
   static const g28 = 28.0;
   static const g32 = 32.0;
 
-  // Text styles
   static TextStyle get hero     => const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1.4, height: 1.08, color: lbl, decoration: TextDecoration.none);
   static TextStyle get title1   => const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8, height: 1.15, color: lbl, decoration: TextDecoration.none);
   static TextStyle get title2   => const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5, height: 1.2,  color: lbl, decoration: TextDecoration.none);
@@ -157,7 +79,6 @@ abstract class D {
   static TextStyle get micro    => const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing:  0.3, height: 1.2,  color: lbl2, decoration: TextDecoration.none);
 }
 
-// ─── 4. Data models ───────────────────────────────────────────────────────────
 class Channel {
   final int    id;
   final String name, number, logo, streamUrl;
@@ -178,8 +99,8 @@ class Channel {
 }
 
 class ChannelGroup {
-  final String       name;
-  final IconData     icon;
+  final String        name;
+  final IconData      icon;
   final List<Channel> channels;
   const ChannelGroup({required this.name, required this.icon, required this.channels});
 
@@ -200,8 +121,7 @@ class ChannelGroup {
 }
 
 class Match {
-  final String   id, league, home, homeEn, homeLogo, away, awayEn, awayLogo,
-                 score, time;
+  final String   id, league, home, homeEn, homeLogo, away, awayEn, awayLogo, score, time;
   final DateTime date;
   final bool     isLive, hasChannels;
 
@@ -221,76 +141,30 @@ class Match {
       d = DateTime.now();
     }
     return Match(
-      id:          j['id']?.toString()          ?? '',
-      league:      j['league']  as String?       ?? '',
-      home:        j['home']    as String?        ?? '',
-      homeEn:      j['home_en'] as String?        ?? '',
+      id:          j['id']?.toString()           ?? '',
+      league:      j['league']    as String?      ?? '',
+      home:        j['home']      as String?      ?? '',
+      homeEn:      j['home_en']   as String?      ?? '',
       homeLogo:    j['home_logo'] as String?      ?? '',
-      away:        j['away']    as String?        ?? '',
-      awayEn:      j['away_en'] as String?        ?? '',
+      away:        j['away']      as String?      ?? '',
+      awayEn:      j['away_en']   as String?      ?? '',
       awayLogo:    j['away_logo'] as String?      ?? '',
-      score:       j['score']   as String?        ?? '0 - 0',
-      time:        j['time']    as String?        ?? '',
+      score:       j['score']     as String?      ?? '0 - 0',
+      time:        j['time']      as String?      ?? '',
       date:        d,
       isLive:      (j['status']?.toString()       ?? '0') == '1',
       hasChannels: (j['has_channels']?.toString() ?? '0') == '1',
     );
   }
 
-  String get homeLogoUrl  => 'https://img.kora-api.space/uploads/team/$homeLogo';
-  String get awayLogoUrl  => 'https://img.kora-api.space/uploads/team/$awayLogo';
-  String get homeDisplay  => homeEn.isNotEmpty ? homeEn : home;
-  String get awayDisplay  => awayEn.isNotEmpty ? awayEn : away;
+  String get homeLogoUrl => 'https://img.kora-api.space/uploads/team/$homeLogo';
+  String get awayLogoUrl => 'https://img.kora-api.space/uploads/team/$awayLogo';
+  String get homeDisplay => homeEn.isNotEmpty ? homeEn : home;
+  String get awayDisplay => awayEn.isNotEmpty ? awayEn : away;
 }
 
-// ─── 5. Mock / seed data ──────────────────────────────────────────────────────
-const _kStream =
-    'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8';
-
-final List<ChannelGroup> _kMockGroups = [
-  ChannelGroup(name: 'Sports', icon: CupertinoIcons.sportscourt_fill, channels: [
-    const Channel(id: 1, name: 'beIN Sports 1', number: '01',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/BeIN_Sports_logo.svg/200px-BeIN_Sports_logo.svg.png',
-        streamUrl: _kStream),
-    const Channel(id: 2, name: 'beIN Sports 2', number: '02',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/BeIN_Sports_logo.svg/200px-BeIN_Sports_logo.svg.png',
-        streamUrl: _kStream),
-    const Channel(id: 3, name: 'beIN Sports 3', number: '03',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/BeIN_Sports_logo.svg/200px-BeIN_Sports_logo.svg.png',
-        streamUrl: _kStream),
-    const Channel(id: 4, name: 'SSC 1', number: '04',
-        logo: 'https://upload.wikimedia.org/wikipedia/ar/a/a7/SSC_Sports_Logo.png',
-        streamUrl: _kStream),
-    const Channel(id: 5, name: 'SSC 2', number: '05',
-        logo: 'https://upload.wikimedia.org/wikipedia/ar/a/a7/SSC_Sports_Logo.png',
-        streamUrl: _kStream),
-    const Channel(id: 6, name: 'MBC Sport', number: '06',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/MBC_Sports_logo.svg/200px-MBC_Sports_logo.svg.png',
-        streamUrl: _kStream),
-  ]),
-  ChannelGroup(name: 'News', icon: CupertinoIcons.news_solid, channels: [
-    const Channel(id: 7, name: 'Al Jazeera', number: '07',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b2/Al_Jazeera_Logo_2006.svg/200px-Al_Jazeera_Logo_2006.svg.png',
-        streamUrl: _kStream),
-    const Channel(id: 8, name: 'Sky News', number: '08',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sky_News_Arabia_logo.svg/200px-Sky_News_Arabia_logo.svg.png',
-        streamUrl: _kStream),
-    const Channel(id: 9, name: 'Al Arabiya', number: '09',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Al_Arabiya_logo.svg/200px-Al_Arabiya_logo.svg.png',
-        streamUrl: _kStream),
-  ]),
-  ChannelGroup(name: 'Entertainment', icon: CupertinoIcons.tv_fill, channels: [
-    const Channel(id: 10, name: 'MBC 1', number: '10',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png',
-        streamUrl: _kStream),
-    const Channel(id: 11, name: 'MBC 2', number: '11',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/MBC1HD.png/200px-MBC1HD.png',
-        streamUrl: _kStream),
-    const Channel(id: 12, name: 'Rotana Cinema', number: '12',
-        logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Rotana_logo.svg/200px-Rotana_logo.svg.png',
-        streamUrl: _kStream),
-  ]),
-];
+const _kChannelsUrl = 'https://raw.githubusercontent.com/illyassvvv/G/refs/heads/main/channels.json';
+const _kMatchesBase = 'https://ws.kora-api.space/api/matches';
 
 final List<Match> _kMockMatches = [
   Match(id: '1', league: 'UEFA Champions League',
@@ -325,7 +199,6 @@ final List<Match> _kMockMatches = [
       isLive: false, hasChannels: false),
 ];
 
-// ─── 6. Persistence ───────────────────────────────────────────────────────────
 class Prefs {
   static const _kFav      = 'favs_v3';
   static const _kSettings = 'settings_v2';
@@ -337,11 +210,10 @@ class Prefs {
         .toSet();
   }
 
-  // FIX #5 – use a single prefs instance; return the NEW "is-fav" state.
   static Future<bool> toggleFav(int id) async {
-    final p   = await SharedPreferences.getInstance();
-    final raw = p.getStringList(_kFav) ?? [];
-    final set = raw.map((e) => int.tryParse(e) ?? -1).toSet();
+    final p        = await SharedPreferences.getInstance();
+    final raw      = p.getStringList(_kFav) ?? [];
+    final set      = raw.map((e) => int.tryParse(e) ?? -1).toSet();
     final nowAdded = !set.contains(id);
     nowAdded ? set.add(id) : set.remove(id);
     await p.setStringList(_kFav, set.map((e) => '$e').toList());
@@ -368,7 +240,6 @@ class Prefs {
       {'autoPlay': true, 'showScores': true, 'quality': 'auto'};
 }
 
-// ─── 7. App root ──────────────────────────────────────────────────────────────
 class StreamGoApp extends StatelessWidget {
   const StreamGoApp({super.key});
 
@@ -401,14 +272,16 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
   int _tab = 0;
 
-  Set<int>             _favIds       = {};
-  List<ChannelGroup>   _groups       = [];
-  List<Match>          _matches      = [];
-  Map<String, dynamic> _settings     = {'autoPlay': true, 'showScores': true, 'quality': 'auto'};
+  Set<int>             _favIds   = {};
+  List<ChannelGroup>   _groups   = [];
+  List<Match>          _matches  = [];
+  Map<String, dynamic> _settings = {'autoPlay': true, 'showScores': true, 'quality': 'auto'};
+
   bool _groupsLoading = true;
   bool _matchLoading  = true;
 
   late final AnimationController _tabAnim;
+  Timer?        _liveTimer;
   OverlayEntry? _toast;
 
   @override
@@ -418,10 +291,12 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
         vsync: this, duration: const Duration(milliseconds: 600))
       ..forward();
     _init();
+    _liveTimer = Timer.periodic(const Duration(minutes: 5), (_) => _refresh());
   }
 
   @override
   void dispose() {
+    _liveTimer?.cancel();
     _tabAnim.dispose();
     super.dispose();
   }
@@ -443,19 +318,19 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     if (mounted) setState(() => _groupsLoading = true);
     try {
       final r = await http
-          .get(Uri.parse(
-              'https://raw.githubusercontent.com/illyassvvv/G/refs/heads/main/channels.json'))
-          .timeout(const Duration(seconds: 10));
+          .get(Uri.parse(_kChannelsUrl))
+          .timeout(const Duration(seconds: 12));
       if (r.statusCode == 200) {
         final body = jsonDecode(r.body) as Map<String, dynamic>;
-        final list = (body['categories'] as List)
+        final key  = body.containsKey('categories') ? 'categories' : 'groups';
+        final list = (body[key] as List)
             .map((c) => ChannelGroup.fromJson(c))
             .toList();
         if (mounted) setState(() { _groups = list; _groupsLoading = false; });
         return;
       }
     } catch (_) {}
-    if (mounted) setState(() { _groups = _kMockGroups; _groupsLoading = false; });
+    if (mounted) setState(() { _groupsLoading = false; });
   }
 
   Future<void> _loadMatches() async {
@@ -466,7 +341,7 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
                 '${now.day.toString().padLeft(2, '0')}';
     try {
       final r = await http
-          .get(Uri.parse('https://ws.kora-api.space/api/matches/$ds/1'))
+          .get(Uri.parse('$_kMatchesBase/$ds/1'))
           .timeout(const Duration(seconds: 10));
       if (r.statusCode == 200) {
         final body = jsonDecode(r.body) as Map<String, dynamic>;
@@ -482,7 +357,6 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
 
   Future<void> _refresh() => Future.wait([_loadGroups(), _loadMatches()]);
 
-  // FIX #6 – single source-of-truth; guard mounted before setState.
   Future<void> _toggleFav(int id) async {
     HapticFeedback.lightImpact();
     final added = await Prefs.toggleFav(id);
@@ -501,8 +375,6 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     )));
   }
 
-  // FIX #9 – pass a tear-off; the overlay entry is captured via the
-  // _toast field which is always set before insert().
   void _showToast(String msg) {
     _toast?.remove();
     _toast = null;
@@ -520,12 +392,11 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
     Overlay.of(context).insert(entry);
   }
 
-  List<Channel> get _allChannels  => _groups.expand((g) => g.channels).toList();
-  List<Channel> get _favChannels  => _allChannels.where((c) => _favIds.contains(c.id)).toList();
+  List<Channel> get _allChannels => _groups.expand((g) => g.channels).toList();
+  List<Channel> get _favChannels => _allChannels.where((c) => _favIds.contains(c.id)).toList();
 
   @override
   Widget build(BuildContext context) {
-    // FIX #12 – bottom pad accounts for safe-area so content is not hidden.
     final bottomSafeArea = MediaQuery.of(context).padding.bottom;
     final trailingPad    = math.max(bottomSafeArea, 0.0) + 110.0;
 
@@ -554,11 +425,11 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
                 trailingPad:   trailingPad,
               ),
               MatchesScreen(
-                matches:      _matches,
-                loading:      _matchLoading,
-                showScores:   _settings['showScores'] as bool? ?? true,
-                onRefresh:    _loadMatches,
-                trailingPad:  trailingPad,
+                matches:     _matches,
+                loading:     _matchLoading,
+                showScores:  _settings['showScores'] as bool? ?? true,
+                onRefresh:   _loadMatches,
+                trailingPad: trailingPad,
               ),
               FavoritesScreen(
                 channels:     _favChannels,
@@ -596,10 +467,9 @@ class _RootShellState extends State<RootShell> with TickerProviderStateMixin {
   }
 }
 
-// ─── 8. Navigation ────────────────────────────────────────────────────────────
 class _PillTabBar extends StatelessWidget {
-  final int                selected;
-  final ValueChanged<int>  onTap;
+  final int               selected;
+  final ValueChanged<int> onTap;
   const _PillTabBar({required this.selected, required this.onTap});
 
   @override
@@ -619,7 +489,7 @@ class _PillTabBar extends StatelessWidget {
               border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 0.5),
               boxShadow: [
                 BoxShadow(color: Colors.black.withValues(alpha: 0.65), blurRadius: 60, spreadRadius: -6, offset: const Offset(0, 22)),
-                BoxShadow(color: D.blue.withValues(alpha: 0.04),  blurRadius: 32),
+                BoxShadow(color: D.blue.withValues(alpha: 0.04), blurRadius: 32),
               ],
             ),
             child: Stack(children: [
@@ -645,14 +515,14 @@ class _PillTabBar extends StatelessWidget {
 }
 
 class _PillItem extends StatelessWidget {
-  final int            index, selected;
-  final IconData       icon, activeIcon;
-  final String         label;
+  final int               index, selected;
+  final IconData          icon, activeIcon;
+  final String            label;
   final ValueChanged<int> onTap;
   const _PillItem({
-    required this.index, required this.selected,
-    required this.icon,  required this.activeIcon,
-    required this.label, required this.onTap,
+    required this.index,  required this.selected,
+    required this.icon,   required this.activeIcon,
+    required this.label,  required this.onTap,
   });
 
   @override
@@ -662,7 +532,6 @@ class _PillItem extends StatelessWidget {
       child: _SpringTap(
         onTap: () => onTap(index),
         child: Stack(alignment: Alignment.center, children: [
-          // IMPROVEMENT – active pill highlight behind icon+label
           AnimatedContainer(
             duration: const Duration(milliseconds: 260),
             curve: Curves.easeOutCubic,
@@ -692,11 +561,11 @@ class _PillItem extends StatelessWidget {
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 220),
               style: TextStyle(
-                fontSize:     9,
-                fontWeight:   active ? FontWeight.w600 : FontWeight.w400,
-                color:        active ? D.blue : D.lbl3,
+                fontSize:      9,
+                fontWeight:    active ? FontWeight.w600 : FontWeight.w400,
+                color:         active ? D.blue : D.lbl3,
                 letterSpacing: -0.1,
-                decoration:   TextDecoration.none,
+                decoration:    TextDecoration.none,
               ),
               child: Text(label),
             ),
@@ -707,33 +576,22 @@ class _PillItem extends StatelessWidget {
   }
 }
 
-// ─── 9. Screens ───────────────────────────────────────────────────────────────
-
-// ── HomeScreen ────────────────────────────────────────────────────────────────
 class HomeScreen extends StatelessWidget {
-  final List<ChannelGroup>  groups;
-  final List<Match>         matches;
-  final bool                groupsLoading, matchLoading;
-  final Function(Channel)   onOpenPlayer;
-  final VoidCallback        onGoMatches;
+  final List<ChannelGroup>      groups;
+  final List<Match>             matches;
+  final bool                    groupsLoading, matchLoading;
+  final Function(Channel)       onOpenPlayer;
+  final VoidCallback            onGoMatches;
   final Future<void> Function() onRefresh;
-  final double              trailingPad;
+  final double                  trailingPad;
 
   const HomeScreen({
     super.key,
-    required this.groups,       required this.matches,
+    required this.groups,        required this.matches,
     required this.groupsLoading, required this.matchLoading,
-    required this.onOpenPlayer, required this.onGoMatches,
-    required this.onRefresh,    required this.trailingPad,
+    required this.onOpenPlayer,  required this.onGoMatches,
+    required this.onRefresh,     required this.trailingPad,
   });
-
-  String _greeting() {
-    final h = DateTime.now().hour;
-    if (h <  5) return 'Late night 🌙';
-    if (h < 12) return 'Good morning ☀️';
-    if (h < 17) return 'Good afternoon 🌤️';
-    return 'Good evening 🌙';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -742,16 +600,12 @@ class HomeScreen extends StatelessWidget {
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
         CupertinoSliverRefreshControl(onRefresh: onRefresh),
-        SliverToBoxAdapter(child: SizedBox(height: topPad + D.g8)),
+        SliverToBoxAdapter(child: SizedBox(height: topPad + D.g16)),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(D.g20, 0, D.g20, D.g24),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_greeting(), style: D.caption.copyWith(color: D.lbl2, fontSize: 13)),
-                const SizedBox(height: 2),
-                Text('StreamGo', style: D.hero),
-              ]),
+              Text('StreamGo', style: D.hero),
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
@@ -770,33 +624,29 @@ class HomeScreen extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(D.g16, 0, D.g16, D.g32),
-            child: _FeaturedCard(
-              matches:    matches,
-              loading:    matchLoading,
-              onGoMatches: onGoMatches,
-            ),
+            child: _FeaturedCard(matches: matches, loading: matchLoading, onGoMatches: onGoMatches),
           ),
         ),
         if (groupsLoading)
           const SliverToBoxAdapter(child: _Skeleton())
+        else if (groups.isEmpty)
+          const SliverToBoxAdapter(child: _EmptyView(icon: CupertinoIcons.tv, label: 'No channels available'))
         else
           ...groups.map((g) => SliverToBoxAdapter(
             child: _ChannelGroupRow(group: g, onOpen: onOpenPlayer),
           )),
-        // FIX #12 – dynamic trailing pad
         SliverToBoxAdapter(child: SizedBox(height: trailingPad)),
       ],
     );
   }
 }
 
-// ── MatchesScreen ─────────────────────────────────────────────────────────────
 class MatchesScreen extends StatelessWidget {
-  final List<Match>          matches;
-  final bool                 loading;
-  final bool                 showScores;
+  final List<Match>             matches;
+  final bool                    loading;
+  final bool                    showScores;
   final Future<void> Function() onRefresh;
-  final double               trailingPad;
+  final double                  trailingPad;
 
   const MatchesScreen({
     super.key,
@@ -815,7 +665,6 @@ class MatchesScreen extends StatelessWidget {
     final today    = _fmtDate(now);
     final tomorrow = _fmtDate(now.add(const Duration(days: 1)));
 
-    // FIX #10 – sort matches by date before grouping
     final sorted = List<Match>.from(matches)..sort((a, b) => a.date.compareTo(b.date));
     final grouped = <String, List<Match>>{};
     for (final m in sorted) {
@@ -849,7 +698,6 @@ class MatchesScreen extends StatelessWidget {
   }
 }
 
-// ── FavoritesScreen ───────────────────────────────────────────────────────────
 class FavoritesScreen extends StatelessWidget {
   final List<Channel>     channels;
   final Function(Channel) onOpenPlayer;
@@ -892,7 +740,7 @@ class FavoritesScreen extends StatelessWidget {
                       begin: Alignment.topCenter, end: Alignment.bottomCenter,
                       colors: [D.s3, D.s2],
                     ),
-                    shape: BoxShape.circle,
+                    shape:  BoxShape.circle,
                     border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
                   ),
                   child: const Icon(CupertinoIcons.heart, size: 36, color: D.lbl3),
@@ -927,11 +775,10 @@ class FavoritesScreen extends StatelessWidget {
   }
 }
 
-// ── SettingsScreen ────────────────────────────────────────────────────────────
 class SettingsScreen extends StatelessWidget {
-  final Map<String, dynamic>          settings;
+  final Map<String, dynamic>            settings;
   final ValueChanged<Map<String, dynamic>> onChanged;
-  final double                        trailingPad;
+  final double                          trailingPad;
 
   const SettingsScreen({
     super.key,
@@ -1001,7 +848,6 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-// ── PlayerScreen ──────────────────────────────────────────────────────────────
 class PlayerScreen extends StatefulWidget {
   final Channel      channel;
   final bool         isFavorite;
@@ -1029,7 +875,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   late final AnimationController _favCtrl;
   late final Animation<double>   _favScale;
 
-  // FIX #2 – cancellable auto-hide timer
   Timer? _hideTimer;
 
   static const _kUA =
@@ -1065,7 +910,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     ]);
     _ctrlsCtrl.dispose();
     _favCtrl.dispose();
-    // FIX #4 – correct disposal order
     _vpc?.removeListener(_onVideoUpdate);
     _cc?.dispose();
     _vpc?.dispose();
@@ -1076,7 +920,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     if (mounted) setState(() {});
   }
 
-  // FIX #2 – use Timer so it can be cancelled on dispose
   void _scheduleAutoHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 4), () {
@@ -1127,7 +970,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     }
   }
 
-  // FIX #4 – correct retry order: remove listener → dispose CC → dispose VPC
   void _retry() {
     _vpc?.removeListener(_onVideoUpdate);
     _cc?.dispose();  _cc  = null;
@@ -1135,7 +977,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     _initPlayer();
   }
 
-  // FIX #3 – haptic BEFORE setState for zero perceptible lag
   void _tapFav() {
     HapticFeedback.mediumImpact();
     widget.onToggleFav();
@@ -1191,9 +1032,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       _videoWidget(),
       Positioned(top: 0,    left: 0, right: 0, height: 160, child: const _GradScrim(fromTop: true)),
       Positioned(bottom: 0, left: 0, right: 0, height: 160, child: const _GradScrim(fromTop: false)),
-      FadeTransition(
-        opacity: _ctrlsFade,
-        child: SafeArea(child: _controls(0, isLand: true)),
+      IgnorePointer(
+        ignoring: !_ctrlsVisible,
+        child: FadeTransition(
+          opacity: _ctrlsFade,
+          child: SafeArea(child: _controls(0, isLand: true)),
+        ),
       ),
     ]),
   );
@@ -1205,16 +1049,21 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       GestureDetector(
         onTap: _toggleControls,
         behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          width:  double.infinity,
-          height: topPad + videoH,
-          child: Stack(fit: StackFit.expand, children: [
-            const ColoredBox(color: Colors.black),
-            Positioned(top: topPad, left: 0, right: 0, height: videoH, child: _videoWidget()),
-            Positioned(top: 0,    left: 0, right: 0, height: topPad + 96, child: const _GradScrim(fromTop: true)),
-            Positioned(bottom: 0, left: 0, right: 0, height: 110,         child: const _GradScrim(fromTop: false)),
-            FadeTransition(opacity: _ctrlsFade, child: _controls(topPad, isLand: false)),
-          ]),
+        child: ClipRect(
+          child: SizedBox(
+            width:  double.infinity,
+            height: topPad + videoH,
+            child: Stack(fit: StackFit.expand, children: [
+              const ColoredBox(color: Colors.black),
+              Positioned(top: topPad, left: 0, right: 0, height: videoH, child: _videoWidget()),
+              Positioned(top: 0,    left: 0, right: 0, height: topPad + 96, child: const _GradScrim(fromTop: true)),
+              Positioned(bottom: 0, left: 0, right: 0, height: 110,         child: const _GradScrim(fromTop: false)),
+              IgnorePointer(
+                ignoring: !_ctrlsVisible,
+                child: FadeTransition(opacity: _ctrlsFade, child: _controls(topPad, isLand: false)),
+              ),
+            ]),
+          ),
         ),
       ),
       Expanded(child: _infoPanel()),
@@ -1271,12 +1120,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         iconSize: 28,
         onTap: () {
           HapticFeedback.lightImpact();
-          // FIX #8 – null-safe play/pause
-          if (_playing) {
-            _vpc?.pause();
-          } else {
-            _vpc?.play();
-          }
+          if (_playing) { _vpc?.pause(); } else { _vpc?.play(); }
           setState(() {});
           _scheduleAutoHide();
         },
@@ -1410,7 +1254,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   border: Border.all(color: Colors.white.withValues(alpha: 0.07), width: 0.5),
                 ),
                 child: Row(children: [
-                  _Chip(icon: CupertinoIcons.tv,       label: 'Ch. ${widget.channel.number}'),
+                  _Chip(icon: CupertinoIcons.tv,         label: 'Ch. ${widget.channel.number}'),
                   const SizedBox(width: D.g16),
                   const _Chip(icon: CupertinoIcons.waveform, label: 'HLS'),
                   const Spacer(),
@@ -1440,9 +1284,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   );
 }
 
-// ─── 10. Screen sub-widgets ───────────────────────────────────────────────────
-
-// Home sub-widgets ─────────────────────────────────────────────────────────────
 class _FeaturedCard extends StatefulWidget {
   final List<Match>  matches;
   final bool         loading;
@@ -1482,7 +1323,6 @@ class _FeaturedCardState extends State<_FeaturedCard> with SingleTickerProviderS
           height: 204,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(D.r24),
-            // IMPROVEMENT – very slight hue shift in the glow animation
             gradient: LinearGradient(
               begin: Alignment.topRight, end: Alignment.bottomLeft,
               colors: [
@@ -1495,8 +1335,7 @@ class _FeaturedCardState extends State<_FeaturedCard> with SingleTickerProviderS
               BoxShadow(
                 color: Color.lerp(D.blue, const Color(0xFF30A0FF), _glow.value * 0.3)!
                     .withValues(alpha: 0.08 + 0.09 * _glow.value),
-                blurRadius: 40,
-                offset: const Offset(0, 14),
+                blurRadius: 40, offset: const Offset(0, 14),
               ),
               BoxShadow(color: Colors.black.withValues(alpha: 0.50), blurRadius: 24, offset: const Offset(0, 6)),
             ],
@@ -1511,18 +1350,14 @@ class _FeaturedCardState extends State<_FeaturedCard> with SingleTickerProviderS
               width: 180, height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [
-                  Colors.white.withValues(alpha: 0.05), Colors.transparent,
-                ]),
+                gradient: RadialGradient(colors: [Colors.white.withValues(alpha: 0.05), Colors.transparent]),
               ),
             )),
             Positioned(bottom: -40, left: -40, child: Container(
               width: 140, height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [
-                  D.blue.withValues(alpha: 0.06), Colors.transparent,
-                ]),
+                gradient: RadialGradient(colors: [D.blue.withValues(alpha: 0.06), Colors.transparent]),
               ),
             )),
             Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(
@@ -1603,7 +1438,7 @@ class _MiniTeam extends StatelessWidget {
 }
 
 class _ChannelGroupRow extends StatelessWidget {
-  final ChannelGroup    group;
+  final ChannelGroup      group;
   final Function(Channel) onOpen;
   const _ChannelGroupRow({required this.group, required this.onOpen});
   @override
@@ -1731,7 +1566,6 @@ class _ChannelCard extends StatelessWidget {
   );
 }
 
-// Matches sub-widgets ──────────────────────────────────────────────────────────
 class _MatchDaySection extends StatelessWidget {
   final String      label;
   final List<Match> matches;
@@ -1833,7 +1667,6 @@ class _MatchRow extends StatelessWidget {
   ]);
 }
 
-// Favorites sub-widgets ────────────────────────────────────────────────────────
 class _FavRow extends StatelessWidget {
   final Channel      channel;
   final bool         isFirst, isLast;
@@ -1900,7 +1733,6 @@ class _FavRow extends StatelessWidget {
   );
 }
 
-// Settings sub-widgets ─────────────────────────────────────────────────────────
 class _SectionLabel extends StatelessWidget {
   final String text;
   const _SectionLabel(this.text);
@@ -1950,8 +1782,8 @@ class _ToggleRow extends StatelessWidget {
 }
 
 class _QualityRow extends StatelessWidget {
-  final String    label;
-  final bool      active, isLast;
+  final String       label;
+  final bool         active, isLast;
   final VoidCallback onTap;
   const _QualityRow({required this.label, required this.active, required this.isLast, required this.onTap});
   @override
@@ -1998,7 +1830,6 @@ class _InfoRow extends StatelessWidget {
   ]);
 }
 
-// Player sub-widgets ───────────────────────────────────────────────────────────
 class _GradScrim extends StatelessWidget {
   final bool fromTop;
   const _GradScrim({required this.fromTop});
@@ -2020,8 +1851,7 @@ class _ProgressBar extends StatelessWidget {
   const _ProgressBar({required this.progress});
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (_, c) {
-    final w = c.maxWidth;
-    // FIX #7 – thumb left is clamped from 0 so it cannot go negative
+    final w         = c.maxWidth;
     final thumbLeft = (w * progress - 6).clamp(0.0, w - 12);
     return SizedBox(
       height: 22,
@@ -2046,8 +1876,8 @@ class _ProgressBar extends StatelessWidget {
           child: Container(
             width: 12, height: 12,
             decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
+              color:     Colors.white,
+              shape:     BoxShape.circle,
               boxShadow: [BoxShadow(color: D.blue.withValues(alpha: 0.70), blurRadius: 10, spreadRadius: 1)],
             ),
           ),
@@ -2145,8 +1975,6 @@ class _PlayerError extends StatelessWidget {
   );
 }
 
-// ─── 11. Shared widgets ───────────────────────────────────────────────────────
-
 class _GlassCard extends StatelessWidget {
   final List<Widget> children;
   const _GlassCard({required this.children});
@@ -2156,7 +1984,6 @@ class _GlassCard extends StatelessWidget {
     child: BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
       child: Container(
-        // FIX #11 – explicit constraints prevent unbounded-height layout warnings
         constraints: const BoxConstraints(minHeight: 0),
         decoration: BoxDecoration(
           color: D.s2.withValues(alpha: 0.72),
@@ -2179,7 +2006,6 @@ class _GlassCard extends StatelessWidget {
   );
 }
 
-/// IMPROVEMENT – ripple ring added alongside fade for a premium live indicator
 class _LivePulse extends StatefulWidget {
   const _LivePulse();
   @override State<_LivePulse> createState() => _LivePulseState();
@@ -2191,8 +2017,7 @@ class _LivePulseState extends State<_LivePulse> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
-      ..repeat();
+    _c    = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
     _fade = Tween(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
     _ring = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
   }
@@ -2203,7 +2028,6 @@ class _LivePulseState extends State<_LivePulse> with SingleTickerProviderStateMi
     child: AnimatedBuilder(
       animation: _c,
       builder: (_, __) => Stack(alignment: Alignment.center, children: [
-        // Expanding ring
         Opacity(
           opacity: _fade.value,
           child: Container(
@@ -2211,16 +2035,18 @@ class _LivePulseState extends State<_LivePulse> with SingleTickerProviderStateMi
             height: 6 + 8 * _ring.value,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: D.red.withValues(alpha: 0.55 * (1 - _ring.value)), width: 1),
+              border: Border.all(
+                color: D.red.withValues(alpha: 0.55 * (1 - _ring.value)),
+                width: 1,
+              ),
             ),
           ),
         ),
-        // Solid dot
         Container(
           width: 6, height: 6,
           decoration: BoxDecoration(
-            color:      D.red,
-            shape:      BoxShape.circle,
+            color:     D.red,
+            shape:     BoxShape.circle,
             boxShadow: [BoxShadow(color: D.red.withValues(alpha: 0.60), blurRadius: 5, spreadRadius: 1)],
           ),
         ),
@@ -2257,7 +2083,6 @@ class _Chip extends StatelessWidget {
   ]);
 }
 
-/// FIX #1 – added shimmer placeholder while image is loading
 class _NetworkImage extends StatelessWidget {
   final String url;
   final double w, h;
@@ -2273,7 +2098,6 @@ class _NetworkImage extends StatelessWidget {
         url,
         width: w, height: h,
         fit: BoxFit.contain,
-        // Loading placeholder shimmer
         loadingBuilder: (_, child, progress) {
           if (progress == null) return child;
           return Container(
@@ -2320,7 +2144,6 @@ class _EmptyView extends StatelessWidget {
   ]));
 }
 
-// ─── 12. Skeleton / loading ───────────────────────────────────────────────────
 class _Skeleton extends StatefulWidget {
   const _Skeleton();
   @override State<_Skeleton> createState() => _SkeletonState();
@@ -2331,8 +2154,7 @@ class _SkeletonState extends State<_Skeleton> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
-      ..repeat();
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
     _x = Tween(begin: -1.5, end: 2.5)
         .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
   }
@@ -2347,12 +2169,11 @@ class _SkeletonState extends State<_Skeleton> with SingleTickerProviderStateMixi
         margin: const EdgeInsets.only(bottom: 1),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(D.r8),
-          // IMPROVEMENT – three-stop shimmer for more realism
           gradient: LinearGradient(
-            begin: Alignment(_x.value - 1, 0),
-            end:   Alignment(_x.value,     0),
+            begin:  Alignment(_x.value - 1, 0),
+            end:    Alignment(_x.value,     0),
             colors: [D.s2, D.s3, D.s4.withValues(alpha: 0.65), D.s3, D.s2],
-            stops: const [0.0, 0.35, 0.50, 0.65, 1.0],
+            stops:  const [0.0, 0.35, 0.50, 0.65, 1.0],
           ),
         ),
       ),
@@ -2360,11 +2181,8 @@ class _SkeletonState extends State<_Skeleton> with SingleTickerProviderStateMixi
   );
 }
 
-// ─── 13. Interaction primitives ───────────────────────────────────────────────
-
-/// IMPROVEMENT – spring-back uses elasticOut for a bouncier feel
 class _SpringTap extends StatefulWidget {
-  final Widget       child;
+  final Widget        child;
   final VoidCallback? onTap;
   const _SpringTap({required this.child, this.onTap});
   @override State<_SpringTap> createState() => _SpringTapState();
@@ -2384,7 +2202,6 @@ class _SpringTapState extends State<_SpringTap> with SingleTickerProviderStateMi
   Widget build(BuildContext context) => GestureDetector(
     onTapDown:   (_) => _c.forward(),
     onTapUp:     (_) {
-      // IMPROVEMENT – reverse with elasticOut for satisfying snap-back
       _c.animateBack(0, duration: const Duration(milliseconds: 380), curve: Curves.elasticOut);
       widget.onTap?.call();
     },
@@ -2393,7 +2210,6 @@ class _SpringTapState extends State<_SpringTap> with SingleTickerProviderStateMi
   );
 }
 
-// ─── 14. Toast overlay ────────────────────────────────────────────────────────
 class _Toast extends StatefulWidget {
   final String       message;
   final VoidCallback onDone;
@@ -2468,7 +2284,6 @@ class _ToastState extends State<_Toast> with SingleTickerProviderStateMixin {
   }
 }
 
-// ─── 15. Utilities ────────────────────────────────────────────────────────────
 class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -2483,7 +2298,6 @@ class _GridPainter extends CustomPainter {
 
 PageRoute<R> _fadeZoomRoute<R>(Widget page) => PageRouteBuilder<R>(
   pageBuilder: (_, a, __) => page,
-  // IMPROVEMENT – matched reverse duration for consistent feel
   transitionDuration:        const Duration(milliseconds: 390),
   reverseTransitionDuration: const Duration(milliseconds: 390),
   transitionsBuilder: (_, a, __, child) => FadeTransition(
