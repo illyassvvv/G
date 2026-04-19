@@ -19,20 +19,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _error = false;
   bool _isFullscreen = false;
 
-  // Headers that help most streams play:
-  // UA mimics Safari on iOS so CDNs don't block Flutter's default agent.
-  // Referer & Origin are needed by some providers.
+  // Windows Chrome UA — required for beIN Sport and similar CDNs
+  // that block mobile/Flutter user agents.
   static const _streamHeaders = {
     'User-Agent':
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
-        'AppleWebKit/605.1.15 (KHTML, like Gecko) '
-        'Version/17.0 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/139.0.0.0 Safari/537.36',
     'Accept': '*/*',
     'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8',
     'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
-    'Origin': 'https://www.google.com',
-    'Referer': 'https://www.google.com/',
+    'Origin': 'https://www.beinsports.com',
+    'Referer': 'https://www.beinsports.com/',
   };
 
   @override
