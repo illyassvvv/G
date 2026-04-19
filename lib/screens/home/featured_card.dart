@@ -19,7 +19,7 @@ class FeaturedCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: Motion.normal,
         curve: Motion.emphasized,
-        height: 210,
+        height: 200,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
@@ -42,6 +42,7 @@ class FeaturedCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           child: Stack(
             children: [
+              // Ambient glow blob
               Positioned(
                 top: -40,
                 right: -40,
@@ -50,9 +51,7 @@ class FeaturedCard extends StatelessWidget {
                   height: 130,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: (match?.isLive == true
-                            ? AppColors.live
-                            : AppColors.primary)
+                    color: (match?.isLive == true ? AppColors.live : AppColors.primary)
                         .withOpacity(0.07),
                   ),
                 ),
@@ -62,12 +61,11 @@ class FeaturedCard extends StatelessWidget {
                 child: match == null
                     ? const Center(
                         child: Text('No match available',
-                            style:
-                                TextStyle(color: AppColors.textSecondary)))
+                            style: TextStyle(color: AppColors.textSecondary)))
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header: league + live badge
+                          // League + live badge
                           Row(
                             children: [
                               if (match!.leagueLogoUrl.isNotEmpty)
@@ -75,7 +73,7 @@ class FeaturedCard extends StatelessWidget {
                                   padding: const EdgeInsets.only(right: 6),
                                   child: NetworkImageWidget(
                                     url: match!.leagueLogoUrl,
-                                    size: 16,
+                                    size: 14,
                                     fallbackIcon: Icons.emoji_events,
                                   ),
                                 ),
@@ -95,10 +93,9 @@ class FeaturedCard extends StatelessWidget {
                             ],
                           ),
                           const Spacer(),
-                          // Teams with logos
+                          // Teams with logos — NO Watch Now button
                           Row(
                             children: [
-                              // Home
                               Expanded(
                                 child: Column(
                                   children: [
@@ -123,18 +120,13 @@ class FeaturedCard extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              // Score
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
                                 child: FadeSwitch(
                                   child: Text(
-                                    match!.isLive
-                                        ? match!.score
-                                        : match!.time,
-                                    key: ValueKey(match!.isLive
-                                        ? match!.score
-                                        : match!.time),
+                                    match!.isLive ? match!.score : match!.time,
+                                    key: ValueKey(
+                                        match!.isLive ? match!.score : match!.time),
                                     style: TextStyle(
                                       color: match!.isLive
                                           ? AppColors.live
@@ -146,7 +138,6 @@ class FeaturedCard extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              // Away
                               Expanded(
                                 child: Column(
                                   children: [
@@ -173,31 +164,7 @@ class FeaturedCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 14),
-                          // Watch button
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 7),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color: Colors.white.withOpacity(0.15)),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.play_arrow_rounded,
-                                    size: 15, color: Colors.white),
-                                SizedBox(width: 4),
-                                Text('Watch Now',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                          ),
+                          const SizedBox(height: 4),
                         ],
                       ),
               ),

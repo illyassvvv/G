@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../core/theme.dart';
+import '../core/theme_notifier.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
-
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _darkMode = true;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +15,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           children: [
             const SizedBox(height: 16),
-            // Large title — iOS native style
             const Text(
               'Settings',
               style: TextStyle(
@@ -36,74 +29,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // ─── APPEARANCE ───
             _SectionLabel('APPEARANCE'),
             const SizedBox(height: 8),
-            _SettingsGroup(
-              children: [
-                _ToggleRow(
+            _SettingsGroup(children: [
+              // ValueListenableBuilder so the toggle reflects the real theme state
+              ValueListenableBuilder<ThemeMode>(
+                valueListenable: themeNotifier,
+                builder: (context, mode, _) => _ToggleRow(
                   icon: Icons.dark_mode_rounded,
-                  iconColor: const Color(0xFF7C3AED),
                   iconBg: const Color(0xFF2D1766),
                   title: 'Dark Mode',
-                  value: _darkMode,
-                  onChanged: (v) => setState(() => _darkMode = v),
+                  value: mode == ThemeMode.dark,
+                  onChanged: setDarkMode, // directly calls themeNotifier
                 ),
-              ],
-            ),
+              ),
+            ]),
             const SizedBox(height: 28),
 
             // ─── ABOUT ───
             _SectionLabel('ABOUT'),
             const SizedBox(height: 8),
-            _SettingsGroup(
-              children: [
-                _InfoRow(
-                  icon: Icons.grid_view_rounded,
-                  iconColor: Colors.white,
-                  iconBg: const Color(0xFF1A56DB),
-                  title: 'AppStore',
-                  value: 'v3.0',
-                ),
-                _divider(),
-                _InfoRow(
-                  icon: Icons.auto_awesome_rounded,
-                  iconColor: Colors.white,
-                  iconBg: const Color(0xFFB45309),
-                  title: 'Design',
-                  value: 'iOS 26 Glassmorphism',
-                ),
-                _divider(),
-                _InfoRow(
-                  icon: Icons.font_download_rounded,
-                  iconColor: Colors.white,
-                  iconBg: const Color(0xFF065F46),
-                  title: 'Fonts',
-                  value: 'Inter / Cairo',
-                ),
-                _divider(),
-                _InfoRow(
-                  icon: Icons.code_rounded,
-                  iconColor: Colors.white,
-                  iconBg: const Color(0xFF155E75),
-                  title: 'Framework',
-                  value: 'Flutter',
-                ),
-              ],
-            ),
+            _SettingsGroup(children: [
+              _InfoRow(
+                icon: Icons.grid_view_rounded,
+                iconBg: const Color(0xFF1A56DB),
+                title: 'AppStore',
+                value: 'v3.0',
+              ),
+              _divider(),
+              _InfoRow(
+                icon: Icons.auto_awesome_rounded,
+                iconBg: const Color(0xFFB45309),
+                title: 'Design',
+                value: 'iOS 26 Glassmorphism',
+              ),
+              _divider(),
+              _InfoRow(
+                icon: Icons.font_download_rounded,
+                iconBg: const Color(0xFF065F46),
+                title: 'Fonts',
+                value: 'Inter / Cairo',
+              ),
+              _divider(),
+              _InfoRow(
+                icon: Icons.code_rounded,
+                iconBg: const Color(0xFF155E75),
+                title: 'Framework',
+                value: 'Flutter',
+              ),
+            ]),
             const SizedBox(height: 28),
 
             // ─── DATA SOURCE ───
             _SectionLabel('DATA SOURCE'),
             const SizedBox(height: 8),
-            _SettingsGroup(
-              children: [
-                _InfoRow(
-                  icon: Icons.link_rounded,
-                  iconColor: Colors.white,
-                  iconBg: const Color(0xFF1A56DB),
-                  title: 'JSON Source',
-                  value: 'GitHub / illyassvvv',
-                ),
-              ],
-            ),
+            _SettingsGroup(children: [
+              _InfoRow(
+                icon: Icons.link_rounded,
+                iconBg: const Color(0xFF1A56DB),
+                title: 'JSON Source',
+                value: 'GitHub / illyassvvv',
+              ),
+              _divider(),
+              _InfoRow(
+                icon: Icons.sports_soccer_rounded,
+                iconBg: const Color(0xFF1A7A56),
+                title: 'Matches API',
+                value: 'kora-api.space',
+              ),
+            ]),
             const SizedBox(height: 40),
           ],
         ),
@@ -111,13 +103,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _divider() => Padding(
-        padding: const EdgeInsets.only(left: 56),
-        child: Divider(
-          height: 1,
-          thickness: 0.4,
-          color: Colors.white.withOpacity(0.08),
-        ),
+  Widget _divider() => const Padding(
+        padding: EdgeInsets.only(left: 56),
+        child: Divider(height: 1, thickness: 0.4, color: Color(0x14FFFFFF)),
       );
 }
 
@@ -151,23 +139,15 @@ class _SettingsGroup extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 }
 
 class _RowIcon extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
   final Color iconBg;
-
-  const _RowIcon({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-  });
+  const _RowIcon({required this.icon, required this.iconBg});
 
   @override
   Widget build(BuildContext context) {
@@ -178,21 +158,18 @@ class _RowIcon extends StatelessWidget {
         color: iconBg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(icon, color: iconColor, size: 18),
+      child: Icon(icon, color: Colors.white, size: 17),
     );
   }
 }
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
   final Color iconBg;
   final String title;
   final String value;
-
   const _InfoRow({
     required this.icon,
-    required this.iconColor,
     required this.iconBg,
     required this.title,
     required this.value,
@@ -204,25 +181,19 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          _RowIcon(icon: icon, iconColor: iconColor, iconBg: iconBg),
+          _RowIcon(icon: icon, iconBg: iconBg),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: Text(title,
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500)),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppColors.textSecondary.withOpacity(0.8),
-              fontSize: 14,
-            ),
-          ),
+          Text(value,
+              style: TextStyle(
+                  color: AppColors.textSecondary.withOpacity(0.8),
+                  fontSize: 13)),
         ],
       ),
     );
@@ -231,15 +202,12 @@ class _InfoRow extends StatelessWidget {
 
 class _ToggleRow extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
   final Color iconBg;
   final String title;
   final bool value;
   final ValueChanged<bool> onChanged;
-
   const _ToggleRow({
     required this.icon,
-    required this.iconColor,
     required this.iconBg,
     required this.title,
     required this.value,
@@ -252,17 +220,14 @@ class _ToggleRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          _RowIcon(icon: icon, iconColor: iconColor, iconBg: iconBg),
+          _RowIcon(icon: icon, iconBg: iconBg),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: Text(title,
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500)),
           ),
           CupertinoSwitch(
             value: value,
