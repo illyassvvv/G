@@ -11,18 +11,26 @@ class MatchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.surface.withOpacity(0.98),
+        borderRadius: BorderRadius.circular(18),
         border: match.isLive
-            ? Border.all(color: AppColors.live.withOpacity(0.35), width: 1)
-            : null,
+            ? Border.all(color: AppColors.live.withOpacity(0.28), width: 1)
+            : Border.all(color: Colors.white.withOpacity(0.04), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.14),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // League row
           Row(
             children: [
               if (match.leagueLogoUrl.isNotEmpty)
@@ -53,10 +61,8 @@ class MatchRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          // Teams row
           Row(
             children: [
-              // Home team
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -84,7 +90,6 @@ class MatchRow extends StatelessWidget {
                   ],
                 ),
               ),
-              // Score / Time
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: FadeSwitch(
@@ -95,14 +100,13 @@ class MatchRow extends StatelessWidget {
                       color: match.isLive
                           ? AppColors.live
                           : AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       fontSize: 16,
                       letterSpacing: 0.5,
                     ),
                   ),
                 ),
               ),
-              // Away team
               Expanded(
                 child: Row(
                   children: [
@@ -159,12 +163,15 @@ class _LiveDotState extends State<_LiveDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => Container(
-        width: 6,
-        height: 6,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.live.withOpacity(0.6 + _ctrl.value * 0.4),
+      builder: (_, __) => Transform.scale(
+        scale: 0.9 + (_ctrl.value * 0.2),
+        child: Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.live.withOpacity(0.58 + _ctrl.value * 0.42),
+          ),
         ),
       ),
     );

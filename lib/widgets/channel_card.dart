@@ -19,49 +19,85 @@ class ChannelCard extends StatelessWidget {
         context,
         buildPageRoute(PlayerScreen(channel: channel)),
       ),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.surface.withOpacity(0.96),
+              AppColors.surfaceElevated.withOpacity(0.9),
+            ],
+          ),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.24),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            ValueListenableBuilder<Set<int>>(
-              valueListenable: FavoritesService.notifier,
-              builder: (_, ids, __) => ids.contains(channel.id)
-                  ? const Align(
-                      alignment: Alignment.topRight,
-                      child: Icon(Icons.favorite_rounded,
-                          size: 12, color: AppColors.live),
-                    )
-                  : const SizedBox(height: 12),
-            ),
-            NetworkImageWidget(
-              url: channel.logoUrl,
-              size: 48,
-              fallbackIcon: Icons.tv,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              channel.name,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-                height: 1.3,
+            Positioned(
+              top: -10,
+              right: -10,
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary.withOpacity(0.08),
+                ),
               ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(width: 12, height: 12),
+                    ValueListenableBuilder<Set<int>>(
+                      valueListenable: FavoritesService.notifier,
+                      builder: (_, ids, __) => ids.contains(channel.id)
+                          ? const Icon(Icons.favorite_rounded,
+                              size: 12, color: AppColors.live)
+                          : const SizedBox(width: 12, height: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Hero(
+                  tag: 'channel-logo-${channel.id}',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: NetworkImageWidget(
+                      url: channel.logoUrl,
+                      size: 48,
+                      fallbackIcon: Icons.tv,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  channel.name,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

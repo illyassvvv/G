@@ -14,45 +14,58 @@ class FeaturedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLive = match?.isLive == true;
+    final accent = isLive ? AppColors.live : AppColors.primary;
+
     return Pressable(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: Motion.normal,
+        duration: Motion.slow,
         curve: Motion.emphasized,
-        height: 200,
+        height: 210,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(28),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: match?.isLive == true
-                ? [const Color(0xFF1E0808), const Color(0xFF2A0A0A), AppColors.surface]
-                : [const Color(0xFF080F1E), const Color(0xFF0A1228), AppColors.surface],
+            colors: isLive
+                ? [const Color(0xFF220809), const Color(0xFF2D0A0B), AppColors.surface]
+                : [const Color(0xFF08111F), const Color(0xFF0B1530), AppColors.surface],
           ),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
           boxShadow: [
             BoxShadow(
-              color: (match?.isLive == true ? AppColors.live : AppColors.primary)
-                  .withOpacity(0.15),
-              blurRadius: 28,
-              offset: const Offset(0, 8),
+              color: accent.withOpacity(0.18),
+              blurRadius: 32,
+              offset: const Offset(0, 12),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(28),
           child: Stack(
             children: [
-              // Ambient glow blob
               Positioned(
                 top: -40,
-                right: -40,
+                right: -30,
                 child: Container(
-                  width: 130,
-                  height: 130,
+                  width: 150,
+                  height: 150,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: (match?.isLive == true ? AppColors.live : AppColors.primary)
-                        .withOpacity(0.07),
+                    color: accent.withOpacity(0.08),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -36,
+                bottom: -40,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.035),
                   ),
                 ),
               ),
@@ -60,12 +73,14 @@ class FeaturedCard extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: match == null
                     ? const Center(
-                        child: Text('No match available',
-                            style: TextStyle(color: AppColors.textSecondary)))
+                        child: Text(
+                          'No match available',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      )
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // League + live badge
                           Row(
                             children: [
                               if (match!.leagueLogoUrl.isNotEmpty)
@@ -93,7 +108,6 @@ class FeaturedCard extends StatelessWidget {
                             ],
                           ),
                           const Spacer(),
-                          // Teams with logos — NO Watch Now button
                           Row(
                             children: [
                               Expanded(
@@ -126,7 +140,8 @@ class FeaturedCard extends StatelessWidget {
                                   child: Text(
                                     match!.isLive ? match!.score : match!.time,
                                     key: ValueKey(
-                                        match!.isLive ? match!.score : match!.time),
+                                      match!.isLive ? match!.score : match!.time,
+                                    ),
                                     style: TextStyle(
                                       color: match!.isLive
                                           ? AppColors.live
@@ -164,7 +179,6 @@ class FeaturedCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
                         ],
                       ),
               ),
@@ -201,25 +215,33 @@ class _LiveBadgeState extends State<_LiveBadge>
       builder: (_, __) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.live.withOpacity(0.85 + _pulse.value * 0.15),
-          borderRadius: BorderRadius.circular(6),
+          color: AppColors.live.withOpacity(0.82 + _pulse.value * 0.18),
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 5,
-              height: 5,
-              decoration: const BoxDecoration(
-                  color: Colors.white, shape: BoxShape.circle),
+            Transform.scale(
+              scale: 0.9 + (_pulse.value * 0.12),
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
             ),
             const SizedBox(width: 4),
-            const Text('LIVE',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8)),
+            const Text(
+              'LIVE',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+              ),
+            ),
           ],
         ),
       ),

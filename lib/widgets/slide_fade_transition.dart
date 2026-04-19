@@ -11,13 +11,17 @@ class SlideFade extends StatelessWidget {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: Motion.normal,
-      curve: Motion.emphasized,
+      curve: Motion.spring,
       builder: (_, value, child) {
+        final eased = Curves.easeOutCubic.transform(value);
         return Opacity(
-          opacity: value,
+          opacity: eased,
           child: Transform.translate(
-            offset: Offset(0, 20 * (1 - value)),
-            child: child,
+            offset: Offset(0, 14 * (1 - eased)),
+            child: Transform.scale(
+              scale: 0.985 + (0.015 * eased),
+              child: child,
+            ),
           ),
         );
       },

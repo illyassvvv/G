@@ -64,7 +64,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final controller = VideoPlayerController.networkUrl(
       streamUri,
       httpHeaders: _streamHeaders,
-      videoPlayerOptions: const VideoPlayerOptions(
+      videoPlayerOptions: VideoPlayerOptions(
         mixWithOthers: false,
         allowBackgroundPlayback: false,
       ),

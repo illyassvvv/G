@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/motion.dart';
@@ -17,51 +18,82 @@ class PillTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: List.generate(_items.length, (index) {
-          final active = index == currentIndex;
-
-          return Expanded(
-            child: Pressable(
-              onTap: () => onTap(index),
-              child: AnimatedContainer(
-                duration: Motion.normal,
-                curve: Motion.emphasized,
-                padding: const EdgeInsets.symmetric(vertical: 11),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final itemWidth = width / _items.length;
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                height: 58,
                 decoration: BoxDecoration(
-                  color: active ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
+                  color: AppColors.surface.withOpacity(0.82),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.28),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Stack(
                   children: [
-                    AnimatedSwitcher(
-                      duration: Motion.fast,
-                      child: Icon(
-                        active ? _activeItems[index] : _items[index],
-                        key: ValueKey(active),
-                        size: 20,
-                        color: active ? Colors.white : AppColors.textSecondary,
+                    AnimatedPositioned(
+                      duration: Motion.normal,
+                      curve: Motion.emphasized,
+                      left: currentIndex * itemWidth,
+                      top: 5,
+                      bottom: 5,
+                      width: itemWidth,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(23),
+                            border: Border.all(
+                              color: AppColors.primary.withOpacity(0.28),
+                              width: 1,
+                            ),
+                          ),
+                        ),
                       ),
+                    ),
+                    Row(
+                      children: List.generate(_items.length, (index) {
+                        final active = index == currentIndex;
+                        final icon = active ? _activeItems[index] : _items[index];
+                        return Expanded(
+                          child: Pressable(
+                            onTap: () => onTap(index),
+                            child: Center(
+                              child: AnimatedScale(
+                                duration: Motion.fast,
+                                curve: Motion.spring,
+                                scale: active ? 1.08 : 0.94,
+                                child: Icon(
+                                  icon,
+                                  size: 20,
+                                  color: active
+                                      ? Colors.white
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
                     ),
                   ],
                 ),
               ),
             ),
           );
-        }),
+        },
       ),
     );
   }

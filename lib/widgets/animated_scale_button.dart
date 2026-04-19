@@ -20,6 +20,7 @@ class _AnimatedScaleButtonState extends State<AnimatedScaleButton>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: Motion.fast,
+    reverseDuration: Motion.fast,
   );
 
   void _onTapDown(TapDownDetails _) => _controller.forward();
@@ -40,16 +41,20 @@ class _AnimatedScaleButtonState extends State<AnimatedScaleButton>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (_, child) {
-          final scale = 1 - (_controller.value * 0.05);
-          return Transform.scale(
-            scale: scale,
-            child: child,
+          final t = _controller.value;
+          return Transform.translate(
+            offset: Offset(0, 1.0 * t),
+            child: Transform.scale(
+              scale: 1 - (t * 0.045),
+              child: child,
+            ),
           );
         },
         child: widget.child,

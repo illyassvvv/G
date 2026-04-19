@@ -20,6 +20,7 @@ class _PressableState extends State<Pressable>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: Motion.fast,
+    reverseDuration: Motion.fast,
   );
 
   void _onDown(TapDownDetails _) => _controller.forward();
@@ -40,14 +41,21 @@ class _PressableState extends State<Pressable>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: _onDown,
       onTapUp: _onUp,
       onTapCancel: _onCancel,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (_, child) {
-          final scale = 1 - (_controller.value * 0.04);
-          return Transform.scale(scale: scale, child: child);
+          final t = _controller.value;
+          return Transform.translate(
+            offset: Offset(0, 1.5 * t),
+            child: Transform.scale(
+              scale: 1 - (t * 0.035),
+              child: child,
+            ),
+          );
         },
         child: widget.child,
       ),
