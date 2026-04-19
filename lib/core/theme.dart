@@ -102,17 +102,11 @@ class AppTheme {
           ),
         ),
       ),
-      cardTheme: CardTheme(
-        color: surface,
+      cardTheme: CardThemeData(
+        color: AppColors.surface,
         elevation: 0,
-        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: BorderSide(
-            color: brightness == Brightness.dark
-                ? Colors.white.withOpacity(0.06)
-                : const Color(0x14000000),
-          ),
         ),
       ),
       dividerTheme: DividerThemeData(
