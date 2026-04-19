@@ -48,6 +48,8 @@ class _RootShellState extends State<RootShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Use theme background so swipe reveals correct color, not black
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       // PageView enables swipe-between-sections gesture
       body: PageView(
         controller: _pageController,

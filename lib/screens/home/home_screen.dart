@@ -41,8 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final featured = _matches.isNotEmpty ? _matches.first : null;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppColors.background : AppColors.backgroundLight;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: bg,
       appBar: AppBar(
         title: const Text('StreamGo'),
         backgroundColor: Colors.transparent,

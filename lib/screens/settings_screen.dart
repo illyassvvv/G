@@ -8,17 +8,24 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppColors.background : AppColors.backgroundLight;
+    final surface = isDark ? AppColors.surface : AppColors.surfaceLight;
+    final textPrimary = isDark ? AppColors.textPrimary : AppColors.textPrimaryLight;
+    final textSecondary = isDark ? AppColors.textSecondary : AppColors.textSecondaryLight;
+    final dividerColor = isDark ? const Color(0x14FFFFFF) : const Color(0x18000000);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: bg,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           children: [
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Settings',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: textPrimary,
                 fontSize: 34,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.5,
@@ -27,10 +34,9 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ─── APPEARANCE ───
-            _SectionLabel('APPEARANCE'),
+            _SectionLabel('APPEARANCE', textSecondary),
             const SizedBox(height: 8),
-            _SettingsGroup(children: [
-              // ValueListenableBuilder so the toggle reflects the real theme state
+            _SettingsGroup(surface: surface, children: [
               ValueListenableBuilder<ThemeMode>(
                 valueListenable: themeNotifier,
                 builder: (context, mode, _) => _ToggleRow(
@@ -38,62 +44,75 @@ class SettingsScreen extends StatelessWidget {
                   iconBg: const Color(0xFF2D1766),
                   title: 'Dark Mode',
                   value: mode == ThemeMode.dark,
-                  onChanged: setDarkMode, // directly calls themeNotifier
+                  onChanged: setDarkMode,
+                  textPrimary: textPrimary,
                 ),
               ),
             ]),
             const SizedBox(height: 28),
 
             // ─── ABOUT ───
-            _SectionLabel('ABOUT'),
+            _SectionLabel('ABOUT', textSecondary),
             const SizedBox(height: 8),
-            _SettingsGroup(children: [
+            _SettingsGroup(surface: surface, children: [
               _InfoRow(
-                icon: Icons.grid_view_rounded,
+                icon: Icons.play_circle_fill_rounded,
                 iconBg: const Color(0xFF1A56DB),
-                title: 'AppStore',
+                title: 'Streaming',
                 value: 'v3.0',
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
               ),
-              _divider(),
+              _divider(dividerColor),
               _InfoRow(
                 icon: Icons.auto_awesome_rounded,
                 iconBg: const Color(0xFFB45309),
                 title: 'Design',
                 value: 'iOS 26 Glassmorphism',
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
               ),
-              _divider(),
+              _divider(dividerColor),
               _InfoRow(
                 icon: Icons.font_download_rounded,
                 iconBg: const Color(0xFF065F46),
                 title: 'Fonts',
                 value: 'Inter / Cairo',
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
               ),
-              _divider(),
+              _divider(dividerColor),
               _InfoRow(
                 icon: Icons.code_rounded,
                 iconBg: const Color(0xFF155E75),
                 title: 'Framework',
                 value: 'Flutter',
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
               ),
             ]),
             const SizedBox(height: 28),
 
             // ─── DATA SOURCE ───
-            _SectionLabel('DATA SOURCE'),
+            _SectionLabel('DATA SOURCE', textSecondary),
             const SizedBox(height: 8),
-            _SettingsGroup(children: [
+            _SettingsGroup(surface: surface, children: [
               _InfoRow(
                 icon: Icons.link_rounded,
                 iconBg: const Color(0xFF1A56DB),
                 title: 'JSON Source',
                 value: 'GitHub / illyassvvv',
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
               ),
-              _divider(),
+              _divider(dividerColor),
               _InfoRow(
                 icon: Icons.sports_soccer_rounded,
                 iconBg: const Color(0xFF1A7A56),
                 title: 'Matches API',
                 value: 'kora-api.space',
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
               ),
             ]),
             const SizedBox(height: 40),
@@ -103,22 +122,23 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _divider() => const Padding(
-        padding: EdgeInsets.only(left: 56),
-        child: Divider(height: 1, thickness: 0.4, color: Color(0x14FFFFFF)),
+  Widget _divider(Color color) => Padding(
+        padding: const EdgeInsets.only(left: 56),
+        child: Divider(height: 1, thickness: 0.4, color: color),
       );
 }
 
 class _SectionLabel extends StatelessWidget {
   final String text;
-  const _SectionLabel(this.text);
+  final Color color;
+  const _SectionLabel(this.text, this.color);
 
   @override
   Widget build(BuildContext context) {
     return Text(
       text,
       style: TextStyle(
-        color: AppColors.textSecondary.withOpacity(0.7),
+        color: color.withOpacity(0.7),
         fontSize: 12,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.8,
@@ -129,13 +149,14 @@ class _SectionLabel extends StatelessWidget {
 
 class _SettingsGroup extends StatelessWidget {
   final List<Widget> children;
-  const _SettingsGroup({required this.children});
+  final Color surface;
+  const _SettingsGroup({required this.children, required this.surface});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(16),
       ),
       clipBehavior: Clip.antiAlias,
@@ -168,11 +189,15 @@ class _InfoRow extends StatelessWidget {
   final Color iconBg;
   final String title;
   final String value;
+  final Color textPrimary;
+  final Color textSecondary;
   const _InfoRow({
     required this.icon,
     required this.iconBg,
     required this.title,
     required this.value,
+    required this.textPrimary,
+    required this.textSecondary,
   });
 
   @override
@@ -185,14 +210,14 @@ class _InfoRow extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(title,
-                style: const TextStyle(
-                    color: AppColors.textPrimary,
+                style: TextStyle(
+                    color: textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w500)),
           ),
           Text(value,
               style: TextStyle(
-                  color: AppColors.textSecondary.withOpacity(0.8),
+                  color: textSecondary.withOpacity(0.8),
                   fontSize: 13)),
         ],
       ),
@@ -206,12 +231,14 @@ class _ToggleRow extends StatelessWidget {
   final String title;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final Color textPrimary;
   const _ToggleRow({
     required this.icon,
     required this.iconBg,
     required this.title,
     required this.value,
     required this.onChanged,
+    required this.textPrimary,
   });
 
   @override
@@ -224,8 +251,8 @@ class _ToggleRow extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(title,
-                style: const TextStyle(
-                    color: AppColors.textPrimary,
+                style: TextStyle(
+                    color: textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w500)),
           ),

@@ -10,8 +10,12 @@ class FavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppColors.background : AppColors.backgroundLight;
+    final textSecondary = isDark ? AppColors.textSecondary : AppColors.textSecondaryLight;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: bg,
       appBar: AppBar(
         title: const Text('Favorites'),
         backgroundColor: Colors.transparent,
@@ -29,20 +33,20 @@ class FavoritesScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.favorite_border_rounded,
                       size: 56,
-                      color: AppColors.textSecondary.withOpacity(0.4)),
+                      color: textSecondary.withOpacity(0.4)),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'No favorites yet',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: textSecondary,
                       fontSize: 15,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Tap ♡ in the player to save a channel',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: textSecondary,
                       fontSize: 12,
                     ),
                   ),
