@@ -33,21 +33,25 @@ class Match {
     required this.leagueLogo,
   });
 
+  static String _asString(dynamic value, [String fallback = '']) {
+    if (value == null) return fallback;
+    return value.toString().trim();
+  }
+
   factory Match.fromJson(Map<String, dynamic> json) {
     return Match(
-      id: json['id'].toString(),
-      league: json['league'] ?? json['competition'] ?? '',
-      home: json['home'] ?? json['home_name'] ?? json['localteam'] ?? '',
-      away: json['away'] ?? json['away_name'] ?? json['visitorteam'] ?? '',
-      score: json['score'] ?? json['result'] ?? '',
-      time: json['time'] ?? json['minute'] ?? '',
-      isLive: (json['status']?.toString() ?? '0') == '1',
-      // Try multiple common field names used by football APIs
-      homeLogo: json['home_logo'] ?? json['localteam_logo'] ??
-          json['home_image'] ?? json['local_logo'] ?? '',
-      awayLogo: json['away_logo'] ?? json['visitorteam_logo'] ??
-          json['away_image'] ?? json['visitor_logo'] ?? '',
-      leagueLogo: json['league_logo'] ?? json['competition_logo'] ?? '',
+      id: _asString(json['id']),
+      league: _asString(json['league'] ?? json['competition']),
+      home: _asString(json['home'] ?? json['home_name'] ?? json['localteam']),
+      away: _asString(json['away'] ?? json['away_name'] ?? json['visitorteam']),
+      score: _asString(json['score'] ?? json['result']),
+      time: _asString(json['time'] ?? json['minute']),
+      isLive: _asString(json['status'], '0') == '1',
+      homeLogo: _asString(json['home_logo'] ?? json['localteam_logo'] ??
+          json['home_image'] ?? json['local_logo']),
+      awayLogo: _asString(json['away_logo'] ?? json['visitorteam_logo'] ??
+          json['away_image'] ?? json['visitor_logo']),
+      leagueLogo: _asString(json['league_logo'] ?? json['competition_logo']),
     );
   }
 }

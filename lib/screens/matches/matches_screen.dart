@@ -13,9 +13,14 @@ class MatchesScreen extends StatefulWidget {
   State<MatchesScreen> createState() => _MatchesScreenState();
 }
 
-class _MatchesScreenState extends State<MatchesScreen> {
+class _MatchesScreenState extends State<MatchesScreen>
+    with AutomaticKeepAliveClientMixin<MatchesScreen> {
   List<Match> _matches = [];
   bool _loading = true;
+  String? _error;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -24,16 +29,30 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 
   Future<void> _load() async {
-    final data = await ApiService.fetchMatches();
-    if (!mounted) return;
     setState(() {
-      _matches = data;
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
+
+    try {
+      final data = await ApiService.fetchMatches();
+      if (!mounted) return;
+      setState(() {
+        _matches = data;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.background : AppColors.backgroundLight;
 
@@ -54,15 +73,49 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   color: AppColors.primary,
                 ),
               )
-            : ListView.separated(
-                key: const ValueKey('list'),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                itemCount: _matches.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) {
-                  return SlideFade(child: MatchRow(match: _matches[i]));
-                },
-              ),
+            : _error != null
+                ? Center(
+                    key: const ValueKey('error'),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.cloud_off_rounded,
+                              size: 56, color: AppColors.textSecondary),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Failed to load matches',
+                            style: Theme.of(context).textTheme.titleMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _load,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    key: const ValueKey('list'),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    itemCount: _matches.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) {
+                      return SlideFade(child: MatchRow(match: _matches[i]));
+                    },
+                  ),
       ),
     );
   }

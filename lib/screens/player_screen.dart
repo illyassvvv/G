@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../models/channel.dart';
-import '../services/favorites_service.dart';
 import '../widgets/player_controls.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -18,9 +17,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _loading = true;
   bool _error = false;
   bool _isFullscreen = false;
+  int _initToken = 0;
 
-  // Windows Chrome UA — required for beIN Sport and similar CDNs
-  // that block mobile/Flutter user agents.
   static const _streamHeaders = {
     'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -37,28 +35,54 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    // Keep screen on while player is open
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _init();
   }
 
+  Future<void> _restoreSystemUi() async {
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
   Future<void> _init() async {
-    try {
-      final controller = VideoPlayerController.networkUrl(
-        Uri.parse(widget.channel.streamUrl),
-        httpHeaders: _streamHeaders,
-        videoPlayerOptions: VideoPlayerOptions(
-          mixWithOthers: false,
-          allowBackgroundPlayback: false,
-        ),
-      );
-      _controller = controller;
-      await controller.initialize();
+    final streamUri = Uri.tryParse(widget.channel.streamUrl);
+    if (streamUri == null ||
+        !(streamUri.scheme == 'http' || streamUri.scheme == 'https')) {
       if (!mounted) return;
-      controller.play();
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
+      return;
+    }
+
+    final previous = _controller;
+    _controller = null;
+    await previous?.dispose();
+
+    final token = ++_initToken;
+    final controller = VideoPlayerController.networkUrl(
+      streamUri,
+      httpHeaders: _streamHeaders,
+      videoPlayerOptions: const VideoPlayerOptions(
+        mixWithOthers: false,
+        allowBackgroundPlayback: false,
+      ),
+    );
+    _controller = controller;
+
+    try {
+      await controller.initialize();
+      if (!mounted || token != _initToken) {
+        await controller.dispose();
+        return;
+      }
+      await controller.play();
+      if (!mounted || token != _initToken) return;
       setState(() => _loading = false);
     } catch (_) {
-      if (!mounted) return;
+      await controller.dispose();
+      if (!mounted || token != _initToken) return;
       setState(() {
         _loading = false;
         _error = true;
@@ -68,43 +92,42 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<void> _toggleFullscreen() async {
     final entering = !_isFullscreen;
-    setState(() => _isFullscreen = entering);
+    if (mounted) {
+      setState(() => _isFullscreen = entering);
+    }
 
     if (entering) {
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
-      await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      await _restoreSystemUi();
     }
   }
 
   Future<void> _pop() async {
-    // Always restore portrait before leaving
-    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await _restoreSystemUi();
     if (mounted) Navigator.pop(context);
   }
 
   @override
   void dispose() {
+    _initToken++;
     _controller?.dispose();
-    // Restore orientation when player is disposed
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _restoreSystemUi();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      // Intercept back gesture to restore orientation first
-      onPopInvoked: (_) async {
-        await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      canPop: true,
+      onPopInvoked: (didPop) {
+        if (didPop) {
+          _restoreSystemUi();
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -143,9 +166,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
             const Icon(Icons.signal_wifi_off_rounded,
                 color: Colors.white30, size: 64),
             const SizedBox(height: 20),
-            Text(
+            const Text(
               'Stream unavailable',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -157,7 +180,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
               style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
             const SizedBox(height: 32),
-            // ── RETURN BUTTON on error ──
             _ErrorButton(
               icon: Icons.arrow_back_rounded,
               label: 'Go Back',
@@ -183,21 +205,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildPlayer() {
+    final controller = _controller;
+    if (controller == null) {
+      return _buildLoading();
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Video fills screen, letterboxed
         Center(
           child: AspectRatio(
-            aspectRatio: _controller!.value.aspectRatio,
-            child: VideoPlayer(_controller!),
+            aspectRatio: controller.value.aspectRatio,
+            child: VideoPlayer(controller),
           ),
         ),
-        // Controls overlay
         PlayerControls(
-          controller: _controller!,
-          channelName: widget.channel.name,
-          channelId: widget.channel.id,
+          controller: controller,
+          channel: widget.channel,
           isFullscreen: _isFullscreen,
           onBack: _pop,
           onToggleFullscreen: _toggleFullscreen,

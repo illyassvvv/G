@@ -1,19 +1,40 @@
 import 'package:flutter/material.dart';
 import '../models/channel.dart';
 
-/// Simple in-memory favorites store.
-/// ValueNotifier lets the UI react instantly when favorites change.
+/// In-memory favorites store with a separate channel catalog.
+/// Registration is explicit so build() stays side-effect free.
 class FavoritesService {
   FavoritesService._();
 
-  static final ValueNotifier<Set<int>> _ids = ValueNotifier({});
+  static final ValueNotifier<Set<int>> _ids = ValueNotifier<Set<int>>(<int>{});
+  static final Map<int, Channel> _catalog = <int, Channel>{};
 
-  /// Listen to this from widgets to rebuild on change.
   static ValueNotifier<Set<int>> get notifier => _ids;
+
+  static void registerChannel(Channel channel) {
+    _catalog[channel.id] = channel;
+  }
+
+  static void registerChannels(Iterable<Channel> channels) {
+    for (final channel in channels) {
+      _catalog[channel.id] = channel;
+    }
+  }
 
   static bool isFavorite(int channelId) => _ids.value.contains(channelId);
 
-  static void toggle(int channelId) {
+  static void toggle(Channel channel) {
+    registerChannel(channel);
+    final updated = Set<int>.from(_ids.value);
+    if (updated.contains(channel.id)) {
+      updated.remove(channel.id);
+    } else {
+      updated.add(channel.id);
+    }
+    _ids.value = updated;
+  }
+
+  static void toggleById(int channelId) {
     final updated = Set<int>.from(_ids.value);
     if (updated.contains(channelId)) {
       updated.remove(channelId);
@@ -23,13 +44,8 @@ class FavoritesService {
     _ids.value = updated;
   }
 
-  /// All channels that have been marked favorite (must be cached externally).
-  static final List<Channel> _cache = [];
-
-  static void cacheChannel(Channel c) {
-    if (!_cache.any((ch) => ch.id == c.id)) _cache.add(c);
-  }
-
-  static List<Channel> get favoriteChannels =>
-      _cache.where((c) => _ids.value.contains(c.id)).toList();
+  static List<Channel> get favoriteChannels => _ids.value
+      .map((id) => _catalog[id])
+      .whereType<Channel>()
+      .toList(growable: false);
 }

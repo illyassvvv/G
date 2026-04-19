@@ -15,11 +15,9 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   int _index = 0;
-  late final PageController _pageController = PageController(
-    initialPage: 0,
-    // keepPage ensures the page controller doesn't re-create pages on tab switch
-    keepPage: true,
-  );
+  late final PageController _pageController = PageController(initialPage: 0);
+
+  static const _pageCount = 4;
 
   @override
   void dispose() {
@@ -27,43 +25,47 @@ class _RootShellState extends State<RootShell> {
     super.dispose();
   }
 
-  // Called by the pill tab bar
   void _onTabTap(int i) {
     if (_index == i) return;
     setState(() => _index = i);
     _pageController.animateToPage(
       i,
-      // Smooth, snappy swipe — same curve as UI motion system
       duration: Motion.normal,
       curve: Motion.emphasized,
     );
   }
 
-  // Called when user physically swipes the PageView
   void _onPageChanged(int i) {
     if (_index == i) return;
     setState(() => _index = i);
   }
 
+  Widget _buildPage(int index) {
+    switch (index) {
+      case 0:
+        return const HomeScreen();
+      case 1:
+        return const MatchesScreen();
+      case 2:
+        return const FavoritesScreen();
+      case 3:
+      default:
+        return const SettingsScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use theme background so swipe reveals correct color, not black
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      // PageView enables swipe-between-sections gesture
-      body: PageView(
+      body: PageView.builder(
         controller: _pageController,
         onPageChanged: _onPageChanged,
-        // physics: feel like native iOS — momentum + snapping
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
-        children: const [
-          HomeScreen(),
-          MatchesScreen(),
-          FavoritesScreen(),
-          SettingsScreen(),
-        ],
+        itemCount: _pageCount,
+        itemBuilder: (_, index) => _buildPage(index),
       ),
       bottomNavigationBar: SafeArea(
         child: PillTabBar(

@@ -14,9 +14,6 @@ class ChannelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Cache every channel we render so FavoritesScreen can look them up
-    FavoritesService.cacheChannel(channel);
-
     return Pressable(
       onTap: () => Navigator.push(
         context,
@@ -38,7 +35,6 @@ class ChannelCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Favorite dot indicator
             ValueListenableBuilder<Set<int>>(
               valueListenable: FavoritesService.notifier,
               builder: (_, ids, __) => ids.contains(channel.id)

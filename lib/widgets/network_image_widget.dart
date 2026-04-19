@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import '../core/url_utils.dart';
 
 /// A fixed-size network image widget with:
 /// - Reserved layout space (no jumps)
 /// - Centered loading indicator during download
-/// - 200ms fade-in on appearance (once only)
+/// - Fade-in on appearance
 /// - Fallback icon on error
 class NetworkImageWidget extends StatelessWidget {
   final String url;
@@ -24,44 +25,48 @@ class NetworkImageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Always reserve the exact space — prevents layout jumps
+    final uri = UrlUtils.tryParseNetworkUrl(url, allowHttp: true, allowHttps: true);
+    if (uri == null) {
+      return SizedBox(width: size, height: size, child: _fallback());
+    }
+
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheSide = (size * dpr).round().clamp(1, 1024);
+
     return SizedBox(
       width: size,
       height: size,
-      child: url.isEmpty ? _fallback() : _image(),
-    );
-  }
-
-  Widget _image() {
-    return Image.network(
-      url,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      headers: _headers,
-      // loadingBuilder: streams download progress — shows spinner while loading
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) {
-          // Download complete — fade in the image (once, no repeat)
-          return _FadeIn(child: child);
-        }
-        // Still downloading — show centered spinner
-        return Center(
-          child: SizedBox(
-            width: size * 0.35,
-            height: size * 0.35,
-            child: CircularProgressIndicator(
-              strokeWidth: 1.5,
-              color: Colors.white.withOpacity(0.2),
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
+      child: Image.network(
+        uri.toString(),
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        headers: _headers,
+        gaplessPlayback: true,
+        cacheWidth: cacheSide,
+        cacheHeight: cacheSide,
+        filterQuality: FilterQuality.low,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) {
+            return _FadeIn(child: child);
+          }
+          return Center(
+            child: SizedBox(
+              width: size * 0.35,
+              height: size * 0.35,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Colors.white.withOpacity(0.2),
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
             ),
-          ),
-        );
-      },
-      errorBuilder: (_, __, ___) => _fallback(),
+          );
+        },
+        errorBuilder: (_, __, ___) => _fallback(),
+      ),
     );
   }
 
@@ -76,8 +81,6 @@ class NetworkImageWidget extends StatelessWidget {
   }
 }
 
-/// One-shot 200ms fade-in. Uses TweenAnimationBuilder so it
-/// only fires once per build — no repeated animations.
 class _FadeIn extends StatelessWidget {
   final Widget child;
   const _FadeIn({required this.child});

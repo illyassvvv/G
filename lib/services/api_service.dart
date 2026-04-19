@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/channel.dart';
 import '../models/channel_category.dart';
@@ -14,68 +16,84 @@ class ApiService {
     'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8',
   };
 
-  /// Returns channels grouped by category (Bein Sports, Al Kass, etc.)
-  static Future<List<ChannelCategory>> fetchCategories() async {
-    try {
-      final res = await http.get(
-        Uri.parse(
-          'https://raw.githubusercontent.com/illyassvvv/G/refs/heads/main/channels.json',
-        ),
-        headers: _headers,
-      );
+  static const _timeout = Duration(seconds: 8);
+  static const _categoriesUrl =
+      'https://raw.githubusercontent.com/illyassvvv/G/refs/heads/main/channels.json';
+  static const _matchesUrlBase = 'https://ws.kora-api.space/api/matches';
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
+  static Future<dynamic> _getJson(String url) async {
+    final res = await http
+        .get(Uri.parse(url), headers: _headers)
+        .timeout(_timeout);
 
-        // Format: { "categories": [ { "name": "Bein Sports", "channels": [...] } ] }
-        if (data['categories'] != null) {
-          return (data['categories'] as List).map<ChannelCategory>((cat) {
-            final channels = (cat['channels'] as List? ?? [])
-                .map<Channel>((e) => Channel.fromJson(e))
-                .toList();
-            return ChannelCategory(
-              name: cat['name']?.toString() ?? 'Channels',
-              channels: channels,
-            );
-          }).toList();
-        }
+    if (res.statusCode != 200) {
+      throw HttpException('Request failed: ${res.statusCode}', uri: Uri.parse(url));
+    }
 
-        // Flat list fallback — group everything under one category
-        if (data is List) {
-          final channels = (data as List)
-              .map<Channel>((e) => Channel.fromJson(e))
-              .toList();
-          return [ChannelCategory(name: 'All Channels', channels: channels)];
-        }
-      }
-    } catch (_) {}
-    return [];
+    return jsonDecode(utf8.decode(res.bodyBytes));
   }
 
-  /// Flat list helper — kept for compatibility
+  static List<Channel> _parseChannels(dynamic raw) {
+    if (raw is! List) return const [];
+
+    return raw
+        .whereType<Map>()
+        .map((e) => Channel.fromJson(Map<String, dynamic>.from(e)))
+        .where((c) => c.id != 0 && c.name.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  static Future<List<ChannelCategory>> fetchCategories() async {
+    final data = await _getJson(_categoriesUrl);
+
+    if (data is Map<String, dynamic>) {
+      final categories = data['categories'];
+      if (categories is List) {
+        return categories.whereType<Map>().map((cat) {
+          final catMap = Map<String, dynamic>.from(cat);
+          final channels = _parseChannels(catMap['channels']);
+          return ChannelCategory(
+            name: catMap['name']?.toString().trim().isNotEmpty == true
+                ? catMap['name'].toString().trim()
+                : 'Channels',
+            channels: channels,
+          );
+        }).where((category) => category.channels.isNotEmpty).toList(growable: false);
+      }
+    }
+
+    if (data is List) {
+      final channels = _parseChannels(data);
+      if (channels.isNotEmpty) {
+        return [ChannelCategory(name: 'All Channels', channels: channels)];
+      }
+    }
+
+    throw const FormatException('Unexpected categories payload');
+  }
+
   static Future<List<Channel>> fetchChannels() async {
     final cats = await fetchCategories();
-    return cats.expand((c) => c.channels).toList();
+    return cats.expand((c) => c.channels).toList(growable: false);
   }
 
   static Future<List<Match>> fetchMatches() async {
-    try {
-      final now = DateTime.now();
-      final date =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final now = DateTime.now();
+    final date =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-      final res = await http.get(
-        Uri.parse('https://ws.kora-api.space/api/matches/$date/1'),
-        headers: _headers,
-      );
+    final data = await _getJson('$_matchesUrlBase/$date/1');
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        return (data['matches'] as List)
-            .map<Match>((e) => Match.fromJson(e))
-            .toList();
+    if (data is Map<String, dynamic>) {
+      final matches = data['matches'];
+      if (matches is List) {
+        return matches
+            .whereType<Map>()
+            .map((e) => Match.fromJson(Map<String, dynamic>.from(e)))
+            .toList(growable: false);
       }
-    } catch (_) {}
-    return [];
+    }
+
+    throw const FormatException('Unexpected matches payload');
   }
 }
