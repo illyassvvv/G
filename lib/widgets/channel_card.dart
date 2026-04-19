@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/channel.dart';
 import '../core/theme.dart';
 import '../screens/player_screen.dart';
-import '../widgets/page_transition.dart'; // FIX: import smooth transition
+import '../widgets/page_transition.dart';
 import 'network_image_widget.dart';
-import 'pressable.dart'; // FIX: use Pressable for scale press animation
+import 'pressable.dart';
 
 class ChannelCard extends StatelessWidget {
   final Channel channel;
@@ -13,8 +13,6 @@ class ChannelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FIX: was using bare GestureDetector + MaterialPageRoute
-    // Now: Pressable (scale animation) + buildPageRoute (fade+scale transition)
     return Pressable(
       onTap: () {
         Navigator.push(
@@ -38,7 +36,12 @@ class ChannelCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            NetworkImageWidget(url: channel.logo, size: 56),
+            // Use logoUrl getter — comes from GitHub JSON directly
+            NetworkImageWidget(
+              url: channel.logoUrl,
+              size: 56,
+              fallbackIcon: Icons.tv,
+            ),
             const SizedBox(height: 10),
             Text(
               channel.name,
