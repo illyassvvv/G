@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Luxury-first design tokens.
+/// Kept compact so the app stays lean while feeling premium.
 class AppColors {
-  // Dark palette: rich charcoal with restrained neon.
-  static const background = Color(0xFF05070B);
-  static const backgroundAlt = Color(0xFF0A1018);
-  static const surface = Color(0xFF101722);
-  static const surfaceElevated = Color(0xFF182133);
-  static const surfaceGlass = Color(0xD0121824);
+  // Dark / cinematic.
+  static const background = Color(0xFF06070B);
+  static const backgroundAlt = Color(0xFF0B0F16);
+  static const surface = Color(0xFF101824);
+  static const surfaceElevated = Color(0xFF182132);
+  static const surfaceGlass = Color(0xD0141C2A);
   static const surfaceBorder = Color(0x14FFFFFF);
 
-  static const primary = Color(0xFF9DB2FF);
-  static const primarySoft = Color(0xFF6886FF);
+  // Accent system.
+  static const primary = Color(0xFF96ABFF);
+  static const primarySoft = Color(0xFF6D87FF);
   static const live = Color(0xFFFF5D58);
   static const success = Color(0xFF2ED07D);
   static const warning = Color(0xFFFFC857);
 
+  // Text.
   static const textPrimary = Color(0xFFF6F8FF);
-  static const textSecondary = Color(0xFFABB1C0);
+  static const textSecondary = Color(0xFFAAB1C2);
 
-  // Light palette: warm ivory with gentle contrast.
-  static const backgroundLight = Color(0xFFF7F5F2);
-  static const backgroundLightAlt = Color(0xFFECE7E1);
+  // Light / warm ivory.
+  static const backgroundLight = Color(0xFFF8F6F2);
+  static const backgroundLightAlt = Color(0xFFEDE7DF);
   static const surfaceLight = Color(0xFFFFFFFF);
   static const surfaceLightAlt = Color(0xFFF7F4EF);
   static const surfaceLightBorder = Color(0x12000000);
@@ -57,27 +61,26 @@ class AppTheme {
     required Color titleColor,
   }) {
     final isDark = brightness == Brightness.dark;
-
+    final borderColor = isDark
+        ? Colors.white.withOpacity(0.07)
+        : AppColors.surfaceLightBorder;
     final scheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       brightness: brightness,
     ).copyWith(
       primary: AppColors.primary,
       onPrimary: Colors.white,
-      secondary: isDark ? AppColors.primarySoft : AppColors.primarySoft,
+      secondary: AppColors.primarySoft,
       onSecondary: Colors.white,
-      tertiary: isDark ? AppColors.success : const Color(0xFF12A150),
+      tertiary: isDark ? AppColors.success : const Color(0xFF159B56),
+      onTertiary: Colors.white,
       error: AppColors.live,
       onError: Colors.white,
       surface: surface,
       onSurface: onSurface,
-      surfaceTintColor: AppColors.primary.withOpacity(isDark ? 0.16 : 0.08),
-      surfaceContainerLowest: scaffold,
-      surfaceContainerLow: surface,
-      surfaceContainer: surface,
-      surfaceContainerHigh: elevatedSurface,
-      surfaceContainerHighest: elevatedSurface,
-      outline: isDark ? Colors.white.withOpacity(0.08) : AppColors.surfaceLightBorder,
+      surfaceVariant: elevatedSurface,
+      onSurfaceVariant: isDark ? AppColors.textSecondary : AppColors.textSecondaryLight,
+      outline: borderColor,
       outlineVariant: isDark ? Colors.white.withOpacity(0.05) : const Color(0x0C000000),
       shadow: Colors.black,
       scrim: Colors.black,
@@ -87,102 +90,90 @@ class AppTheme {
       onBackground: onSurface,
     );
 
-    final baseTextTheme = Typography.material2021(platform: TargetPlatform.iOS)
+    final base = Typography.material2021(platform: TargetPlatform.iOS)
         .black
-        .apply(
-          bodyColor: onSurface,
-          displayColor: onSurface,
-        );
+        .apply(bodyColor: onSurface, displayColor: onSurface);
 
-    final textTheme = baseTextTheme.copyWith(
-      displayLarge: baseTextTheme.displayLarge?.copyWith(
-        fontSize: 56,
+    final textTheme = base.copyWith(
+      displayLarge: base.displayLarge?.copyWith(
+        fontSize: 54,
         fontWeight: FontWeight.w800,
-        letterSpacing: -1.6,
-        height: 1.05,
-      ),
-      displayMedium: baseTextTheme.displayMedium?.copyWith(
-        fontSize: 44,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -1.2,
+        letterSpacing: -1.5,
         height: 1.06,
       ),
-      displaySmall: baseTextTheme.displaySmall?.copyWith(
+      displayMedium: base.displayMedium?.copyWith(
+        fontSize: 42,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -1.1,
+        height: 1.06,
+      ),
+      displaySmall: base.displaySmall?.copyWith(
         fontSize: 34,
         fontWeight: FontWeight.w800,
-        letterSpacing: -0.9,
+        letterSpacing: -0.85,
         height: 1.08,
       ),
-      headlineLarge: baseTextTheme.headlineLarge?.copyWith(
+      headlineLarge: base.headlineLarge?.copyWith(
         fontSize: 30,
         fontWeight: FontWeight.w800,
-        letterSpacing: -0.8,
+        letterSpacing: -0.7,
         height: 1.08,
       ),
-      headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+      headlineMedium: base.headlineMedium?.copyWith(
         fontSize: 26,
         fontWeight: FontWeight.w800,
-        letterSpacing: -0.6,
+        letterSpacing: -0.5,
         height: 1.1,
       ),
-      headlineSmall: baseTextTheme.headlineSmall?.copyWith(
+      headlineSmall: base.headlineSmall?.copyWith(
         fontSize: 22,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.4,
+        letterSpacing: -0.35,
         height: 1.12,
       ),
-      titleLarge: baseTextTheme.titleLarge?.copyWith(
+      titleLarge: base.titleLarge?.copyWith(
         fontSize: 20,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.35,
+        letterSpacing: -0.25,
         height: 1.15,
       ),
-      titleMedium: baseTextTheme.titleMedium?.copyWith(
+      titleMedium: base.titleMedium?.copyWith(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.15,
+        letterSpacing: -0.1,
         height: 1.18,
       ),
-      titleSmall: baseTextTheme.titleSmall?.copyWith(
+      titleSmall: base.titleSmall?.copyWith(
         fontSize: 14,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.05,
         height: 1.2,
       ),
-      bodyLarge: baseTextTheme.bodyLarge?.copyWith(
-        fontSize: 16,
-        height: 1.45,
-      ),
-      bodyMedium: baseTextTheme.bodyMedium?.copyWith(
-        fontSize: 14,
-        height: 1.42,
-      ),
-      bodySmall: baseTextTheme.bodySmall?.copyWith(
-        fontSize: 12,
-        height: 1.34,
-      ),
-      labelLarge: baseTextTheme.labelLarge?.copyWith(
+      bodyLarge: base.bodyLarge?.copyWith(fontSize: 16, height: 1.45),
+      bodyMedium: base.bodyMedium?.copyWith(fontSize: 14, height: 1.42),
+      bodySmall: base.bodySmall?.copyWith(fontSize: 12, height: 1.34),
+      labelLarge: base.labelLarge?.copyWith(
         fontSize: 14,
         fontWeight: FontWeight.w700,
-        letterSpacing: 0.1,
+        letterSpacing: 0.08,
       ),
-      labelMedium: baseTextTheme.labelMedium?.copyWith(
+      labelMedium: base.labelMedium?.copyWith(
         fontSize: 12,
         fontWeight: FontWeight.w700,
-        letterSpacing: 0.25,
+        letterSpacing: 0.24,
       ),
-      labelSmall: baseTextTheme.labelSmall?.copyWith(
+      labelSmall: base.labelSmall?.copyWith(
         fontSize: 11,
         fontWeight: FontWeight.w700,
-        letterSpacing: 0.35,
+        letterSpacing: 0.3,
       ),
     );
 
     return ThemeData(
       brightness: brightness,
       useMaterial3: true,
-      visualDensity: VisualDensity.adaptivePlatformDensity,
-      splashFactory: InkSparkle.splashFactory,
+      visualDensity: VisualDensity.standard,
+      splashFactory: InkRipple.splashFactory,
       scaffoldBackgroundColor: scaffold,
       canvasColor: scaffold,
       primaryColor: AppColors.primary,
@@ -190,7 +181,6 @@ class AppTheme {
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
         foregroundColor: titleColor,
         elevation: 0,
         centerTitle: true,
@@ -201,7 +191,7 @@ class AppTheme {
           color: titleColor,
           fontSize: 22,
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.5,
+          letterSpacing: -0.45,
           height: 1.1,
         ),
         systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
@@ -212,10 +202,8 @@ class AppTheme {
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-          side: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.06) : AppColors.surfaceLightBorder,
-          ),
+          borderRadius: BorderRadius.circular(28),
+          side: BorderSide(color: borderColor),
         ),
       ),
       dividerTheme: DividerThemeData(
@@ -243,22 +231,17 @@ class AppTheme {
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         behavior: SnackBarBehavior.floating,
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         titleTextStyle: TextStyle(
           color: titleColor,
           fontSize: 20,
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.4,
+          letterSpacing: -0.35,
         ),
         contentTextStyle: TextStyle(
           color: onSurface.withOpacity(0.82),
@@ -268,15 +251,13 @@ class AppTheme {
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
-        surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: surface.withOpacity(isDark ? 0.82 : 0.94),
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: surface.withOpacity(isDark ? 0.84 : 0.94),
         indicatorColor: AppColors.primary.withOpacity(isDark ? 0.18 : 0.11),
         elevation: 0,
         labelTextStyle: MaterialStateProperty.resolveWith((states) {
@@ -314,9 +295,7 @@ class AppTheme {
             letterSpacing: 0.1,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -332,22 +311,16 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: BorderSide(
-              color: isDark ? Colors.white.withOpacity(0.06) : AppColors.surfaceLightBorder,
-            ),
+            side: BorderSide(color: borderColor),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: titleColor,
-          side: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.10) : AppColors.surfaceLightBorder,
-          ),
+          side: BorderSide(color: borderColor),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           textStyle: const TextStyle(
             fontWeight: FontWeight.w700,
             letterSpacing: 0.1,
@@ -367,22 +340,15 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.08) : AppColors.surfaceLightBorder,
-          ),
+          borderSide: BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.08) : AppColors.surfaceLightBorder,
-          ),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(
-            color: AppColors.primary.withOpacity(0.82),
-            width: 1.4,
-          ),
+          borderSide: BorderSide(color: AppColors.primary.withOpacity(0.82), width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
@@ -406,9 +372,7 @@ class AppTheme {
         trackOutlineColor: MaterialStateProperty.resolveWith((_) => Colors.transparent),
       ),
       checkboxTheme: CheckboxThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         fillColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) return AppColors.primary;
           return scheme.onSurfaceVariant.withOpacity(0.20);
@@ -426,17 +390,15 @@ class AppTheme {
         iconColor: scheme.onSurfaceVariant,
         textColor: titleColor,
         tileColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: <TargetPlatform, PageTransitionsBuilder>{
           TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
           TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
           TargetPlatform.fuchsia: FadeUpwardsPageTransitionsBuilder(),
           TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
           TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
         },
       ),
