@@ -25,30 +25,52 @@ class PillTabBar extends StatelessWidget {
           final itemWidth = width / _items.length;
 
           return ClipRRect(
-            borderRadius: BorderRadius.circular(34),
+            borderRadius: BorderRadius.circular(36),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+              filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
               child: Container(
-                height: 64,
+                height: 68,
                 decoration: BoxDecoration(
-                  color: (dark ? AppColors.surfaceGlass : Colors.white)
-                      .withOpacity(dark ? 0.88 : 0.82),
-                  borderRadius: BorderRadius.circular(34),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      (dark ? AppColors.surfaceGlass : Colors.white).withOpacity(dark ? 0.90 : 0.88),
+                      (dark ? AppColors.surfaceElevated : Colors.white).withOpacity(dark ? 0.94 : 0.96),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(36),
                   border: Border.all(
                     color: dark
                         ? Colors.white.withOpacity(0.08)
-                        : Colors.white.withOpacity(0.55),
+                        : Colors.white.withOpacity(0.70),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(dark ? 0.26 : 0.12),
-                      blurRadius: 30,
-                      offset: const Offset(0, 14),
+                      color: Colors.black.withOpacity(dark ? 0.30 : 0.10),
+                      blurRadius: 34,
+                      offset: const Offset(0, 16),
                     ),
                   ],
                 ),
                 child: Stack(
                   children: [
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.white.withOpacity(dark ? 0.04 : 0.30),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     AnimatedPositioned(
                       duration: Motion.normal,
                       curve: Motion.emphasized,
@@ -60,19 +82,26 @@ class PillTabBar extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 5),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(28),
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                AppColors.primary.withOpacity(0.22),
-                                AppColors.primary.withOpacity(0.14),
+                                AppColors.primary.withOpacity(dark ? 0.24 : 0.20),
+                                AppColors.primarySoft.withOpacity(dark ? 0.18 : 0.12),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(26),
                             border: Border.all(
-                              color: AppColors.primary.withOpacity(0.25),
+                              color: AppColors.primary.withOpacity(dark ? 0.28 : 0.20),
                               width: 1,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(dark ? 0.12 : 0.08),
+                                blurRadius: 18,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -88,13 +117,13 @@ class PillTabBar extends StatelessWidget {
                               child: AnimatedScale(
                                 duration: Motion.fast,
                                 curve: Motion.spring,
-                                scale: active ? 1.08 : 0.96,
+                                scale: active ? 1.1 : 0.95,
                                 child: Icon(
                                   icon,
-                                  size: 21,
+                                  size: 22,
                                   color: active
                                       ? Colors.white
-                                      : AppColors.textSecondary,
+                                      : AppColors.textSecondary.withOpacity(dark ? 0.92 : 0.78),
                                 ),
                               ),
                             ),

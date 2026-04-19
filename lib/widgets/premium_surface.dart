@@ -30,7 +30,7 @@ class PremiumSurface extends StatelessWidget {
     final base = dark ? AppColors.surface : AppColors.surfaceLight;
     final elevated = dark ? AppColors.surfaceElevated : AppColors.surfaceLightAlt;
     final outline = borderColor ??
-        (dark ? Colors.white.withOpacity(0.08) : const Color(0x18000000));
+        (dark ? Colors.white.withOpacity(0.07) : AppColors.surfaceLightBorder);
 
     final boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
@@ -38,7 +38,7 @@ class PremiumSurface extends StatelessWidget {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          overlayColor ?? base.withOpacity(dark ? 0.98 : 1),
+          (overlayColor ?? base).withOpacity(dark ? 0.98 : 1),
           elevated.withOpacity(dark ? 0.98 : 1),
         ],
       ),
@@ -46,20 +46,22 @@ class PremiumSurface extends StatelessWidget {
       boxShadow: shadows ??
           [
             BoxShadow(
-              color: Colors.black.withOpacity(dark ? 0.22 : 0.08),
-              blurRadius: 26,
+              color: Colors.black.withOpacity(dark ? 0.24 : 0.08),
+              blurRadius: dark ? 32 : 22,
               offset: const Offset(0, 12),
             ),
           ],
     );
 
-    Widget content = Container(
+    final content = Container(
       padding: padding,
       decoration: boxDecoration,
       child: child,
     );
 
-    if (!glass) return ClipRRect(borderRadius: borderRadius, child: content);
+    if (!glass) {
+      return ClipRRect(borderRadius: borderRadius, child: content);
+    }
 
     return ClipRRect(
       borderRadius: borderRadius,

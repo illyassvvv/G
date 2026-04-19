@@ -219,13 +219,20 @@ class _PlayerControlsState extends State<PlayerControls> {
                         width: 76,
                         height: 76,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.42),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0x66141A24),
+                              Color(0x99141A24),
+                            ],
+                          ),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white24, width: 1.5),
+                          border: Border.all(color: Colors.white.withOpacity(0.16), width: 1.2),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.24),
-                              blurRadius: 22,
+                              blurRadius: 26,
                               offset: const Offset(0, 10),
                             ),
                           ],
@@ -259,9 +266,9 @@ class _PlayerControlsState extends State<PlayerControls> {
                             horizontal: 16, vertical: 12),
                         child: PremiumSurface(
                           glass: true,
-                          blur: 16,
+                          blur: 18,
                           borderRadius: BorderRadius.circular(26),
-                          overlayColor: Colors.black.withOpacity(0.16),
+                          overlayColor: Colors.black.withOpacity(0.12),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Column(

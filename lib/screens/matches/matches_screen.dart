@@ -64,6 +64,7 @@ class _MatchesScreenState extends State<MatchesScreen>
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Matches'),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),

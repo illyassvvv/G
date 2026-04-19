@@ -2,31 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppColors {
-  // Premium dark palette: deep charcoal, soft surfaces, restrained accent.
-  static const background = Color(0xFF090A0D);
-  static const backgroundAlt = Color(0xFF0F1218);
-  static const surface = Color(0xFF141922);
-  static const surfaceElevated = Color(0xFF1A2230);
-  static const surfaceGlass = Color(0xCC161C26);
-  static const surfaceBorder = Color(0x1AFFFFFF);
+  // Dark palette: rich charcoal with restrained neon.
+  static const background = Color(0xFF05070B);
+  static const backgroundAlt = Color(0xFF0A1018);
+  static const surface = Color(0xFF101722);
+  static const surfaceElevated = Color(0xFF182133);
+  static const surfaceGlass = Color(0xD0121824);
+  static const surfaceBorder = Color(0x14FFFFFF);
 
-  static const primary = Color(0xFF7C9BFF);
-  static const primarySoft = Color(0xFF4D6FE8);
-  static const live = Color(0xFFFF5A52);
-  static const success = Color(0xFF29C36A);
+  static const primary = Color(0xFF9DB2FF);
+  static const primarySoft = Color(0xFF6886FF);
+  static const live = Color(0xFFFF5D58);
+  static const success = Color(0xFF2ED07D);
   static const warning = Color(0xFFFFC857);
 
-  static const textPrimary = Colors.white;
-  static const textSecondary = Color(0xFFA3A8B3);
+  static const textPrimary = Color(0xFFF6F8FF);
+  static const textSecondary = Color(0xFFABB1C0);
 
-  // Premium light palette: bright, airy, but still slightly warm.
-  static const backgroundLight = Color(0xFFF5F7FB);
-  static const backgroundLightAlt = Color(0xFFECEFF6);
+  // Light palette: warm ivory with gentle contrast.
+  static const backgroundLight = Color(0xFFF7F5F2);
+  static const backgroundLightAlt = Color(0xFFECE7E1);
   static const surfaceLight = Color(0xFFFFFFFF);
-  static const surfaceLightAlt = Color(0xFFF8FAFD);
-  static const surfaceLightBorder = Color(0x14000000);
+  static const surfaceLightAlt = Color(0xFFF7F4EF);
+  static const surfaceLightBorder = Color(0x12000000);
   static const textPrimaryLight = Color(0xFF0B0D11);
-  static const textSecondaryLight = Color(0xFF667085);
+  static const textSecondaryLight = Color(0xFF5D6677);
 }
 
 class AppTheme {
@@ -56,29 +56,29 @@ class AppTheme {
     required Color onSurface,
     required Color titleColor,
   }) {
-    final bool isDark = brightness == Brightness.dark;
+    final isDark = brightness == Brightness.dark;
 
-    final ColorScheme scheme = ColorScheme.fromSeed(
+    final scheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       brightness: brightness,
     ).copyWith(
       primary: AppColors.primary,
       onPrimary: Colors.white,
-      secondary: isDark ? AppColors.primarySoft : AppColors.primary,
+      secondary: isDark ? AppColors.primarySoft : AppColors.primarySoft,
       onSecondary: Colors.white,
-      tertiary: isDark ? AppColors.success : const Color(0xFF0F9D58),
+      tertiary: isDark ? AppColors.success : const Color(0xFF12A150),
       error: AppColors.live,
       onError: Colors.white,
       surface: surface,
       onSurface: onSurface,
-      surfaceTint: AppColors.primary.withOpacity(isDark ? 0.18 : 0.10),
+      surfaceTintColor: AppColors.primary.withOpacity(isDark ? 0.16 : 0.08),
       surfaceContainerLowest: scaffold,
       surfaceContainerLow: surface,
       surfaceContainer: surface,
       surfaceContainerHigh: elevatedSurface,
       surfaceContainerHighest: elevatedSurface,
       outline: isDark ? Colors.white.withOpacity(0.08) : AppColors.surfaceLightBorder,
-      outlineVariant: isDark ? Colors.white.withOpacity(0.05) : const Color(0x0F000000),
+      outlineVariant: isDark ? Colors.white.withOpacity(0.05) : const Color(0x0C000000),
       shadow: Colors.black,
       scrim: Colors.black,
       inverseSurface: isDark ? Colors.white : Colors.black,
@@ -93,6 +93,7 @@ class AppTheme {
           bodyColor: onSurface,
           displayColor: onSurface,
         );
+
     final textTheme = baseTextTheme.copyWith(
       displayLarge: baseTextTheme.displayLarge?.copyWith(
         fontSize: 56,
@@ -203,9 +204,7 @@ class AppTheme {
           letterSpacing: -0.5,
           height: 1.1,
         ),
-        systemOverlayStyle: isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       ),
       cardTheme: CardThemeData(
         color: surface,
@@ -213,18 +212,14 @@ class AppTheme {
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(30),
           side: BorderSide(
-            color: isDark
-                ? Colors.white.withOpacity(0.06)
-                : AppColors.surfaceLightBorder,
+            color: isDark ? Colors.white.withOpacity(0.06) : AppColors.surfaceLightBorder,
           ),
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: isDark
-            ? Colors.white.withOpacity(0.08)
-            : const Color(0x12000000),
+        color: isDark ? Colors.white.withOpacity(0.08) : const Color(0x10000000),
         thickness: 1,
         space: 1,
       ),
@@ -232,18 +227,14 @@ class AppTheme {
         color: isDark ? AppColors.textPrimary : AppColors.textPrimaryLight,
         size: 22,
       ),
-      primaryIconTheme: IconThemeData(
+      primaryIconTheme: const IconThemeData(
         color: AppColors.primary,
         size: 22,
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: AppColors.primary,
-        linearTrackColor: isDark
-            ? Colors.white.withOpacity(0.10)
-            : const Color(0x14000000),
-        circularTrackColor: isDark
-            ? Colors.white.withOpacity(0.10)
-            : const Color(0x14000000),
+        linearTrackColor: isDark ? Colors.white.withOpacity(0.10) : const Color(0x12000000),
+        circularTrackColor: isDark ? Colors.white.withOpacity(0.10) : const Color(0x12000000),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: elevatedSurface,
@@ -279,16 +270,14 @@ class AppTheme {
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28),
-          ),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: surface.withOpacity(isDark ? 0.84 : 0.96),
+        backgroundColor: surface.withOpacity(isDark ? 0.82 : 0.94),
         surfaceTintColor: Colors.transparent,
-        indicatorColor: AppColors.primary.withOpacity(0.16),
+        indicatorColor: AppColors.primary.withOpacity(isDark ? 0.18 : 0.11),
         elevation: 0,
         labelTextStyle: MaterialStateProperty.resolveWith((states) {
           final selected = states.contains(MaterialState.selected);
@@ -344,9 +333,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
             side: BorderSide(
-              color: isDark
-                  ? Colors.white.withOpacity(0.06)
-                  : AppColors.surfaceLightBorder,
+              color: isDark ? Colors.white.withOpacity(0.06) : AppColors.surfaceLightBorder,
             ),
           ),
         ),
@@ -370,15 +357,13 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w700,
-          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: elevatedSurface.withOpacity(isDark ? 0.85 : 0.95),
+        fillColor: elevatedSurface.withOpacity(isDark ? 0.84 : 0.96),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
@@ -416,11 +401,9 @@ class AppTheme {
         }),
         trackColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) return AppColors.primary;
-          return scheme.onSurfaceVariant.withOpacity(0.25);
+          return scheme.onSurfaceVariant.withOpacity(0.22);
         }),
-        trackOutlineColor: MaterialStateProperty.resolveWith((states) {
-          return Colors.transparent;
-        }),
+        trackOutlineColor: MaterialStateProperty.resolveWith((_) => Colors.transparent),
       ),
       checkboxTheme: CheckboxThemeData(
         shape: RoundedRectangleBorder(
@@ -428,7 +411,7 @@ class AppTheme {
         ),
         fillColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) return AppColors.primary;
-          return scheme.onSurfaceVariant.withOpacity(0.25);
+          return scheme.onSurfaceVariant.withOpacity(0.20);
         }),
         side: BorderSide(color: scheme.onSurfaceVariant.withOpacity(0.35)),
       ),

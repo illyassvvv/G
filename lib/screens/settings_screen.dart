@@ -28,9 +28,9 @@ class SettingsScreen extends StatelessWidget {
                 'Settings',
                 style: TextStyle(
                   color: textPrimary,
-                  fontSize: 36,
+                  fontSize: 38,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: -0.9,
+                  letterSpacing: -1.0,
                 ),
               ),
               const SizedBox(height: 8),
@@ -47,7 +47,7 @@ class SettingsScreen extends StatelessWidget {
               _SectionLabel('APPEARANCE', textSecondary),
               const SizedBox(height: 10),
               PremiumSurface(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(24),
                 padding: EdgeInsets.zero,
                 child: ValueListenableBuilder<ThemeMode>(
                   valueListenable: themeNotifier,
@@ -67,7 +67,7 @@ class SettingsScreen extends StatelessWidget {
               _SectionLabel('ABOUT', textSecondary),
               const SizedBox(height: 10),
               PremiumSurface(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(24),
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
@@ -114,7 +114,7 @@ class SettingsScreen extends StatelessWidget {
               _SectionLabel('DATA SOURCE', textSecondary),
               const SizedBox(height: 10),
               PremiumSurface(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(24),
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
@@ -166,7 +166,7 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        color: color.withOpacity(0.72),
+        color: color.withOpacity(0.68),
         fontSize: 12,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.9,
@@ -224,7 +224,7 @@ class _InfoRow extends StatelessWidget {
               style: TextStyle(
                 color: textPrimary,
                 fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -273,7 +273,7 @@ class _ToggleRow extends StatelessWidget {
               style: TextStyle(
                 color: textPrimary,
                 fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),

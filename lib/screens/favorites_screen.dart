@@ -55,16 +55,18 @@ class FavoritesScreen extends StatelessWidget {
                         'No favorites yet',
                         style: TextStyle(
                           color: textSecondary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Tap ♡ in the player to save a channel',
                         style: TextStyle(
-                          color: textSecondary.withOpacity(0.8),
+                          color: textSecondary.withOpacity(0.82),
                           fontSize: 12,
+                          letterSpacing: 0.1,
                         ),
                       ),
                     ],

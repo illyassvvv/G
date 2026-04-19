@@ -22,22 +22,34 @@ class MinimalProgressBar extends StatelessWidget {
             height: 4,
             width: width,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.14),
+              color: Colors.white.withOpacity(0.12),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: AnimatedContainer(
-                duration: Motion.fast,
-                curve: Motion.curve,
-                width: width * value,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Colors.white, Color(0xFFE6ECFF)],
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedContainer(
+                    duration: Motion.fast,
+                    curve: Motion.curve,
+                    width: width * value,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Colors.white, Color(0xFFDCE5FF)],
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withOpacity(0.18),
+                          blurRadius: 8,
+                          offset: const Offset(0, 0),
+                        ),
+                      ],
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(999),
                 ),
-              ),
+              ],
             ),
           ),
         );

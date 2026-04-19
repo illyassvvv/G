@@ -140,10 +140,10 @@ class _HomeScreenState extends State<HomeScreen>
                             child: Text(
                               'Today’s spotlight',
                               style: TextStyle(
-                                color: textSecondary.withOpacity(0.8),
+                                color: textSecondary.withOpacity(0.78),
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.0,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
                               ),
                             ),
                           ),
