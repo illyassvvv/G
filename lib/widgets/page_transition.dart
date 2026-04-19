@@ -10,10 +10,10 @@ PageRoute<T> buildPageRoute<T>(Widget page) {
       final eased = CurvedAnimation(parent: animation, curve: Motion.emphasized);
       final fade = CurvedAnimation(parent: animation, curve: Motion.fade);
       final slide = Tween<Offset>(
-        begin: const Offset(0.05, 0),
+        begin: const Offset(0.035, 0),
         end: Offset.zero,
       ).animate(eased);
-      final scale = Tween<double>(begin: 0.985, end: 1.0).animate(eased);
+      final scale = Tween<double>(begin: 0.99, end: 1.0).animate(eased);
 
       return FadeTransition(
         opacity: fade,

@@ -6,9 +6,10 @@ import '../core/motion.dart';
 import '../core/theme.dart';
 import '../models/channel.dart';
 import '../services/favorites_service.dart';
-import 'pressable.dart';
 import 'minimal_progress_bar.dart';
 import 'network_image_widget.dart';
+import 'pressable.dart';
+import 'premium_surface.dart';
 
 class PlayerControls extends StatefulWidget {
   final VideoPlayerController controller;
@@ -115,22 +116,21 @@ class _PlayerControlsState extends State<PlayerControls> {
                           Color(0x99000000),
                           Colors.transparent,
                           Colors.transparent,
-                          Color(0xB3000000),
+                          Color(0xAA000000),
                         ],
-                        stops: [0, 0.22, 0.74, 1],
+                        stops: [0, 0.18, 0.76, 1],
                       ),
                     ),
                   ),
                 ),
               ),
-
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 child: SafeArea(
                   child: AnimatedSlide(
-                    offset: _visible ? Offset.zero : const Offset(0, -0.08),
+                    offset: _visible ? Offset.zero : const Offset(0, -0.06),
                     duration: Motion.normal,
                     curve: Motion.emphasized,
                     child: AnimatedOpacity(
@@ -200,7 +200,6 @@ class _PlayerControlsState extends State<PlayerControls> {
                   ),
                 ),
               ),
-
               Center(
                 child: AnimatedOpacity(
                   opacity: _visible ? 1 : 0,
@@ -243,14 +242,13 @@ class _PlayerControlsState extends State<PlayerControls> {
                   ),
                 ),
               ),
-
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
                 child: SafeArea(
                   child: AnimatedSlide(
-                    offset: _visible ? Offset.zero : const Offset(0, 0.08),
+                    offset: _visible ? Offset.zero : const Offset(0, 0.06),
                     duration: Motion.normal,
                     curve: Motion.emphasized,
                     child: AnimatedOpacity(
@@ -259,7 +257,11 @@ class _PlayerControlsState extends State<PlayerControls> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
-                        child: _GlassPanel(
+                        child: PremiumSurface(
+                          glass: true,
+                          blur: 16,
+                          borderRadius: BorderRadius.circular(26),
+                          overlayColor: Colors.black.withOpacity(0.16),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Column(
@@ -307,11 +309,11 @@ class _PlayerControlsState extends State<PlayerControls> {
                                     isLive
                                         ? Container(
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
+                                                horizontal: 8, vertical: 3),
                                             decoration: BoxDecoration(
                                               color: AppColors.live,
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                                  BorderRadius.circular(999),
                                             ),
                                             child: const Text(
                                               'LIVE',

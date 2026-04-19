@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../core/url_utils.dart';
 
-/// A fixed-size network image widget with:
-/// - Reserved layout space (no jumps)
-/// - Centered loading indicator during download
-/// - Fade-in on appearance
-/// - Fallback icon on error
+/// Fixed-size network image widget with:
+/// - reserved layout space
+/// - centered loading indicator
+/// - subtle fade-in
+/// - fallback icon on error
 class NetworkImageWidget extends StatelessWidget {
   final String url;
   final double size;
@@ -56,7 +56,7 @@ class NetworkImageWidget extends StatelessWidget {
               height: size * 0.35,
               child: CircularProgressIndicator(
                 strokeWidth: 1.5,
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withOpacity(0.18),
                 value: loadingProgress.expectedTotalBytes != null
                     ? loadingProgress.cumulativeBytesLoaded /
                         loadingProgress.expectedTotalBytes!
@@ -75,7 +75,7 @@ class NetworkImageWidget extends StatelessWidget {
       child: Icon(
         fallbackIcon,
         size: size * 0.5,
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withOpacity(0.18),
       ),
     );
   }
@@ -89,7 +89,7 @@ class _FadeIn extends StatelessWidget {
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
       builder: (_, value, __) => Opacity(opacity: value, child: child),
       child: child,

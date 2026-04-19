@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../models/channel.dart';
+import '../widgets/app_backdrop.dart';
+import '../widgets/fade_switch.dart';
 import '../widgets/player_controls.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -130,18 +132,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: _loading
-            ? _buildLoading()
-            : _error
-                ? _buildError()
-                : _buildPlayer(),
+        backgroundColor: Colors.transparent,
+        body: AppBackdrop(
+          child: FadeSwitch(
+            child: _loading
+                ? _buildLoading(key: const ValueKey('loading'))
+                : _error
+                    ? _buildError(key: const ValueKey('error'))
+                    : _buildPlayer(key: const ValueKey('player')),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildLoading() {
+  Widget _buildLoading({required Key key}) {
     return Center(
+      key: key,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -156,8 +163,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildError() {
+  Widget _buildError({required Key key}) {
     return Center(
+      key: key,
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -204,19 +212,39 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildPlayer() {
+  Widget _buildPlayer({required Key key}) {
     final controller = _controller;
     if (controller == null) {
-      return _buildLoading();
+      return _buildLoading(key: key);
     }
 
     return Stack(
+      key: key,
       fit: StackFit.expand,
       children: [
+        Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topCenter,
+              radius: 1.15,
+              colors: [
+                Color(0xFF151A22),
+                Color(0xFF090B10),
+                Color(0xFF050608),
+              ],
+            ),
+          ),
+        ),
         Center(
-          child: AspectRatio(
-            aspectRatio: controller.value.aspectRatio,
-            child: VideoPlayer(controller),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(_isFullscreen ? 0 : 26),
+              child: AspectRatio(
+                aspectRatio: controller.value.aspectRatio,
+                child: VideoPlayer(controller),
+              ),
+            ),
           ),
         ),
         PlayerControls(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../screens/root_shell.dart';
+import 'motion.dart';
 import 'theme.dart';
 import 'theme_notifier.dart';
 
@@ -8,7 +9,6 @@ class StreamGoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild MaterialApp whenever dark mode is toggled
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, mode, _) {
@@ -18,6 +18,8 @@ class StreamGoApp extends StatelessWidget {
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: mode,
+          themeAnimationDuration: Motion.normal,
+          themeAnimationCurve: Motion.emphasized,
           home: const RootShell(),
         );
       },

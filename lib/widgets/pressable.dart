@@ -47,17 +47,17 @@ class _PressableState extends State<Pressable>
       onTapCancel: _onCancel,
       child: AnimatedBuilder(
         animation: _controller,
+        child: widget.child,
         builder: (_, child) {
           final t = _controller.value;
           return Transform.translate(
-            offset: Offset(0, 1.5 * t),
+            offset: Offset(0, 1.0 * t),
             child: Transform.scale(
-              scale: 1 - (t * 0.035),
+              scale: 1 - (t * 0.025),
               child: child,
             ),
           );
         },
-        child: widget.child,
       ),
     );
   }

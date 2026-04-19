@@ -16,27 +16,34 @@ class PillTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final itemWidth = width / _items.length;
+
           return ClipRRect(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(34),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
               child: Container(
-                height: 58,
+                height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.82),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                  color: (dark ? AppColors.surfaceGlass : Colors.white)
+                      .withOpacity(dark ? 0.88 : 0.82),
+                  borderRadius: BorderRadius.circular(34),
+                  border: Border.all(
+                    color: dark
+                        ? Colors.white.withOpacity(0.08)
+                        : Colors.white.withOpacity(0.55),
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.28),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
+                      color: Colors.black.withOpacity(dark ? 0.26 : 0.12),
+                      blurRadius: 30,
+                      offset: const Offset(0, 14),
                     ),
                   ],
                 ),
@@ -46,17 +53,24 @@ class PillTabBar extends StatelessWidget {
                       duration: Motion.normal,
                       curve: Motion.emphasized,
                       left: currentIndex * itemWidth,
-                      top: 5,
-                      bottom: 5,
+                      top: 6,
+                      bottom: 6,
                       width: itemWidth,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 5),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.18),
-                            borderRadius: BorderRadius.circular(23),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.primary.withOpacity(0.22),
+                                AppColors.primary.withOpacity(0.14),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(26),
                             border: Border.all(
-                              color: AppColors.primary.withOpacity(0.28),
+                              color: AppColors.primary.withOpacity(0.25),
                               width: 1,
                             ),
                           ),
@@ -74,10 +88,10 @@ class PillTabBar extends StatelessWidget {
                               child: AnimatedScale(
                                 duration: Motion.fast,
                                 curve: Motion.spring,
-                                scale: active ? 1.08 : 0.94,
+                                scale: active ? 1.08 : 0.96,
                                 child: Icon(
                                   icon,
-                                  size: 20,
+                                  size: 21,
                                   color: active
                                       ? Colors.white
                                       : AppColors.textSecondary,

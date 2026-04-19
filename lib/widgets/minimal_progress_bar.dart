@@ -16,24 +16,27 @@ class MinimalProgressBar extends StatelessWidget {
     return LayoutBuilder(
       builder: (_, constraints) {
         final width = constraints.maxWidth;
-
-        return Container(
-          height: 3,
-          width: width,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(2),
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            // FIX: was a static Container — now AnimatedContainer so it smoothly fills
-            child: AnimatedContainer(
-              duration: Motion.fast,
-              curve: Motion.curve,
-              width: width * value,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(2),
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            height: 4,
+            width: width,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: AnimatedContainer(
+                duration: Motion.fast,
+                curve: Motion.curve,
+                width: width * value,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Colors.white, Color(0xFFE6ECFF)],
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
           ),

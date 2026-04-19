@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../models/match.dart';
 import '../../core/theme.dart';
+import '../../models/match.dart';
 import '../../widgets/fade_switch.dart';
 import '../../widgets/network_image_widget.dart';
+import '../../widgets/premium_surface.dart';
 
 class MatchRow extends StatelessWidget {
   final Match match;
@@ -11,40 +12,25 @@ class MatchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
+    return PremiumSurface(
+      borderRadius: BorderRadius.circular(22),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.98),
-        borderRadius: BorderRadius.circular(18),
-        border: match.isLive
-            ? Border.all(color: AppColors.live.withOpacity(0.28), width: 1)
-            : Border.all(color: Colors.white.withOpacity(0.04), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.14),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
       child: Column(
         children: [
           Row(
             children: [
               if (match.leagueLogoUrl.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.only(right: 8),
                   child: NetworkImageWidget(
                     url: match.leagueLogoUrl,
-                    size: 14,
+                    size: 15,
                     fallbackIcon: Icons.sports_soccer,
                   ),
                 ),
               if (match.isLive) ...[
                 _LiveDot(),
-                const SizedBox(width: 5),
+                const SizedBox(width: 6),
               ],
               Expanded(
                 child: Text(
@@ -52,12 +38,22 @@ class MatchRow extends StatelessWidget {
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: 0.4,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (match.isLive)
+                const Text(
+                  'LIVE',
+                  style: TextStyle(
+                    color: AppColors.live,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -102,7 +98,7 @@ class MatchRow extends StatelessWidget {
                           : AppColors.textSecondary,
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ),
@@ -150,7 +146,7 @@ class _LiveDotState extends State<_LiveDot>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
+    duration: const Duration(milliseconds: 1200),
   )..repeat(reverse: true);
 
   @override
@@ -164,13 +160,13 @@ class _LiveDotState extends State<_LiveDot>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, __) => Transform.scale(
-        scale: 0.9 + (_ctrl.value * 0.2),
+        scale: 0.92 + (_ctrl.value * 0.16),
         child: Container(
           width: 6,
           height: 6,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.live.withOpacity(0.58 + _ctrl.value * 0.42),
+            color: AppColors.live.withOpacity(0.55 + _ctrl.value * 0.38),
           ),
         ),
       ),

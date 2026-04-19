@@ -16,16 +16,19 @@ class FadeSwitch extends StatelessWidget {
       transitionBuilder: (child, animation) {
         final fade = CurvedAnimation(parent: animation, curve: Motion.fade);
         final slide = Tween<Offset>(
-          begin: const Offset(0, 0.08),
+          begin: const Offset(0, 0.05),
           end: Offset.zero,
         ).animate(animation);
-        final scale = Tween<double>(begin: 0.985, end: 1.0).animate(animation);
+        final scale = Tween<double>(begin: 0.99, end: 1.0).animate(animation);
 
         return FadeTransition(
           opacity: fade,
           child: SlideTransition(
             position: slide,
-            child: ScaleTransition(scale: scale, child: child),
+            child: ScaleTransition(
+              scale: scale,
+              child: child,
+            ),
           ),
         );
       },

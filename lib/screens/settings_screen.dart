@@ -1,130 +1,158 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../core/theme_notifier.dart';
+import '../widgets/app_backdrop.dart';
+import '../widgets/premium_surface.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppColors.background : AppColors.backgroundLight;
-    final surface = isDark ? AppColors.surface : AppColors.surfaceLight;
-    final textPrimary = isDark ? AppColors.textPrimary : AppColors.textPrimaryLight;
-    final textSecondary = isDark ? AppColors.textSecondary : AppColors.textSecondaryLight;
-    final dividerColor = isDark ? const Color(0x14FFFFFF) : const Color(0x18000000);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary =
+        dark ? AppColors.textPrimary : AppColors.textPrimaryLight;
+    final textSecondary =
+        dark ? AppColors.textSecondary : AppColors.textSecondaryLight;
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              'Settings',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // ─── APPEARANCE ───
-            _SectionLabel('APPEARANCE', textSecondary),
-            const SizedBox(height: 8),
-            _SettingsGroup(surface: surface, children: [
-              ValueListenableBuilder<ThemeMode>(
-                valueListenable: themeNotifier,
-                builder: (context, mode, _) => _ToggleRow(
-                  icon: Icons.dark_mode_rounded,
-                  iconBg: const Color(0xFF2D1766),
-                  title: 'Dark Mode',
-                  value: mode == ThemeMode.dark,
-                  onChanged: setDarkMode,
-                  textPrimary: textPrimary,
+      backgroundColor: Colors.transparent,
+      body: AppBackdrop(
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            children: [
+              const SizedBox(height: 10),
+              Text(
+                'Settings',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.9,
                 ),
               ),
-            ]),
-            const SizedBox(height: 28),
+              const SizedBox(height: 8),
+              Text(
+                'Design, appearance, and app details.',
+                style: TextStyle(
+                  color: textSecondary.withOpacity(0.85),
+                  fontSize: 13,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 28),
 
-            // ─── ABOUT ───
-            _SectionLabel('ABOUT', textSecondary),
-            const SizedBox(height: 8),
-            _SettingsGroup(surface: surface, children: [
-              _InfoRow(
-                icon: Icons.play_circle_fill_rounded,
-                iconBg: const Color(0xFF1A56DB),
-                title: 'Streaming',
-                value: 'v3.0',
-                textPrimary: textPrimary,
-                textSecondary: textSecondary,
+              _SectionLabel('APPEARANCE', textSecondary),
+              const SizedBox(height: 10),
+              PremiumSurface(
+                borderRadius: BorderRadius.circular(22),
+                padding: EdgeInsets.zero,
+                child: ValueListenableBuilder<ThemeMode>(
+                  valueListenable: themeNotifier,
+                  builder: (context, mode, _) => _ToggleRow(
+                    icon: Icons.dark_mode_rounded,
+                    iconBg: const Color(0xFF3A1D8D),
+                    title: 'Dark Mode',
+                    value: mode == ThemeMode.dark,
+                    onChanged: setDarkMode,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                  ),
+                ),
               ),
-              _divider(dividerColor),
-              _InfoRow(
-                icon: Icons.auto_awesome_rounded,
-                iconBg: const Color(0xFFB45309),
-                title: 'Design',
-                value: 'iOS 26 Glassmorphism',
-                textPrimary: textPrimary,
-                textSecondary: textSecondary,
-              ),
-              _divider(dividerColor),
-              _InfoRow(
-                icon: Icons.font_download_rounded,
-                iconBg: const Color(0xFF065F46),
-                title: 'Fonts',
-                value: 'Inter / Cairo',
-                textPrimary: textPrimary,
-                textSecondary: textSecondary,
-              ),
-              _divider(dividerColor),
-              _InfoRow(
-                icon: Icons.code_rounded,
-                iconBg: const Color(0xFF155E75),
-                title: 'Framework',
-                value: 'Flutter',
-                textPrimary: textPrimary,
-                textSecondary: textSecondary,
-              ),
-            ]),
-            const SizedBox(height: 28),
+              const SizedBox(height: 28),
 
-            // ─── DATA SOURCE ───
-            _SectionLabel('DATA SOURCE', textSecondary),
-            const SizedBox(height: 8),
-            _SettingsGroup(surface: surface, children: [
-              _InfoRow(
-                icon: Icons.link_rounded,
-                iconBg: const Color(0xFF1A56DB),
-                title: 'JSON Source',
-                value: 'GitHub / illyassvvv',
-                textPrimary: textPrimary,
-                textSecondary: textSecondary,
+              _SectionLabel('ABOUT', textSecondary),
+              const SizedBox(height: 10),
+              PremiumSurface(
+                borderRadius: BorderRadius.circular(22),
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _InfoRow(
+                      icon: Icons.play_circle_fill_rounded,
+                      iconBg: const Color(0xFF1A56DB),
+                      title: 'Streaming',
+                      value: 'v3.0',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                    _divider(dark),
+                    _InfoRow(
+                      icon: Icons.auto_awesome_rounded,
+                      iconBg: const Color(0xFFB45309),
+                      title: 'Design',
+                      value: 'iOS 26 Glassmorphism',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                    _divider(dark),
+                    _InfoRow(
+                      icon: Icons.font_download_rounded,
+                      iconBg: const Color(0xFF065F46),
+                      title: 'Fonts',
+                      value: 'Inter / Cairo',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                    _divider(dark),
+                    _InfoRow(
+                      icon: Icons.code_rounded,
+                      iconBg: const Color(0xFF155E75),
+                      title: 'Framework',
+                      value: 'Flutter',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                  ],
+                ),
               ),
-              _divider(dividerColor),
-              _InfoRow(
-                icon: Icons.sports_soccer_rounded,
-                iconBg: const Color(0xFF1A7A56),
-                title: 'Matches API',
-                value: 'kora-api.space',
-                textPrimary: textPrimary,
-                textSecondary: textSecondary,
+              const SizedBox(height: 28),
+
+              _SectionLabel('DATA SOURCE', textSecondary),
+              const SizedBox(height: 10),
+              PremiumSurface(
+                borderRadius: BorderRadius.circular(22),
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _InfoRow(
+                      icon: Icons.link_rounded,
+                      iconBg: const Color(0xFF1A56DB),
+                      title: 'JSON Source',
+                      value: 'GitHub / illyassvvv',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                    _divider(dark),
+                    _InfoRow(
+                      icon: Icons.sports_soccer_rounded,
+                      iconBg: const Color(0xFF1A7A56),
+                      title: 'Matches API',
+                      value: 'kora-api.space',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                  ],
+                ),
               ),
-            ]),
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _divider(Color color) => Padding(
+  Widget _divider(bool dark) => Padding(
         padding: const EdgeInsets.only(left: 56),
-        child: Divider(height: 1, thickness: 0.4, color: color),
+        child: Divider(
+          height: 1,
+          thickness: 0.8,
+          color: dark ? Colors.white.withOpacity(0.08) : const Color(0x12000000),
+        ),
       );
 }
 
@@ -138,29 +166,11 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        color: color.withOpacity(0.7),
+        color: color.withOpacity(0.72),
         fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.8,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.9,
       ),
-    );
-  }
-}
-
-class _SettingsGroup extends StatelessWidget {
-  final List<Widget> children;
-  final Color surface;
-  const _SettingsGroup({required this.children, required this.surface});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: children),
     );
   }
 }
@@ -173,13 +183,13 @@ class _RowIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 32,
-      height: 32,
+      width: 34,
+      height: 34,
       decoration: BoxDecoration(
         color: iconBg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(icon, color: Colors.white, size: 17),
+      child: Icon(icon, color: Colors.white, size: 18),
     );
   }
 }
@@ -203,22 +213,28 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       child: Row(
         children: [
           _RowIcon(icon: icon, iconBg: iconBg),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(title,
-                style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500)),
-          ),
-          Text(value,
+            child: Text(
+              title,
               style: TextStyle(
-                  color: textSecondary.withOpacity(0.8),
-                  fontSize: 13)),
+                color: textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: textSecondary.withOpacity(0.82),
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );
@@ -232,6 +248,7 @@ class _ToggleRow extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final Color textPrimary;
+  final Color textSecondary;
   const _ToggleRow({
     required this.icon,
     required this.iconBg,
@@ -239,22 +256,26 @@ class _ToggleRow extends StatelessWidget {
     required this.value,
     required this.onChanged,
     required this.textPrimary,
+    required this.textSecondary,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Row(
         children: [
           _RowIcon(icon: icon, iconBg: iconBg),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(title,
-                style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500)),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           CupertinoSwitch(
             value: value,

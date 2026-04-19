@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import '../core/motion.dart';
+import '../screens/favorites_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/matches/matches_screen.dart';
-import '../screens/favorites_screen.dart';
 import '../screens/settings_screen.dart';
 import '../widgets/navigation/pill_tab_bar.dart';
-import '../core/motion.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -64,6 +64,7 @@ class _RootShellState extends State<RootShell> {
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
+        allowImplicitScrolling: true,
         itemCount: _pageCount,
         itemBuilder: (_, index) => _buildPage(index),
       ),

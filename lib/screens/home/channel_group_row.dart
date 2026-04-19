@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../models/channel.dart';
+import '../../core/motion.dart';
 import '../../core/theme.dart';
+import '../../models/channel.dart';
 import '../../widgets/channel_card.dart';
+import '../../widgets/slide_fade_transition.dart';
 
 class ChannelGroupRow extends StatelessWidget {
   final String title;
@@ -22,18 +24,34 @@ class ChannelGroupRow extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 160,
+          height: 162,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -41,13 +59,16 @@ class ChannelGroupRow extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (_, i) {
               return SizedBox(
-                width: 120,
-                child: ChannelCard(channel: channels[i]),
+                width: 122,
+                child: SlideFade(
+                  delay: Duration(milliseconds: Motion.stagger.inMilliseconds * i),
+                  child: ChannelCard(channel: channels[i]),
+                ),
               );
             },
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 22),
       ],
     );
   }

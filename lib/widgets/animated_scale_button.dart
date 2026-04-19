@@ -47,17 +47,17 @@ class _AnimatedScaleButtonState extends State<AnimatedScaleButton>
       onTapCancel: _onTapCancel,
       child: AnimatedBuilder(
         animation: _controller,
+        child: widget.child,
         builder: (_, child) {
           final t = _controller.value;
           return Transform.translate(
             offset: Offset(0, 1.0 * t),
             child: Transform.scale(
-              scale: 1 - (t * 0.045),
+              scale: 1 - (t * 0.028),
               child: child,
             ),
           );
         },
-        child: widget.child,
       ),
     );
   }
