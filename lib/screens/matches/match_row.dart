@@ -13,7 +13,7 @@ class MatchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PremiumSurface(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(24),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
         children: [
@@ -25,7 +25,7 @@ class MatchRow extends StatelessWidget {
                   child: NetworkImageWidget(
                     url: match.leagueLogoUrl,
                     size: 15,
-                    fallbackIcon: Icons.sports_soccer,
+                    fallbackIcon: Icons.sports_soccer_rounded,
                   ),
                 ),
               if (match.isLive) ...[
@@ -38,7 +38,7 @@ class MatchRow extends StatelessWidget {
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.4,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -53,10 +53,19 @@ class MatchRow extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.8,
                   ),
+                )
+              else
+                Text(
+                  match.time,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -71,7 +80,7 @@ class MatchRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 13,
                           height: 1.2,
                         ),
@@ -88,19 +97,30 @@ class MatchRow extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: FadeSwitch(
-                  child: Text(
-                    match.isLive ? match.score : match.time,
-                    key: ValueKey(match.isLive ? match.score : match.time),
-                    style: TextStyle(
-                      color: match.isLive
-                          ? AppColors.live
-                          : AppColors.textSecondary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      letterSpacing: 0.4,
+                child: Column(
+                  children: [
+                    FadeSwitch(
+                      child: Text(
+                        match.isLive ? match.score : match.time,
+                        key: ValueKey(match.isLive ? match.score : match.time),
+                        style: TextStyle(
+                          color: match.isLive ? AppColors.live : AppColors.textSecondary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 28,
+                      height: 2,
+                      decoration: BoxDecoration(
+                        color: match.isLive ? AppColors.live.withOpacity(0.75) : AppColors.primary.withOpacity(0.20),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Expanded(
@@ -120,7 +140,7 @@ class MatchRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 13,
                           height: 1.2,
                         ),
@@ -131,6 +151,18 @@ class MatchRow extends StatelessWidget {
               ),
             ],
           ),
+          if (match.isLive) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                minHeight: 4,
+                value: null,
+                backgroundColor: Colors.white.withOpacity(0.06),
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.live),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -142,8 +174,7 @@ class _LiveDot extends StatefulWidget {
   State<_LiveDot> createState() => _LiveDotState();
 }
 
-class _LiveDotState extends State<_LiveDot>
-    with SingleTickerProviderStateMixin {
+class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1200),

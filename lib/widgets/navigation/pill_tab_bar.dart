@@ -17,60 +17,38 @@ class PillTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final tabs = _items;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          final itemWidth = width / _items.length;
+          final itemWidth = width / tabs.length;
 
           return ClipRRect(
-            borderRadius: BorderRadius.circular(36),
+            borderRadius: BorderRadius.circular(34),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
               child: Container(
                 height: 68,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      (dark ? AppColors.surfaceGlass : Colors.white).withOpacity(dark ? 0.90 : 0.88),
-                      (dark ? AppColors.surfaceElevated : Colors.white).withOpacity(dark ? 0.94 : 0.96),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(36),
+                  color: (dark ? AppColors.surfaceGlass : Colors.white)
+                      .withOpacity(dark ? 0.88 : 0.82),
+                  borderRadius: BorderRadius.circular(34),
                   border: Border.all(
-                    color: dark
-                        ? Colors.white.withOpacity(0.08)
-                        : Colors.white.withOpacity(0.70),
+                    color: dark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.55),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(dark ? 0.30 : 0.10),
-                      blurRadius: 34,
-                      offset: const Offset(0, 16),
+                      color: Colors.black.withOpacity(dark ? 0.26 : 0.12),
+                      blurRadius: 30,
+                      offset: const Offset(0, 14),
                     ),
                   ],
                 ),
                 child: Stack(
                   children: [
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.white.withOpacity(dark ? 0.04 : 0.30),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                     AnimatedPositioned(
                       duration: Motion.normal,
                       curve: Motion.emphasized,
@@ -82,34 +60,27 @@ class PillTabBar extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 5),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                AppColors.primary.withOpacity(dark ? 0.24 : 0.20),
-                                AppColors.primarySoft.withOpacity(dark ? 0.18 : 0.12),
+                                AppColors.primary.withOpacity(0.25),
+                                AppColors.primary.withOpacity(0.14),
                               ],
                             ),
+                            borderRadius: BorderRadius.circular(26),
                             border: Border.all(
-                              color: AppColors.primary.withOpacity(dark ? 0.28 : 0.20),
+                              color: AppColors.primary.withOpacity(0.28),
                               width: 1,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withOpacity(dark ? 0.12 : 0.08),
-                                blurRadius: 18,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
                           ),
                         ),
                       ),
                     ),
                     Row(
-                      children: List.generate(_items.length, (index) {
+                      children: List.generate(tabs.length, (index) {
                         final active = index == currentIndex;
-                        final icon = active ? _activeItems[index] : _items[index];
+                        final item = tabs[index];
                         return Expanded(
                           child: Pressable(
                             onTap: () => onTap(index),
@@ -117,13 +88,30 @@ class PillTabBar extends StatelessWidget {
                               child: AnimatedScale(
                                 duration: Motion.fast,
                                 curve: Motion.spring,
-                                scale: active ? 1.1 : 0.95,
-                                child: Icon(
-                                  icon,
-                                  size: 22,
-                                  color: active
-                                      ? Colors.white
-                                      : AppColors.textSecondary.withOpacity(dark ? 0.92 : 0.78),
+                                scale: active ? 1.05 : 0.98,
+                                child: AnimatedOpacity(
+                                  opacity: active ? 1 : 0.76,
+                                  duration: Motion.fast,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        active ? item.activeIcon : item.icon,
+                                        size: 20,
+                                        color: active ? Colors.white : AppColors.textSecondary,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        item.label,
+                                        style: TextStyle(
+                                          color: active ? Colors.white : AppColors.textSecondary,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -142,16 +130,16 @@ class PillTabBar extends StatelessWidget {
   }
 }
 
-const _items = [
-  Icons.home_outlined,
-  Icons.sports_soccer_outlined,
-  Icons.favorite_border,
-  Icons.settings_outlined,
-];
+class _TabItem {
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+  const _TabItem(this.label, this.icon, this.activeIcon);
+}
 
-const _activeItems = [
-  Icons.home,
-  Icons.sports_soccer,
-  Icons.favorite,
-  Icons.settings,
+const _items = [
+  _TabItem('Home', Icons.home_outlined, Icons.home_rounded),
+  _TabItem('Matches', Icons.sports_soccer_outlined, Icons.sports_soccer_rounded),
+  _TabItem('Favorites', Icons.favorite_border_rounded, Icons.favorite_rounded),
+  _TabItem('Settings', Icons.settings_outlined, Icons.settings_rounded),
 ];

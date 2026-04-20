@@ -15,8 +15,6 @@ class ChannelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-
     return Pressable(
       onTap: () => Navigator.push(
         context,
@@ -27,13 +25,11 @@ class ChannelCard extends StatelessWidget {
         child: PremiumSurface(
           borderRadius: BorderRadius.circular(26),
           padding: const EdgeInsets.all(14),
-          overlayColor: dark
-              ? const Color(0xFF121826)
-              : const Color(0xFFFFFFFF),
+          overlayColor: Colors.white.withOpacity(0.02),
           shadows: [
             BoxShadow(
-              color: Colors.black.withOpacity(dark ? 0.22 : 0.08),
-              blurRadius: 26,
+              color: Colors.black.withOpacity(0.18),
+              blurRadius: 24,
               offset: const Offset(0, 12),
             ),
           ],
@@ -43,69 +39,53 @@ class ChannelCard extends StatelessWidget {
                 top: -18,
                 right: -18,
                 child: Container(
-                  width: 62,
-                  height: 62,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AppColors.primary.withOpacity(dark ? 0.16 : 0.12),
-                        Colors.transparent,
-                      ],
-                    ),
+                    color: AppColors.primary.withOpacity(0.10),
                   ),
                 ),
               ),
               Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: ValueListenableBuilder<Set<int>>(
-                    valueListenable: FavoritesService.notifier,
-                    builder: (_, ids, __) => AnimatedOpacity(
-                      opacity: ids.contains(channel.id) ? 1 : 0,
-                      duration: const Duration(milliseconds: 180),
-                      child: const Icon(
-                        Icons.favorite_rounded,
-                        size: 12,
-                        color: AppColors.live,
-                      ),
-                    ),
+                bottom: -20,
+                left: -20,
+                child: Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.03),
                   ),
                 ),
               ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 2),
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      color: dark
-                          ? Colors.white.withOpacity(0.04)
-                          : Colors.black.withOpacity(0.025),
-                      border: Border.all(
-                        color: dark
-                            ? Colors.white.withOpacity(0.06)
-                            : Colors.black.withOpacity(0.05),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(dark ? 0.18 : 0.05),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: ValueListenableBuilder<Set<int>>(
+                      valueListenable: FavoritesService.notifier,
+                      builder: (_, ids, __) => AnimatedOpacity(
+                        opacity: ids.contains(channel.id) ? 1 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        child: const Icon(
+                          Icons.favorite_rounded,
+                          size: 12,
+                          color: AppColors.live,
                         ),
-                      ],
+                      ),
                     ),
-                    child: Center(
+                  ),
+                  const SizedBox(height: 4),
+                  Hero(
+                    tag: 'channel-logo-${channel.id}',
+                    child: Material(
+                      color: Colors.transparent,
                       child: NetworkImageWidget(
                         url: channel.logoUrl,
-                        size: 46,
-                        fallbackIcon: Icons.tv,
+                        size: 50,
+                        fallbackIcon: Icons.tv_rounded,
                       ),
                     ),
                   ),
@@ -115,12 +95,12 @@ class ChannelCard extends StatelessWidget {
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: dark ? AppColors.textPrimary : AppColors.textPrimaryLight,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
                       fontWeight: FontWeight.w700,
-                      fontSize: 12.5,
-                      height: 1.22,
-                      letterSpacing: 0.05,
+                      fontSize: 12,
+                      height: 1.25,
+                      letterSpacing: 0.1,
                     ),
                   ),
                 ],

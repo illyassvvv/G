@@ -4,6 +4,7 @@ import '../../core/theme.dart';
 import '../../models/match.dart';
 import '../../services/api_service.dart';
 import '../../widgets/app_backdrop.dart';
+import '../../widgets/premium_surface.dart';
 import '../../widgets/slide_fade_transition.dart';
 import 'match_row.dart';
 
@@ -14,8 +15,7 @@ class MatchesScreen extends StatefulWidget {
   State<MatchesScreen> createState() => _MatchesScreenState();
 }
 
-class _MatchesScreenState extends State<MatchesScreen>
-    with AutomaticKeepAliveClientMixin<MatchesScreen> {
+class _MatchesScreenState extends State<MatchesScreen> with AutomaticKeepAliveClientMixin<MatchesScreen> {
   List<Match> _matches = [];
   bool _loading = true;
   String? _error;
@@ -57,14 +57,13 @@ class _MatchesScreenState extends State<MatchesScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final textSecondary =
-        dark ? AppColors.textSecondary : AppColors.textSecondaryLight;
+    final textSecondary = dark ? AppColors.textSecondary : AppColors.textSecondaryLight;
+    final textPrimary = dark ? AppColors.textPrimary : AppColors.textPrimaryLight;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Matches'),
-        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -87,8 +86,7 @@ class _MatchesScreenState extends State<MatchesScreen>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.cloud_off_rounded,
-                                size: 56, color: AppColors.textSecondary),
+                            const Icon(Icons.cloud_off_rounded, size: 56, color: AppColors.textSecondary),
                             const SizedBox(height: 12),
                             Text(
                               'Failed to load matches',
@@ -99,10 +97,7 @@ class _MatchesScreenState extends State<MatchesScreen>
                             Text(
                               _error!,
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 12,
-                              ),
+                              style: TextStyle(color: textSecondary, fontSize: 12),
                             ),
                             const SizedBox(height: 16),
                             FilledButton(
@@ -116,17 +111,65 @@ class _MatchesScreenState extends State<MatchesScreen>
                   : RefreshIndicator(
                       onRefresh: _load,
                       color: AppColors.primary,
-                      child: ListView.separated(
+                      child: ListView(
                         key: const ValueKey('list'),
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                        itemCount: _matches.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (_, i) {
-                          return SlideFade(
-                            delay: Duration(milliseconds: 35 + (i * 42)),
-                            child: MatchRow(match: _matches[i]),
-                          );
-                        },
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Upcoming & live',
+                                      style: TextStyle(
+                                        color: textSecondary.withOpacity(0.72),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.9,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Elegant match schedule',
+                                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                            color: textPrimary,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                                const Spacer(),
+                                PremiumSurface(
+                                  borderRadius: BorderRadius.circular(999),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  glass: true,
+                                  blur: 14,
+                                  overlayColor: AppColors.primary.withOpacity(0.10),
+                                  borderColor: AppColors.primary.withOpacity(0.20),
+                                  child: Text(
+                                    '${_matches.length} events',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ..._matches.asMap().entries.map(
+                            (entry) => SlideFade(
+                              delay: Duration(milliseconds: 35 + (entry.key * 42)),
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: MatchRow(match: entry.value),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
         ),

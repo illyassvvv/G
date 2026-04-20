@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../core/theme_notifier.dart';
@@ -11,39 +10,32 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary =
-        dark ? AppColors.textPrimary : AppColors.textPrimaryLight;
-    final textSecondary =
-        dark ? AppColors.textSecondary : AppColors.textSecondaryLight;
+    final textPrimary = dark ? AppColors.textPrimary : AppColors.textPrimaryLight;
+    final textSecondary = dark ? AppColors.textSecondary : AppColors.textSecondaryLight;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppBackdrop(
         child: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
             children: [
-              const SizedBox(height: 10),
               Text(
                 'Settings',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 38,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.0,
-                ),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: textPrimary,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Design, appearance, and app details.',
                 style: TextStyle(
-                  color: textSecondary.withOpacity(0.85),
+                  color: textSecondary.withOpacity(0.84),
                   fontSize: 13,
                   height: 1.3,
                 ),
               ),
-              const SizedBox(height: 28),
-
+              const SizedBox(height: 26),
               _SectionLabel('APPEARANCE', textSecondary),
               const SizedBox(height: 10),
               PremiumSurface(
@@ -55,6 +47,7 @@ class SettingsScreen extends StatelessWidget {
                     icon: Icons.dark_mode_rounded,
                     iconBg: const Color(0xFF3A1D8D),
                     title: 'Dark Mode',
+                    subtitle: 'Ultra-modern premium theme',
                     value: mode == ThemeMode.dark,
                     onChanged: setDarkMode,
                     textPrimary: textPrimary,
@@ -62,8 +55,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 28),
-
+              const SizedBox(height: 26),
               _SectionLabel('ABOUT', textSecondary),
               const SizedBox(height: 10),
               PremiumSurface(
@@ -84,7 +76,7 @@ class SettingsScreen extends StatelessWidget {
                       icon: Icons.auto_awesome_rounded,
                       iconBg: const Color(0xFFB45309),
                       title: 'Design',
-                      value: 'iOS 26 Glassmorphism',
+                      value: 'Luxury motion system',
                       textPrimary: textPrimary,
                       textSecondary: textSecondary,
                     ),
@@ -92,8 +84,8 @@ class SettingsScreen extends StatelessWidget {
                     _InfoRow(
                       icon: Icons.font_download_rounded,
                       iconBg: const Color(0xFF065F46),
-                      title: 'Fonts',
-                      value: 'Inter / Cairo',
+                      title: 'Typography',
+                      value: 'Inter-style scale',
                       textPrimary: textPrimary,
                       textSecondary: textSecondary,
                     ),
@@ -109,8 +101,7 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
-
+              const SizedBox(height: 26),
               _SectionLabel('DATA SOURCE', textSecondary),
               const SizedBox(height: 10),
               PremiumSurface(
@@ -138,7 +129,6 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -166,7 +156,7 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        color: color.withOpacity(0.68),
+        color: color.withOpacity(0.72),
         fontSize: 12,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.9,
@@ -245,6 +235,7 @@ class _ToggleRow extends StatelessWidget {
   final IconData icon;
   final Color iconBg;
   final String title;
+  final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
   final Color textPrimary;
@@ -253,6 +244,7 @@ class _ToggleRow extends StatelessWidget {
     required this.icon,
     required this.iconBg,
     required this.title,
+    required this.subtitle,
     required this.value,
     required this.onChanged,
     required this.textPrimary,
@@ -261,29 +253,26 @@ class _ToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      child: Row(
-        children: [
-          _RowIcon(icon: icon, iconBg: iconBg),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          CupertinoSwitch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: AppColors.primary,
-          ),
-        ],
+    return SwitchListTile.adaptive(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      secondary: _RowIcon(icon: icon, iconBg: iconBg),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: textPrimary,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+        ),
       ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          color: textSecondary.withOpacity(0.8),
+          fontSize: 12,
+        ),
+      ),
+      value: value,
+      onChanged: onChanged,
     );
   }
 }

@@ -18,14 +18,15 @@ class FeaturedCard extends StatelessWidget {
     final isLive = match?.isLive == true;
     final accent = isLive ? AppColors.live : AppColors.primary;
 
-    final content = PremiumSurface(
-      glass: false,
-      borderRadius: BorderRadius.circular(30),
+    return PremiumSurface(
+      glass: true,
+      blur: 18,
+      borderRadius: BorderRadius.circular(34),
       padding: EdgeInsets.zero,
       overlayColor: null,
       shadows: [
         BoxShadow(
-          color: accent.withOpacity(0.12),
+          color: accent.withOpacity(0.14),
           blurRadius: 36,
           offset: const Offset(0, 16),
         ),
@@ -33,55 +34,71 @@ class FeaturedCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: Motion.slow,
         curve: Motion.emphasized,
-        height: 220,
+        height: 232,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(34),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isLive
                 ? [
-                    const Color(0xFF1E090A),
-                    const Color(0xFF2A0B0C),
+                    const Color(0xFF1D0A0B),
+                    const Color(0xFF271112),
                     AppColors.surface,
                   ]
                 : [
-                    const Color(0xFF08111F),
-                    const Color(0xFF0A1630),
+                    const Color(0xFF09111E),
+                    const Color(0xFF0D1B34),
                     AppColors.surface,
                   ],
           ),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(34),
           child: Stack(
             children: [
               Positioned(
                 top: -48,
-                right: -36,
+                right: -32,
                 child: Container(
-                  width: 170,
-                  height: 170,
+                  width: 180,
+                  height: 180,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: accent.withOpacity(0.10),
+                    color: accent.withOpacity(0.12),
                   ),
                 ),
               ),
               Positioned(
-                left: -44,
-                bottom: -44,
+                left: -40,
+                bottom: -46,
                 child: Container(
-                  width: 140,
-                  height: 140,
+                  width: 150,
+                  height: 150,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.035),
+                    color: Colors.white.withOpacity(0.04),
                   ),
                 ),
               ),
-              if (match?.isLive == true)
-                Positioned(
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withOpacity(0.06),
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.14),
+                      ],
+                      stops: const [0, 0.52, 1],
+                    ),
+                  ),
+                ),
+              ),
+              if (isLive)
+                const Positioned(
                   top: 18,
                   right: 18,
                   child: _LiveBadge(),
@@ -106,7 +123,7 @@ class FeaturedCard extends StatelessWidget {
                                   child: NetworkImageWidget(
                                     url: match!.leagueLogoUrl,
                                     size: 15,
-                                    fallbackIcon: Icons.emoji_events,
+                                    fallbackIcon: Icons.emoji_events_rounded,
                                   ),
                                 ),
                               Expanded(
@@ -115,7 +132,7 @@ class FeaturedCard extends StatelessWidget {
                                   style: const TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                     letterSpacing: 1.0,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -131,10 +148,10 @@ class FeaturedCard extends StatelessWidget {
                                   children: [
                                     NetworkImageWidget(
                                       url: match!.homeLogoUrl,
-                                      size: 44,
+                                      size: 48,
                                       fallbackIcon: Icons.shield_outlined,
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 10),
                                     Text(
                                       match!.home,
                                       textAlign: TextAlign.center,
@@ -154,17 +171,13 @@ class FeaturedCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                                 child: FadeSwitch(
                                   child: Text(
-                                    match!.isLive ? match!.score : match!.time,
-                                    key: ValueKey(
-                                      match!.isLive ? match!.score : match!.time,
-                                    ),
+                                    isLive ? match!.score : match!.time,
+                                    key: ValueKey(isLive ? match!.score : match!.time),
                                     style: TextStyle(
-                                      color: match!.isLive
-                                          ? AppColors.live
-                                          : AppColors.textSecondary,
-                                      fontSize: 26,
+                                      color: isLive ? AppColors.live : AppColors.textSecondary,
+                                      fontSize: 28,
                                       fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.8,
+                                      letterSpacing: 0.7,
                                     ),
                                   ),
                                 ),
@@ -174,10 +187,10 @@ class FeaturedCard extends StatelessWidget {
                                   children: [
                                     NetworkImageWidget(
                                       url: match!.awayLogoUrl,
-                                      size: 44,
+                                      size: 48,
                                       fallbackIcon: Icons.shield_outlined,
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 10),
                                     Text(
                                       match!.away,
                                       textAlign: TextAlign.center,
@@ -203,18 +216,17 @@ class FeaturedCard extends StatelessWidget {
         ),
       ),
     );
-
-    return content;
   }
 }
 
 class _LiveBadge extends StatefulWidget {
+  const _LiveBadge();
+
   @override
   State<_LiveBadge> createState() => _LiveBadgeState();
 }
 
-class _LiveBadgeState extends State<_LiveBadge>
-    with SingleTickerProviderStateMixin {
+class _LiveBadgeState extends State<_LiveBadge> with SingleTickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1200),

@@ -19,6 +19,9 @@ class ChannelGroupRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (channels.isEmpty) return const SizedBox.shrink();
 
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final textSecondary = dark ? AppColors.textSecondary : AppColors.textSecondaryLight;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -30,8 +33,15 @@ class ChannelGroupRow extends StatelessWidget {
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.9),
+                  color: AppColors.primary.withOpacity(0.92),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.25),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 10),
@@ -46,12 +56,20 @@ class ChannelGroupRow extends StatelessWidget {
                   ),
                 ),
               ),
+              Text(
+                '${channels.length}',
+                style: TextStyle(
+                  color: textSecondary.withOpacity(0.6),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 162,
+          height: 164,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -59,7 +77,7 @@ class ChannelGroupRow extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (_, i) {
               return SizedBox(
-                width: 122,
+                width: 124,
                 child: SlideFade(
                   delay: Duration(milliseconds: Motion.stagger.inMilliseconds * i),
                   child: ChannelCard(channel: channels[i]),

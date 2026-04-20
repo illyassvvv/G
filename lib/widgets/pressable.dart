@@ -51,9 +51,9 @@ class _PressableState extends State<Pressable>
         builder: (_, child) {
           final t = _controller.value;
           return Transform.translate(
-            offset: Offset(0, 0.8 * t),
+            offset: Offset(0, 1.0 * t),
             child: Transform.scale(
-              scale: 1 - (t * 0.02),
+              scale: 1 - (t * 0.025),
               child: child,
             ),
           );

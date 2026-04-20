@@ -22,8 +22,7 @@ class SlideFade extends StatefulWidget {
   State<SlideFade> createState() => _SlideFadeState();
 }
 
-class _SlideFadeState extends State<SlideFade>
-    with SingleTickerProviderStateMixin {
+class _SlideFadeState extends State<SlideFade> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: widget.duration,

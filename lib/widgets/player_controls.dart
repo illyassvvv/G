@@ -63,9 +63,10 @@ class _PlayerControlsState extends State<PlayerControls> {
   }
 
   String _formatDuration(Duration d) {
+    final h = d.inHours;
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
+    return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 
   void _startSeek(double positionFraction, Duration duration) {
@@ -113,12 +114,12 @@ class _PlayerControlsState extends State<PlayerControls> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Color(0x99000000),
+                          Color(0xB0000000),
                           Colors.transparent,
                           Colors.transparent,
-                          Color(0xAA000000),
+                          Color(0xC0000000),
                         ],
-                        stops: [0, 0.18, 0.76, 1],
+                        stops: [0, 0.16, 0.76, 1],
                       ),
                     ),
                   ),
@@ -137,62 +138,67 @@ class _PlayerControlsState extends State<PlayerControls> {
                       opacity: _visible ? 1 : 0,
                       duration: Motion.fast,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        child: _GlassPanel(
-                          child: Row(
-                            children: [
-                              _ControlButton(
-                                icon: Icons.arrow_back_ios_new_rounded,
-                                onTap: widget.onBack,
-                              ),
-                              const SizedBox(width: 8),
-                              if (widget.channel.logoUrl.isNotEmpty)
-                                Hero(
-                                  tag: 'channel-logo-${widget.channel.id}',
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: NetworkImageWidget(
-                                        url: widget.channel.logoUrl,
-                                        size: 26,
-                                        fallbackIcon: Icons.tv,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: PremiumSurface(
+                          glass: true,
+                          blur: 16,
+                          borderRadius: BorderRadius.circular(26),
+                          overlayColor: Colors.black.withOpacity(0.16),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            child: Row(
+                              children: [
+                                _ControlButton(
+                                  icon: Icons.arrow_back_ios_new_rounded,
+                                  onTap: widget.onBack,
+                                ),
+                                const SizedBox(width: 8),
+                                if (widget.channel.logoUrl.isNotEmpty)
+                                  Hero(
+                                    tag: 'channel-logo-${widget.channel.id}',
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: NetworkImageWidget(
+                                          url: widget.channel.logoUrl,
+                                          size: 26,
+                                          fallbackIcon: Icons.tv_rounded,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              if (widget.channel.logoUrl.isNotEmpty)
-                                const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  widget.channel.name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    shadows: [
-                                      Shadow(color: Colors.black54, blurRadius: 8)
-                                    ],
+                                if (widget.channel.logoUrl.isNotEmpty)
+                                  const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    widget.channel.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      shadows: [
+                                        Shadow(color: Colors.black54, blurRadius: 8)
+                                      ],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              ValueListenableBuilder<Set<int>>(
-                                valueListenable: FavoritesService.notifier,
-                                builder: (_, ids, __) {
-                                  final isFav = ids.contains(widget.channel.id);
-                                  return _ControlButton(
-                                    icon: isFav
-                                        ? Icons.favorite_rounded
-                                        : Icons.favorite_border_rounded,
-                                    color: isFav ? AppColors.live : Colors.white,
-                                    onTap: () =>
-                                        FavoritesService.toggle(widget.channel),
-                                  );
-                                },
-                              ),
-                            ],
+                                ValueListenableBuilder<Set<int>>(
+                                  valueListenable: FavoritesService.notifier,
+                                  builder: (_, ids, __) {
+                                    final isFav = ids.contains(widget.channel.id);
+                                    return _ControlButton(
+                                      icon: isFav
+                                          ? Icons.favorite_rounded
+                                          : Icons.favorite_border_rounded,
+                                      color: isFav ? AppColors.live : Colors.white,
+                                      onTap: () => FavoritesService.toggle(widget.channel),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -210,37 +216,26 @@ class _PlayerControlsState extends State<PlayerControls> {
                     curve: Motion.spring,
                     child: Pressable(
                       onTap: () {
-                        isPlaying
-                            ? widget.controller.pause()
-                            : widget.controller.play();
+                        isPlaying ? widget.controller.pause() : widget.controller.play();
                         _scheduleHide();
                       },
                       child: Container(
                         width: 76,
                         height: 76,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color(0x66141A24),
-                              Color(0x99141A24),
-                            ],
-                          ),
+                          color: Colors.black.withOpacity(0.36),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.16), width: 1.2),
+                          border: Border.all(color: Colors.white24, width: 1.4),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.24),
-                              blurRadius: 26,
+                              blurRadius: 24,
                               offset: const Offset(0, 10),
                             ),
                           ],
                         ),
                         child: Icon(
-                          isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
+                          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                           color: Colors.white,
                           size: 42,
                         ),
@@ -262,13 +257,12 @@ class _PlayerControlsState extends State<PlayerControls> {
                       opacity: _visible ? 1 : 0,
                       duration: Motion.fast,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: PremiumSurface(
                           glass: true,
                           blur: 18,
-                          borderRadius: BorderRadius.circular(26),
-                          overlayColor: Colors.black.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(28),
+                          overlayColor: Colors.black.withOpacity(0.16),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Column(
@@ -281,7 +275,7 @@ class _PlayerControlsState extends State<PlayerControls> {
                                       style: const TextStyle(
                                         color: Colors.white70,
                                         fontSize: 11,
-                                        fontWeight: FontWeight.w500,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -292,22 +286,16 @@ class _PlayerControlsState extends State<PlayerControls> {
                                             onHorizontalDragUpdate: isLive
                                                 ? null
                                                 : (d) {
-                                                    final width =
-                                                        constraints.maxWidth;
+                                                    final width = constraints.maxWidth;
                                                     if (width <= 0) return;
-                                                    _startSeek(
-                                                      d.localPosition.dx / width,
-                                                      duration,
-                                                    );
+                                                    _startSeek(d.localPosition.dx / width, duration);
                                                   },
                                             onHorizontalDragEnd: isLive
                                                 ? null
                                                 : (_) {
                                                     unawaited(_commitSeek());
                                                   },
-                                            child: MinimalProgressBar(
-                                              progress: progress,
-                                            ),
+                                            child: MinimalProgressBar(progress: progress),
                                           );
                                         },
                                       ),
@@ -315,12 +303,10 @@ class _PlayerControlsState extends State<PlayerControls> {
                                     const SizedBox(width: 8),
                                     isLive
                                         ? Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 3),
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                             decoration: BoxDecoration(
                                               color: AppColors.live,
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
+                                              borderRadius: BorderRadius.circular(999),
                                             ),
                                             child: const Text(
                                               'LIVE',
@@ -337,7 +323,7 @@ class _PlayerControlsState extends State<PlayerControls> {
                                             style: const TextStyle(
                                               color: Colors.white70,
                                               fontSize: 11,
-                                              fontWeight: FontWeight.w500,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                   ],
@@ -367,30 +353,6 @@ class _PlayerControlsState extends State<PlayerControls> {
           ),
         );
       },
-    );
-  }
-}
-
-class _GlassPanel extends StatelessWidget {
-  final Widget child;
-
-  const _GlassPanel({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(26),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.22),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
-          ),
-          child: child,
-        ),
-      ),
     );
   }
 }
