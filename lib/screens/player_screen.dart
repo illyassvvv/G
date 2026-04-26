@@ -1,406 +1,303 @@
-import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../models/channel.dart';
+import '../widgets/app_backdrop.dart';
+import '../widgets/fade_switch.dart';
+import '../widgets/player_controls.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
-  final List<Channel> channelList;
-
-  const PlayerScreen({
-    super.key,
-    required this.channel,
-    this.channelList = const [],
-  });
+  const PlayerScreen({super.key, required this.channel});
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> with WidgetsBindingObserver {
-  VideoPlayerController? _ctrl;
+class _PlayerScreenState extends State<PlayerScreen> {
+  VideoPlayerController? _controller;
   bool _loading = true;
-  bool _hasError = false;
-  bool _showControls = true;
-  Timer? _hideTimer;
-  Timer? _loadingTimeout;
-  late Channel _currentChannel;
-  int _retryCount = 0;
-  static const _maxRetries = 3;
-  static const _loadingTimeoutDuration = Duration(seconds: 25);
+  bool _error = false;
+  bool _isFullscreen = false;
+  int _initToken = 0;
 
-  final FocusNode _playerFocus = FocusNode();
-  bool _isPopping = false;
-  bool _disposed = false;
-  DateTime? _lastBackPress;
+  static const _streamHeaders = {
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/139.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Origin': 'https://www.beinsports.com',
+    'Referer': 'https://www.beinsports.com/',
+  };
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _currentChannel = widget.channel;
-    _startPlayer();
-    _scheduleHideControls();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _init();
   }
 
-  void _startPlayer() {
-    _cancelLoadingTimeout();
+  Future<void> _restoreSystemUi() async {
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
 
-    final oldCtrl = _ctrl;
-    _ctrl = null;
-    if (oldCtrl != null) {
-      oldCtrl.removeListener(_playerListener);
-      oldCtrl.dispose();
+  Future<void> _init() async {
+    final streamUri = Uri.tryParse(widget.channel.streamUrl);
+    if (streamUri == null ||
+        !(streamUri.scheme == 'http' || streamUri.scheme == 'https')) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
+      return;
     }
 
-    if (mounted) setState(() { _loading = true; _hasError = false; });
+    final previous = _controller;
+    _controller = null;
+    await previous?.dispose();
 
-    debugPrint('[VargasTV] Starting player for: ${_currentChannel.name}');
-    debugPrint('[VargasTV] Stream URL: ${_currentChannel.streamUrl}');
-    debugPrint('[VargasTV] Platform: ${Platform.operatingSystem}');
-
-    // Headers for stream requests - Android TV needs proper User-Agent
-    final Map<String, String> streamHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Android TV)',
-      'Accept': '*/*',
-      'Connection': 'keep-alive',
-    };
-
+    final token = ++_initToken;
     final controller = VideoPlayerController.networkUrl(
-      Uri.parse(_currentChannel.streamUrl),
-      httpHeaders: streamHeaders,
+      streamUri,
+      httpHeaders: _streamHeaders,
       videoPlayerOptions: VideoPlayerOptions(
         mixWithOthers: false,
         allowBackgroundPlayback: false,
       ),
     );
+    _controller = controller;
 
-    _ctrl = controller;
-
-    controller.initialize().then((_) {
-      if (_disposed || !mounted) return;
-      debugPrint('[VargasTV] Player initialized successfully');
-      controller.play();
-      _cancelLoadingTimeout();
-      setState(() { _loading = false; _hasError = false; _retryCount = 0; });
-    }).catchError((error) {
-      if (_disposed || !mounted) return;
-      debugPrint('[VargasTV] Player initialization error: $error');
-      _cancelLoadingTimeout();
-      setState(() { _loading = false; _hasError = true; });
-      _autoRetry();
-    });
-
-    controller.addListener(_playerListener);
-
-    _startLoadingTimeout();
-    if (mounted) setState(() {});
-  }
-
-  void _playerListener() {
-    if (_disposed || !mounted || _ctrl == null) return;
-    final value = _ctrl!.value;
-
-    if (value.hasError) {
-      debugPrint('[VargasTV] Playback error: ${value.errorDescription}');
-      if (!_hasError) {
-        _cancelLoadingTimeout();
-        setState(() { _loading = false; _hasError = true; });
-        _autoRetry();
+    try {
+      await controller.initialize();
+      if (!mounted || token != _initToken) {
+        await controller.dispose();
+        return;
       }
-    } else if (value.isPlaying && _loading) {
-      _cancelLoadingTimeout();
-      setState(() { _loading = false; _hasError = false; _retryCount = 0; });
-    } else if (value.isBuffering && !_loading && !_hasError) {
-      setState(() { _loading = true; });
-    } else if (!value.isBuffering && _loading && !_hasError && value.isInitialized) {
-      setState(() { _loading = false; });
-    }
-  }
-
-  void _switchToChannel(Channel ch) {
-    if (ch.id == _currentChannel.id) return;
-    _cancelLoadingTimeout();
-    setState(() {
-      _currentChannel = ch;
-      _loading = true;
-      _hasError = false;
-      _retryCount = 0;
-    });
-    _startPlayer();
-  }
-
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-
-    final key = event.logicalKey;
-
-    if (key == LogicalKeyboardKey.goBack ||
-        key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.backspace) {
-      _safeGoBack();
-      return KeyEventResult.handled;
-    }
-
-    if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.channelUp) {
-      _nextChannel();
-      _showControlsBriefly();
-      return KeyEventResult.handled;
-    }
-
-    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.channelDown) {
-      _prevChannel();
-      _showControlsBriefly();
-      return KeyEventResult.handled;
-    }
-
-    if (key == LogicalKeyboardKey.select || key == LogicalKeyboardKey.enter) {
-      if (_hasError) {
-        _retryCount = 0;
-        _startPlayer();
-      } else if (_ctrl != null && _ctrl!.value.isInitialized) {
-        _ctrl!.value.isPlaying ? _ctrl!.pause() : _ctrl!.play();
-        setState(() {});
-      }
-      _showControlsBriefly();
-      return KeyEventResult.handled;
-    }
-
-    if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
-      _toggleControls();
-      return KeyEventResult.handled;
-    }
-
-    return KeyEventResult.ignored;
-  }
-
-  void _safeGoBack() {
-    if (_isPopping || _disposed || !mounted) return;
-
-    // Debounce: ignore rapid back presses within 500ms
-    final now = DateTime.now();
-    if (_lastBackPress != null &&
-        now.difference(_lastBackPress!) < const Duration(milliseconds: 500)) {
-      return;
-    }
-    _lastBackPress = now;
-    _isPopping = true;
-    _cancelLoadingTimeout();
-
-    if (_ctrl != null) {
-      try {
-        _ctrl!.removeListener(_playerListener);
-        _ctrl!.pause();
-        _ctrl!.dispose();
-      } catch (_) {}
-      _ctrl = null;
-    }
-
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  void _nextChannel() {
-    if (widget.channelList.isEmpty) return;
-    final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
-    if (idx < 0 || idx >= widget.channelList.length - 1) return;
-    _switchToChannel(widget.channelList[idx + 1]);
-  }
-
-  void _prevChannel() {
-    if (widget.channelList.isEmpty) return;
-    final idx = widget.channelList.indexWhere((c) => c.id == _currentChannel.id);
-    if (idx <= 0) return;
-    _switchToChannel(widget.channelList[idx - 1]);
-  }
-
-  void _autoRetry() {
-    if (_retryCount < _maxRetries) {
-      _retryCount++;
-      debugPrint('[VargasTV] Auto-retry #$_retryCount/$_maxRetries');
-      Future.delayed(Duration(seconds: _retryCount), () {
-        if (mounted && _hasError) _startPlayer();
+      await controller.play();
+      if (!mounted || token != _initToken) return;
+      setState(() => _loading = false);
+    } catch (_) {
+      await controller.dispose();
+      if (!mounted || token != _initToken) return;
+      setState(() {
+        _loading = false;
+        _error = true;
       });
     }
   }
 
-  void _startLoadingTimeout() {
-    _cancelLoadingTimeout();
-    _loadingTimeout = Timer(_loadingTimeoutDuration, () {
-      if (mounted && _loading && !_hasError) {
-        setState(() { _loading = false; _hasError = true; });
-        _autoRetry();
-      }
-    });
-  }
-
-  void _cancelLoadingTimeout() {
-    _loadingTimeout?.cancel();
-    _loadingTimeout = null;
-  }
-
-  void _scheduleHideControls() {
-    _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted) setState(() => _showControls = false);
-    });
-  }
-
-  void _toggleControls() {
-    setState(() => _showControls = !_showControls);
-    if (_showControls) _scheduleHideControls();
-  }
-
-  void _showControlsBriefly() {
-    setState(() => _showControls = true);
-    _scheduleHideControls();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_ctrl == null || !_ctrl!.value.isInitialized) return;
-    if (state == AppLifecycleState.paused) {
-      _ctrl!.pause();
-    } else if (state == AppLifecycleState.resumed) {
-      _ctrl!.play();
+  Future<void> _toggleFullscreen() async {
+    final entering = !_isFullscreen;
+    if (mounted) {
+      setState(() => _isFullscreen = entering);
     }
+
+    if (entering) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      await _restoreSystemUi();
+    }
+  }
+
+  Future<void> _pop() async {
+    await _restoreSystemUi();
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   void dispose() {
-    _disposed = true;
-    WidgetsBinding.instance.removeObserver(this);
-    _hideTimer?.cancel();
-    _cancelLoadingTimeout();
-    _playerFocus.dispose();
-    if (_ctrl != null) {
-      _ctrl!.removeListener(_playerListener);
-      _ctrl!.dispose();
-    }
+    _initToken++;
+    _controller?.dispose();
+    _restoreSystemUi();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _safeGoBack();
+      canPop: true,
+      onPopInvoked: (didPop) {
+        if (didPop) {
+          _restoreSystemUi();
+        }
       },
-      child: Focus(
-        focusNode: _playerFocus,
-        autofocus: true,
-        onKeyEvent: _handleKeyEvent,
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (_ctrl != null && _ctrl!.value.isInitialized)
-                Center(
-                  child: AspectRatio(
-                    aspectRatio: _ctrl!.value.aspectRatio,
-                    child: VideoPlayer(_ctrl!),
-                  ),
-                ),
-
-              if (_loading)
-                Container(
-                  color: Colors.black,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(color: Colors.green),
-                        const SizedBox(height: 16),
-                        Text('Loading ${_currentChannel.name}...',
-                            style: const TextStyle(color: Colors.white70)),
-                      ],
-                    ),
-                  ),
-                ),
-
-              if (_hasError)
-                Container(
-                  color: Colors.black,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                        const SizedBox(height: 16),
-                        const Text('Failed to load channel',
-                            style: TextStyle(color: Colors.white, fontSize: 18)),
-                        const SizedBox(height: 8),
-                        const Text('Press OK to retry',
-                            style: TextStyle(color: Colors.white54)),
-                      ],
-                    ),
-                  ),
-                ),
-
-              Positioned(
-                top: 0, left: 0, right: 0,
-                child: AnimatedOpacity(
-                  opacity: _showControls ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                      ),
-                    ),
-                    child: Text(
-                      '${_currentChannel.number} - ${_currentChannel.name}',
-                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ),
-
-              Positioned(
-                bottom: 0, left: 0, right: 0,
-                child: AnimatedOpacity(
-                  opacity: _showControls ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    color: Colors.black.withOpacity(0.5),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _RemoteHint(icon: Icons.arrow_left, label: 'Prev'),
-                        SizedBox(width: 20),
-                        _RemoteHint(icon: Icons.circle, label: 'OK'),
-                        SizedBox(width: 20),
-                        _RemoteHint(icon: Icons.arrow_right, label: 'Next'),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: AppBackdrop(
+          child: FadeSwitch(
+            child: _loading
+                ? _buildLoading(key: const ValueKey('loading'))
+                : _error
+                    ? _buildError(key: const ValueKey('error'))
+                    : _buildPlayer(key: const ValueKey('player')),
           ),
         ),
       ),
     );
   }
+
+  Widget _buildLoading({required Key key}) {
+    return Center(
+      key: key,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+          const SizedBox(height: 20),
+          Text(
+            widget.channel.name,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError({required Key key}) {
+    return Center(
+      key: key,
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.signal_wifi_off_rounded,
+                color: Colors.white30, size: 64),
+            const SizedBox(height: 20),
+            const Text(
+              'Stream unavailable',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.channel.name,
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+            const SizedBox(height: 32),
+            _ErrorButton(
+              icon: Icons.arrow_back_rounded,
+              label: 'Go Back',
+              onTap: _pop,
+              primary: true,
+            ),
+            const SizedBox(height: 12),
+            _ErrorButton(
+              icon: Icons.refresh_rounded,
+              label: 'Retry',
+              onTap: () {
+                setState(() {
+                  _loading = true;
+                  _error = false;
+                });
+                _init();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayer({required Key key}) {
+    final controller = _controller;
+    if (controller == null) {
+      return _buildLoading(key: key);
+    }
+
+    return Stack(
+      key: key,
+      fit: StackFit.expand,
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topCenter,
+              radius: 1.15,
+              colors: [
+                Color(0xFF151A22),
+                Color(0xFF090B10),
+                Color(0xFF050608),
+              ],
+            ),
+          ),
+        ),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(_isFullscreen ? 0 : 26),
+              child: AspectRatio(
+                aspectRatio: controller.value.aspectRatio,
+                child: VideoPlayer(controller),
+              ),
+            ),
+          ),
+        ),
+        PlayerControls(
+          controller: controller,
+          channel: widget.channel,
+          isFullscreen: _isFullscreen,
+          onBack: _pop,
+          onToggleFullscreen: _toggleFullscreen,
+        ),
+      ],
+    );
+  }
 }
 
-class _RemoteHint extends StatelessWidget {
+class _ErrorButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _RemoteHint({required this.icon, required this.label});
+  final VoidCallback onTap;
+  final bool primary;
+
+  const _ErrorButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.primary = false,
+  });
+
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Icon(icon, color: Colors.white70, size: 16),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-      ]);
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+        decoration: BoxDecoration(
+          color: primary ? Colors.white : Colors.white12,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: primary ? Colors.black : Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: primary ? Colors.black : Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

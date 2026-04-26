@@ -1,50 +1,54 @@
+import '../core/url_utils.dart';
+
 class Channel {
   final int id;
   final String name;
-  final String number;
-  final String logoUrl;
+  final String logo;
   final String streamUrl;
-  final String category;
+
+  String get logoUrl => logo;
 
   const Channel({
     required this.id,
     required this.name,
-    required this.number,
-    required this.logoUrl,
+    required this.logo,
     required this.streamUrl,
-    this.category = '',
   });
 
-  factory Channel.fromJson(Map<String, dynamic> json, String categoryName) {
-    return Channel(
-      id:        json['id']     as int,
-      name:      json['name']   as String,
-      number:    json['number'] as String,
-      logoUrl:   json['logo']   as String,
-      streamUrl: json['stream'] as String,
-      category:  categoryName,
-    );
+  static String _asString(dynamic value, [String fallback = '']) {
+    if (value == null) return fallback;
+    return value.toString().trim();
   }
-}
 
-class ChannelCategory {
-  final String name;
-  final String icon;
-  final List<Channel> channels;
+  static int _asInt(dynamic value, [int fallback = 0]) {
+    if (value is int) return value;
+    return int.tryParse(_asString(value)) ?? fallback;
+  }
 
-  const ChannelCategory({
-    required this.name,
-    required this.icon,
-    required this.channels,
-  });
+  static String _safeUrl(dynamic value, {bool imageOnly = false}) {
+    final raw = _asString(value);
+    if (raw.isEmpty) return '';
+    final uri = UrlUtils.tryParseNetworkUrl(
+      raw,
+      allowHttp: true,
+      allowHttps: true,
+    );
+    if (uri == null) return '';
 
-  factory ChannelCategory.fromJson(Map<String, dynamic> json) {
-    final name = json['name'] as String;
-    final channels = (json['channels'] as List<dynamic>)
-        .map((ch) => Channel.fromJson(ch as Map<String, dynamic>, name))
-        .toList();
-    return ChannelCategory(
-      name: name, icon: json['icon'] as String, channels: channels,
+    // Prefer HTTPS when the source already provides it; keep HTTP fallback
+    // for legacy stream endpoints.
+    if (imageOnly && uri.scheme != 'https' && uri.scheme != 'http') {
+      return '';
+    }
+    return uri.toString();
+  }
+
+  factory Channel.fromJson(Map<String, dynamic> json) {
+    return Channel(
+      id: _asInt(json['id']),
+      name: _asString(json['name']),
+      logo: _safeUrl(json['logo'] ?? json['image'], imageOnly: true),
+      streamUrl: _safeUrl(json['stream'] ?? json['url']),
     );
   }
 }

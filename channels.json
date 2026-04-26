@@ -9,42 +9,42 @@
           "name": "beIN Sports 1",
           "number": "01",
           "logo": "https://docdog.top/logo/countries/turkey/beinsports1.png",
-          "stream": "http://sportook.online/BEIN-S1/video.m3u8"
+          "stream": "http://het000.4rouwanda-shop.store/live/918454578001/index.m3u8"
         },
         {
           "id": 2,
           "name": "beIN Sports 2",
           "number": "02",
           "logo": "https://docdog.top/logo/countries/turkey/beinsports2.png",
-          "stream": "http://sportook.online/BEIN-S22/video.m3u8"
+          "stream": "http://het000.4rouwanda-shop.store/live/69854211/index.m3u8"
         },
         {
           "id": 3,
           "name": "beIN Sports 3",
           "number": "03",
           "logo": "https://docdog.top/logo/countries/turkey/beinsports3.png",
-          "stream": "http://sportook.online/BEIN-S3/video.m3u8"
+          "stream": "http://het000.4rouwanda-shop.store/live/645587700/index.m3u8"
         },
         {
           "id": 4,
           "name": "beIN Sports 4",
           "number": "04",
           "logo": "https://docdog.top/logo/countries/turkey/beinsports4.png",
-          "stream": "http://sportook.online/BEIN-S4/video.m3u8"
+          "stream": "http://het000.4rouwanda-shop.store/live/9787488847/index.m3u8"
         },
         {
           "id": 5,
           "name": "beIN Sports 5",
           "number": "05",
           "logo": "https://assets.bein.com/mena/sites/4/2015/06/beIN_SPORTS5_DIGITAL_Mono.png",
-          "stream": "https://man1ted.com/be5/index.m3u8"
+          "stream": "http://het000.4rouwanda-shop.store/live/610303030/index.m3u8"
         },
         {
           "id": 6,
           "name": "beIN Sports 6",
           "number": "06",
           "logo": "https://assets.bein.com/mena/sites/4/2021/02/beIN_SPORTS6_DIGITAL_Mono.png",
-          "stream": "https://man1ted.com/be6/index.m3u8"
+          "stream": "http://het000.4rouwanda-shop.store/live/1515000000/index.m3u8"
         }
       ]
     },
@@ -112,7 +112,7 @@
           "name": "2m Tv",
           "number": "1",
           "logo": "https://elahmad-tv.com/images/2m_ma_tv.jpg",
-          "stream": "https://d2qh3gh0k5vp3v.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-n6pess5lwbghr/2M_ES.m3u8"
+          "stream": "http://het000.4rouwanda-shop.store/live/918454578001/index.m3u8?"
         },
         {
           "id": 109,
@@ -189,6 +189,13 @@
           "number": "2",
           "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/refs/heads/main/images/IMG_6570.jpeg",
           "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-spacetoon/d8382fb9ab4b2307058f12c7ea90db54/index.m3u8"
+        },
+        {
+          "id": 126,
+          "name": "Baraeem",
+          "number": "3",
+          "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1775400076.png",
+          "stream": "https://s1.alajil24.com/BARAEAM/tracks-v1a1/mono.m3u8?"
         }
       ]
     },
@@ -237,6 +244,13 @@
           "number": "6",
           "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774612430.png",
           "stream": "https://man1ted.com/mbcmax/index.m3u8"
+        },
+        {
+          "id": 125,
+          "name": "Mbc Drama",
+          "number": "7",
+          "logo": "https://raw.githubusercontent.com/illyassvvv/MyApps/main/images/icon_1774650285.png",
+          "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-drama/2c28a458e2f3253e678b07ac7d13fe71/index.m3u8"
         }
       ]
     }
