@@ -40,18 +40,18 @@ class Match {
 
   factory Match.fromJson(Map<String, dynamic> json) {
     return Match(
-      id: _asString(json['id']),
-      league: _asString(json['league'] ?? json['competition']),
-      home: _asString(json['home'] ?? json['home_name'] ?? json['localteam']),
-      away: _asString(json['away'] ?? json['away_name'] ?? json['visitorteam']),
-      score: _asString(json['score'] ?? json['result']),
-      time: _asString(json['time'] ?? json['minute']),
-      isLive: _asString(json['status'], '0') == '1',
+      id: _asString(json['id'] ?? json['match_id']),
+      league: _asString(json['league'] ?? json['competition'] ?? json['league_name']),
+      home: _asString(json['home'] ?? json['home_name'] ?? json['localteam'] ?? json['local_name']),
+      away: _asString(json['away'] ?? json['away_name'] ?? json['visitorteam'] ?? json['visitor_name']),
+      score: _asString(json['score'] ?? json['result'] ?? json['full_res']),
+      time: _asString(json['time'] ?? json['minute'] ?? json['match_time']),
+      isLive: _asString(json['status'], '0') == '1' || _asString(json['match_status']) == 'live',
       homeLogo: _asString(json['home_logo'] ?? json['localteam_logo'] ??
-          json['home_image'] ?? json['local_logo']),
+          json['home_image'] ?? json['local_logo'] ?? json['local_image']),
       awayLogo: _asString(json['away_logo'] ?? json['visitorteam_logo'] ??
-          json['away_image'] ?? json['visitor_logo']),
-      leagueLogo: _asString(json['league_logo'] ?? json['competition_logo']),
+          json['away_image'] ?? json['visitor_logo'] ?? json['visitor_image']),
+      leagueLogo: _asString(json['league_logo'] ?? json['competition_logo'] ?? json['league_image']),
     );
   }
 }

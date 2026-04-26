@@ -37,17 +37,27 @@ class PremiumSurface extends StatelessWidget {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          overlayColor ?? base.withOpacity(dark ? 0.98 : 1),
-          elevated.withOpacity(dark ? 0.98 : 1),
+          overlayColor ?? base.withOpacity(dark ? 0.92 : 1),
+          elevated.withOpacity(dark ? 0.96 : 1),
         ],
       ),
-      border: Border.all(color: outline),
+      border: Border.all(
+        color: outline,
+        width: dark ? 0.8 : 1.2,
+      ),
       boxShadow: shadows ?? [
         BoxShadow(
-          color: Colors.black.withOpacity(dark ? 0.22 : 0.08),
-          blurRadius: 26,
-          offset: const Offset(0, 12),
+          color: Colors.black.withOpacity(dark ? 0.35 : 0.12),
+          blurRadius: 32,
+          offset: const Offset(0, 16),
         ),
+        if (dark)
+          BoxShadow(
+            color: Colors.white.withOpacity(0.02),
+            blurRadius: 1,
+            spreadRadius: 0,
+            offset: const Offset(0, 1),
+          ),
       ],
     );
 

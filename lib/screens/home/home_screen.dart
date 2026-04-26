@@ -23,9 +23,17 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
   List<Match> _matches = [];
   bool _loading = true;
   String? _error;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -80,6 +88,15 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
         title: const Text('StreamGo'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded),
+            onPressed: () {
+              // Implementation of a simple search toggle or focus
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: AppBackdrop(
         child: AnimatedSwitcher(
@@ -134,6 +151,30 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                         padding: const EdgeInsets.only(bottom: 26),
                         children: [
                           const SizedBox(height: 10),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: PremiumSurface(
+                              borderRadius: BorderRadius.circular(20),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (v) => setState(() => _searchQuery = v),
+                                decoration: InputDecoration(
+                                  hintText: 'Search channels...',
+                                  hintStyle: TextStyle(color: textSecondary.withOpacity(0.5)),
+                                  prefixIcon: Icon(Icons.search_rounded, color: textSecondary.withOpacity(0.5), size: 20),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  filled: false,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                style: TextStyle(color: textPrimary, fontSize: 14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          if (_searchQuery.isEmpty) ...[
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Row(
@@ -213,6 +254,21 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                               ),
                             ),
                           ),
+                          ] else ...[
+                            ..._categories.map((cat) {
+                              final filtered = cat.channels.where((c) => c.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+                              if (filtered.isEmpty) return const SizedBox.shrink();
+                              return SlideFade(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: ChannelGroupRow(
+                                    title: cat.name,
+                                    channels: filtered,
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
                           const SizedBox(height: 12),
                         ],
                       ),

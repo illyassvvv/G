@@ -13,8 +13,8 @@ class MatchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PremiumSurface(
-      borderRadius: BorderRadius.circular(24),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      borderRadius: BorderRadius.circular(28),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Column(
         children: [
           Row(
@@ -104,10 +104,10 @@ class MatchRow extends StatelessWidget {
                         match.isLive ? match.score : match.time,
                         key: ValueKey(match.isLive ? match.score : match.time),
                         style: TextStyle(
-                          color: match.isLive ? AppColors.live : AppColors.textSecondary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          letterSpacing: 0.4,
+                          color: match.isLive ? AppColors.live : AppColors.textPrimary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ),

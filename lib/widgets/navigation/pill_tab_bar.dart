@@ -34,17 +34,24 @@ class PillTabBar extends StatelessWidget {
                 height: 68,
                 decoration: BoxDecoration(
                   color: (dark ? AppColors.surfaceGlass : Colors.white)
-                      .withOpacity(dark ? 0.88 : 0.82),
+                      .withOpacity(dark ? 0.82 : 0.78),
                   borderRadius: BorderRadius.circular(34),
                   border: Border.all(
-                    color: dark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.55),
+                    color: dark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.65),
+                    width: 0.8,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(dark ? 0.26 : 0.12),
-                      blurRadius: 30,
-                      offset: const Offset(0, 14),
+                      color: Colors.black.withOpacity(dark ? 0.42 : 0.16),
+                      blurRadius: 40,
+                      offset: const Offset(0, 20),
                     ),
+                    if (dark)
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.03),
+                        blurRadius: 1,
+                        offset: const Offset(0, 1),
+                      ),
                   ],
                 ),
                 child: Stack(

@@ -37,15 +37,24 @@ class AppBackdrop extends StatelessWidget {
       child: Stack(
         children: [
           Positioned(
-            top: -120,
-            right: -90,
+            top: -140,
+            right: -100,
             child: _Glow(
-              size: 260,
+              size: 320,
               color: dark
-                  ? const Color(0xFF5F7BFF).withOpacity(0.14)
-                  : const Color(0xFF5F7BFF).withOpacity(0.16),
+                  ? const Color(0xFF5F7BFF).withOpacity(0.18)
+                  : const Color(0xFF5F7BFF).withOpacity(0.20),
             ),
           ),
+          if (dark)
+            Positioned(
+              top: 40,
+              right: 20,
+              child: _Glow(
+                size: 180,
+                color: const Color(0xFF18C7FF).withOpacity(0.08),
+              ),
+            ),
           Positioned(
             top: 160,
             left: -120,

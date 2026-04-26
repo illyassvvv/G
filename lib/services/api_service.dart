@@ -59,6 +59,12 @@ class ApiService {
             channels: channels,
           );
         }).where((category) => category.channels.isNotEmpty).toList(growable: false);
+      } else {
+        // Handle the case where the JSON is a single object with channels directly
+        final channels = _parseChannels(data['channels'] ?? data['data']);
+        if (channels.isNotEmpty) {
+          return [ChannelCategory(name: 'All Channels', channels: channels)];
+        }
       }
     }
 
@@ -85,13 +91,18 @@ class ApiService {
     final data = await _getJson('$_matchesUrlBase/$date/1');
 
     if (data is Map<String, dynamic>) {
-      final matches = data['matches'];
+      final matches = data['matches'] ?? data['data'];
       if (matches is List) {
         return matches
             .whereType<Map>()
             .map((e) => Match.fromJson(Map<String, dynamic>.from(e)))
             .toList(growable: false);
       }
+    } else if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((e) => Match.fromJson(Map<String, dynamic>.from(e)))
+          .toList(growable: false);
     }
 
     throw const FormatException('Unexpected matches payload');
